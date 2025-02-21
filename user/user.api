@@ -1,0 +1,30 @@
+syntax = "v1"
+
+type HttpResponse {
+	Code int32       `json:"code"`
+	Msg  string      `json:"msg"`
+	Data interface{} `json:"data"`
+}
+
+type (
+	LoginReq {
+		Username    string `json:"username"`
+		Password    string `json:"password"`
+		CaptcahCode string `json:"captcahCode"`
+		CaptcahKey  string `json:"captcahKey"`
+	}
+	LoginResp {
+		Token  string `json:"token"`
+		UserId string `json:"userId"`
+	}
+)
+
+@server (
+	gruop:  login
+	prefix: /api/v1
+)
+service user-api {
+	@handler HandlerLogin
+	post /user/login (LoginReq) returns (HttpResponse)
+}
+
