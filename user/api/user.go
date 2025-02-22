@@ -2,13 +2,12 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"github/dzjyyds666/online_study_server/user/internal/config"
-	"github/dzjyyds666/online_study_server/user/internal/handler"
-	"github/dzjyyds666/online_study_server/user/internal/svc"
-
+	"github.com/dzjyyds666/opensource/logx"
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"
+	"github/dzjyyds666/online_study_server/user/api/internal/config"
+	"github/dzjyyds666/online_study_server/user/api/internal/handler"
+	"github/dzjyyds666/online_study_server/user/api/internal/svc"
 )
 
 var configFile = flag.String("f", "etc/user-api.yaml", "the config file")
@@ -25,6 +24,6 @@ func main() {
 	ctx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, ctx)
 
-	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
+	logx.GetLogger("user").Infof("Starting server at %s:%d...\n", c.Host, c.Port)
 	server.Start()
 }

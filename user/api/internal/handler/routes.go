@@ -4,9 +4,8 @@
 package handler
 
 import (
+	"github/dzjyyds666/online_study_server/user/api/internal/svc"
 	"net/http"
-
-	"github/dzjyyds666/online_study_server/user/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
 )

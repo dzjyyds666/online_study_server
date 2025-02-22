@@ -1,0 +1,32 @@
+syntax = "v1"
+
+type HttpResponse {
+    Code int32 `json:"code"`              // 状态码
+    Msg string `json:"msg"`               // 提示信息
+    Data interface{} `json:"data"`        // 数据
+    Time int64 `json:"time"`              // 时间戳
+    RequestUrl string `json:"requestUrl"` // 请求地址
+}
+
+type (
+    LoginReq {
+        Email string `json:"email"`
+        Password string `json:"password"`
+        CaptcahCode string `json:"captcahCode"`
+        CaptcahKey string `json:"captcahKey"`
+    }
+    LoginResp {
+        Token string `json:"token"`
+        UserId string `json:"userId"`
+    }
+)
+
+@server(
+    gruop: login
+    prefix: /api/v1
+)
+service user-api {
+    @handler HandlerLogin
+    post /user/login (LoginReq) returns (HttpResponse)
+}
+

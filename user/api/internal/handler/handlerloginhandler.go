@@ -1,12 +1,12 @@
 package handler
 
 import (
+	"github/dzjyyds666/online_study_server/user/api/internal/logic"
+	"github/dzjyyds666/online_study_server/user/api/internal/svc"
+	"github/dzjyyds666/online_study_server/user/api/internal/types"
 	"net/http"
 
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"github/dzjyyds666/online_study_server/user/internal/logic"
-	"github/dzjyyds666/online_study_server/user/internal/svc"
-	"github/dzjyyds666/online_study_server/user/internal/types"
 )
 
 func HandlerLoginHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

@@ -2,10 +2,9 @@ package logic
 
 import (
 	"context"
-	"github/dzjyyds666/online_study_server/user/internal/svc"
-	"github/dzjyyds666/online_study_server/user/internal/types"
-
 	"github.com/zeromicro/go-zero/core/logx"
+	"github/dzjyyds666/online_study_server/user/api/internal/svc"
+	"github/dzjyyds666/online_study_server/user/api/internal/types"
 )
 
 type HandlerLoginLogic struct {
@@ -23,7 +22,6 @@ func NewHandlerLoginLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Hand
 }
 
 func (l *HandlerLoginLogic) HandlerLogin(req *types.LoginReq) (resp *types.HttpResponse, err error) {
-	// todo: add your logic here and delete this line
 	name := "dzj"
 	password := "123456"
 	if req.Username == name && req.Password == password {
