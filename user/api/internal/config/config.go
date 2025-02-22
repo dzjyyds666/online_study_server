@@ -12,13 +12,13 @@ type RedisConfig struct {
 	Host     string `json:"host"`
 	Password string `json:"password"`
 	DB       int    `json:"db"`
-	Port     string `json:"port"`
+	Port     int    `json:"port"`
 }
 
 type MySqlConfig struct {
 	Host     string `json:"host"`
-	Port     string `json:"port"`
+	Port     int    `json:"port"`
 	Password string `json:"password"`
-	User     string `json:"user"`
+	UserName string `json:"username"`
 	DB       string `json:"db"`
 }

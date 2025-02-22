@@ -6,6 +6,7 @@ import (
 	"github/dzjyyds666/online_study_server/user/api/internal/models"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"strconv"
 )
 
 type ServiceContext struct {
@@ -17,12 +18,12 @@ type ServiceContext struct {
 func NewServiceContext(c config.Config) *ServiceContext {
 
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:     c.Redis.Host + ":" + c.Redis.Port,
+		Addr:     c.Redis.Host + ":" + strconv.Itoa(c.Redis.Port),
 		Password: c.Redis.Password,
 		DB:       c.Redis.DB,
 	})
 
-	dsn := c.Mysql.User + ":" + c.Mysql.Password + "@tcp(" + c.Mysql.Host + ":" + c.Mysql.Port + ")/" + c.Mysql.DB + "?charset=utf8mb4&parseTime=True&loc=Local"
+	dsn := c.Mysql.UserName + ":" + c.Mysql.Password + "@tcp(" + c.Mysql.Host + ":" + strconv.Itoa(c.Mysql.Port) + ")/" + c.Mysql.DB + "?charset=utf8mb4&parseTime=True&loc=Local"
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {

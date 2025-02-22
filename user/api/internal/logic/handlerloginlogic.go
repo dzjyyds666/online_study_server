@@ -24,7 +24,7 @@ func NewHandlerLoginLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Hand
 func (l *HandlerLoginLogic) HandlerLogin(req *types.LoginReq) (resp *types.HttpResponse, err error) {
 	name := "dzj"
 	password := "123456"
-	if req.Username == name && req.Password == password {
+	if req.Email == name && req.Password == password {
 		resp = &types.HttpResponse{
 			Code: 200,
 			Data: types.LoginResp{

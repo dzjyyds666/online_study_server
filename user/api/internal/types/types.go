@@ -4,13 +4,15 @@
 package types
 
 type HttpResponse struct {
-	Code int32       `json:"code"`
-	Msg  string      `json:"msg"`
-	Data interface{} `json:"data"`
+	Code       int32       `json:"code"`       // 状态码
+	Msg        string      `json:"msg"`        // 提示信息
+	Data       interface{} `json:"data"`       // 数据
+	Time       int64       `json:"time"`       // 时间戳
+	RequestUrl string      `json:"requestUrl"` // 请求地址
 }
 
 type LoginReq struct {
-	Username    string `json:"username"`
+	Email       string `json:"email"`
 	Password    string `json:"password"`
 	CaptcahCode string `json:"captcahCode"`
 	CaptcahKey  string `json:"captcahKey"`

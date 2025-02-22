@@ -7,6 +7,7 @@ import (
 	"github.com/zeromicro/go-zero/rest"
 	"github/dzjyyds666/online_study_server/user/api/internal/config"
 	"github/dzjyyds666/online_study_server/user/api/internal/handler"
+	"github/dzjyyds666/online_study_server/user/api/internal/middleware"
 	"github/dzjyyds666/online_study_server/user/api/internal/svc"
 )
 
@@ -20,6 +21,9 @@ func main() {
 
 	server := rest.MustNewServer(c.RestConf)
 	defer server.Stop()
+
+	// 使用自定义中间件
+	server.Use(middleware.FormatHttpResponse)
 
 	ctx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, ctx)

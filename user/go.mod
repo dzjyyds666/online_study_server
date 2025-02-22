@@ -3,8 +3,11 @@ module github/dzjyyds666/online_study_server/user
 go 1.23.3
 
 require (
-	github.com/dzjyyds666/opensource v0.0.0-20250221021757-b5315ab3895d
+	github.com/dzjyyds666/opensource/logx v0.0.0-20250221173708-f43de4f86808
+	github.com/redis/go-redis/v9 v9.7.0
 	github.com/zeromicro/go-zero v1.8.0
+	gorm.io/driver/mysql v1.5.7
+	gorm.io/gorm v1.25.12
 )
 
 require (
@@ -12,7 +15,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/dzjyyds666/opensource/logx v0.0.0-20250221173708-f43de4f86808 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -53,6 +56,4 @@ require (
 	google.golang.org/grpc v1.65.0 // indirect
 	google.golang.org/protobuf v1.36.4 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gorm.io/driver/mysql v1.5.7 // indirect
-	gorm.io/gorm v1.25.12 // indirect
 )
