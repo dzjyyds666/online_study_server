@@ -2,13 +2,13 @@ package main
 
 import (
 	"flag"
+	"github.com/dzjyyds666/online_study_server/user/api/internal/config"
+	"github.com/dzjyyds666/online_study_server/user/api/internal/handler"
+	"github.com/dzjyyds666/online_study_server/user/api/internal/middleware"
+	"github.com/dzjyyds666/online_study_server/user/api/internal/svc"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"
-	"github/dzjyyds666/online_study_server/user/api/internal/config"
-	"github/dzjyyds666/online_study_server/user/api/internal/handler"
-	"github/dzjyyds666/online_study_server/user/api/internal/middleware"
-	"github/dzjyyds666/online_study_server/user/api/internal/svc"
 )
 
 var configFile = flag.String("f", "etc/user-api.yaml", "the config file")

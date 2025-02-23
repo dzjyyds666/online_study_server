@@ -1,9 +1,10 @@
 package svc
 
 import (
+	"github.com/dzjyyds666/online_study_server/user/api/internal/config"
+	"github.com/dzjyyds666/online_study_server/user/api/internal/models"
 	"github.com/redis/go-redis/v9"
-	"github/dzjyyds666/online_study_server/user/api/internal/config"
-	"github/dzjyyds666/online_study_server/user/api/internal/models"
+
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"strconv"

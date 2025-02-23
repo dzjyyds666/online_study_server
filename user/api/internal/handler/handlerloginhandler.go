@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"github/dzjyyds666/online_study_server/user/api/internal/logic"
-	"github/dzjyyds666/online_study_server/user/api/internal/svc"
-	"github/dzjyyds666/online_study_server/user/api/internal/types"
+	"github.com/dzjyyds666/online_study_server/user/api/internal/logic"
+	"github.com/dzjyyds666/online_study_server/user/api/internal/svc"
+	"github.com/dzjyyds666/online_study_server/user/api/internal/types"
 	"net/http"
 
 	"github.com/zeromicro/go-zero/rest/httpx"

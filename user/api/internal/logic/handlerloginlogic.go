@@ -2,9 +2,9 @@ package logic
 
 import (
 	"context"
+	"github.com/dzjyyds666/online_study_server/user/api/internal/svc"
+	"github.com/dzjyyds666/online_study_server/user/api/internal/types"
 	"github.com/zeromicro/go-zero/core/logx"
-	"github/dzjyyds666/online_study_server/user/api/internal/svc"
-	"github/dzjyyds666/online_study_server/user/api/internal/types"
 )
 
 type HandlerLoginLogic struct {
