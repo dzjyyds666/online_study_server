@@ -23,7 +23,7 @@ type (
 	prefix:     /api/v1/oss
 	middleware: AuthMiddleware
 )
-service oss {
+service oss-api {
 	@handler ApplyUpload
 	post /applyUpload (ApplyUploadRequest) returns (HttpResponse)
 }

@@ -1,3 +1,10 @@
-Name: api-api
+Name: oss-api
 Host: 0.0.0.0
-Port: 8888
+Port: 19001
+
+s3:
+  region: cn-north
+  endpoint: http://127.0.0.1:9000
+  accessKey: admin
+  secretKey: admin@123
+  buckets: ["classes"]
