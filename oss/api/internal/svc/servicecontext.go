@@ -38,6 +38,9 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		options.UsePathStyle = true
 	})
 
+	// 检查bucket是否存在，不存在的话创建该bucket
+	c.S3.CheckAndCreateBucket(s3Client)
+
 	return &ServiceContext{
 		Config:         c,
 		AuthMiddleware: middleware.NewAuthMiddleware().Handle,

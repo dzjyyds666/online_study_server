@@ -8,3 +8,4 @@ s3:
   accessKey: admin
   secretKey: admin@123
   buckets: ["classes"]
+  policy:
