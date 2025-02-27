@@ -1,6 +1,8 @@
 package middleware
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type AuthMiddleware struct {
 }
@@ -13,7 +15,7 @@ func (m *AuthMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// TODO generate middleware implement function, delete after code implementation
 
-		// Passthrough to next handler if need
+		//tokenString := r.Header.Get(httpx.CustomHttpHeader.Authorization.String())
 		next(w, r)
 	}
 }
