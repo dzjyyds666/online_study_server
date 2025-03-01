@@ -6,6 +6,7 @@ type Config struct {
 	rest.RestConf
 	Redis RedisConfig
 	Mysql MySqlConfig
+	Jwt   JwtConfig
 }
 
 type RedisConfig struct {
@@ -21,4 +22,9 @@ type MySqlConfig struct {
 	Password string `json:"password"`
 	UserName string `json:"username"`
 	DB       string `json:"db"`
+}
+
+type JwtConfig struct {
+	SecretKey string `json:"secretkey"`
+	Expire    int64  `json:"expire"`
 }

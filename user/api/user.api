@@ -22,8 +22,9 @@ type (
 )
 
 @server (
-	gruop:  login
-	prefix: /api/v1
+	gruop:      login
+	prefix:     /api/v1
+	middleware: AuthMiddleware
 )
 service user-api {
 	@handler HandlerLogin

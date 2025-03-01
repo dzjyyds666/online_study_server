@@ -45,6 +45,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dzjyyds666/opensource v0.0.0-20250227140501-5ab4475c8deb h1:f+VjPnP3ZVZQqluUuvRdLcbvYXQypmYFI5iCryZpv44=
 github.com/dzjyyds666/opensource v0.0.0-20250227140501-5ab4475c8deb/go.mod h1:p6OIUg3YcsgKWgKgxe1IhZWT4R8exc4nBsolUhw5r9o=
+github.com/dzjyyds666/opensource v0.0.0-20250227153555-4b4860e9232e h1:EkynSnjiJ7M7pM4m6FKduNzu+mP6SN6TLGjvSHR1azc=
+github.com/dzjyyds666/opensource v0.0.0-20250227153555-4b4860e9232e/go.mod h1:/vd4ujfVdXNieaqnRrYWdEeMZsY2hDj9Wx39boHIj7M=
 github.com/dzjyyds666/opensource/logx v0.0.0-20250224061838-e6965594855d h1:SNy+7cLKdwlfuA4fjcEioPN3wsliC9f04E9AxdFRKoY=
 github.com/dzjyyds666/opensource/logx v0.0.0-20250224061838-e6965594855d/go.mod h1:aToy2QiT9rSCVOtDeyiH9BUL35fHqeF84yFXz2auzOM=
 github.com/fatih/color v1.18.0 h1:S8gINlzdQ840/4pfAwic/ZE0djQEH3wM94VfqLTZcOM=

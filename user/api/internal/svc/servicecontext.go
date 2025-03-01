@@ -4,7 +4,7 @@ import (
 	"github.com/dzjyyds666/online_study_server/user/api/internal/config"
 	"github.com/dzjyyds666/online_study_server/user/api/internal/models"
 	"github.com/redis/go-redis/v9"
-
+	"github.com/zeromicro/go-zero/rest"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"strconv"
@@ -14,9 +14,15 @@ type ServiceContext struct {
 	Config config.Config
 	Redis  *redis.Client
 	Mysql  *gorm.DB
+
+	AuthMiddleware rest.Middleware
 }
 
+var JwtConfig config.JwtConfig
+
 func NewServiceContext(c config.Config) *ServiceContext {
+
+	JwtConfig = c.Jwt
 
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     c.Redis.Host + ":" + strconv.Itoa(c.Redis.Port),

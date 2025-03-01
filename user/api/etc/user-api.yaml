@@ -13,4 +13,8 @@ mysql:
   port: 3306
   username: root
   password: rootroot
-  db: user
+  db: learnX
+
+jwt:
+  secretkey: aaron519
+  expire: 259200 # 3天
