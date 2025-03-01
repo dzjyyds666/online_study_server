@@ -1,0 +1,24 @@
+{
+  "name": "user",
+  "port": 19001,
+  "rpc_port": 29001,
+  "host": "127.0.0.1",
+  "mysql": {
+    "host": "127.0.0.1",
+    "port": 3306,
+    "username": "root",
+    "password": "rootroot",
+    "database": "user"
+  },
+  "redis": {
+    "host": "127.0.0.1",
+    "port": 6379,
+    "username": "root",
+    "password": "",
+    "db": 0
+  },
+  "jwt": {
+    "secret_key": "aaron519",
+    "expire": 259200
+  }
+}

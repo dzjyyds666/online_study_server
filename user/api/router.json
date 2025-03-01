@@ -1,0 +1,11 @@
+{
+  "version": "v1",
+  "time": 1740833460,
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/v1/api/admin/list/users",
+      "name": "user/internal/server.(*UserServer).HandlerApplyUpload-fm"
+    }
+  ]
+}
