@@ -15,8 +15,9 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-	"user/config"
-	mymiddleware "user/internal/middleware"
+	"user/api/config"
+	"user/api/internal/core"
+	mymiddleware "user/api/internal/middleware"
 )
 
 type UserServer struct {
@@ -61,6 +62,8 @@ type login struct {
 	Password string `json:"password"`
 }
 
+// todo 邮箱验证码登录
+
 func (us *UserServer) HandlerLogin(ctx echo.Context) error {
 	var loginInfo login
 	if err := ctx.Bind(&loginInfo); err != nil {
@@ -93,7 +96,7 @@ func (us *UserServer) HandlerLogin(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpInternalError, Msg: "JSON Marshal Error"})
 	}
 
-	err = us.redis.Set(ctx.Request().Context(), mymiddleware.RedisTokenKey, string(marshal), time.Duration(*config.GloableConfig.Jwt.Expire)*time.Second).Err()
+	err = us.redis.Set(ctx.Request().Context(), core.RedisTokenKey, string(marshal), time.Duration(*config.GloableConfig.Jwt.Expire)*time.Second).Err()
 	if nil != err {
 		logx.GetLogger("OS_Server").Errorf("HandlerLogin|Token Set To Redis Error|%v", err)
 		return ctx.JSON(http.StatusBadRequest,
@@ -103,18 +106,55 @@ func (us *UserServer) HandlerLogin(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpOK, Msg: "Login Success", Data: string(marshal)})
 }
 
+type signUp struct {
+	Account    string `json:"account"`
+	Password   string `json:"password"`
+	VerifyCode string `json:"verify_code"`
+}
+
 func (us *UserServer) SignUp(ctx echo.Context) error {
-	var signUpInfo UserInfo
+	var signUpInfo signUp
 	if err := ctx.Bind(&signUpInfo); err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerLogin|ctx.Bind err:%v", err)
 		return ctx.JSON(http.StatusBadRequest,
 			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "Params Invalid"})
 	}
 
-	// 生成uid
-	signUpInfo.Uid = "learnX-" + GenerateRandomString(10)
+	// 从redis中获取到邮箱验证码
+	result, err := us.redis.Get(ctx.Request().Context(), core.RedisVerifyCodeKey).Result()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerListUsers|Get Verify Code From Redis Error|%v", err)
+		return ctx.JSON(http.StatusBadRequest,
+			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "System failure"})
+	}
 
-	return nil
+	if result != signUpInfo.VerifyCode {
+		logx.GetLogger("OS_Server").Errorf("HandlerListUsers|Verify Code Not Match|%v", err)
+		return ctx.JSON(http.StatusBadRequest,
+			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "Verify Code Not Match"})
+	}
+
+	var userInfo UserInfo
+	// 生成uid
+	userInfo.Uid = "LX_" + GenerateRandomString(10)
+	userInfo.Role = UserRole.Student
+	userInfo.Username = "LearnX-" + GenerateRandomString(5)
+	userInfo.Account = signUpInfo.Account
+	password, err := bcrypt.GenerateFromPassword([]byte(signUpInfo.Password), bcrypt.DefaultCost)
+	userInfo.Password = string(password)
+	userInfo.CreateTs = time.Now().Unix()
+	userInfo.UpdateTs = time.Now().Unix()
+	userInfo.Status = UserStatus.Active
+	userInfo.Gender = UserGender.UnKnown
+
+	// 插入数据库
+	if err = us.mysql.Create(&userInfo).Error; err != nil {
+		logx.GetLogger("OS_Server").Errorf("SendMessage|Create User Error|%v", err)
+		return ctx.JSON(http.StatusBadRequest,
+			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "System failure"})
+	}
+
+	return ctx.JSON(http.StatusOK, httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpOK, Msg: "SignUp Success"})
 }
 
 func (us *UserServer) SendMessage(ctx echo.Context) error {
@@ -139,6 +179,7 @@ func (us *UserServer) SendMessage(ctx echo.Context) error {
         <h2>您的验证码</h2>
         <p>请使用以下验证码完成验证：</p>
         <p class="verification-code">%s</p>
+		<p class="footer">验证码5分钟之内有效，请及时完成验证。</p>
         <p class="footer">如果您没有请求此验证码，请忽略此邮件。</p>
     </div>
 </body>
@@ -160,7 +201,33 @@ func (us *UserServer) SendMessage(ctx echo.Context) error {
 			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpInternalError, Msg: "Send Message Error"})
 	}
 
+	// 把生成的验证码存入到redis中
+	err := us.redis.SetNX(ctx.Request().Context(), fmt.Sprintf(core.RedisVerifyCodeKey, to), verfiyCode, time.Minute*5).Err()
+	if nil != err {
+		logx.GetLogger("OS_Server").Errorf("HandlerListUsers|VerifyCode Set To Redis|Error|%v", err)
+		return ctx.JSON(http.StatusBadRequest,
+			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpInternalError, Msg: "Send Message Error"})
+	}
+
 	return ctx.JSON(http.StatusOK, httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpOK, Msg: "Send Message Success"})
+}
+
+func (us *UserServer) UpdateUserInfo(ctx echo.Context) error {
+
+	var userInfo UserInfo
+	if err := ctx.Bind(userInfo); err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerListUsers|ctx.Bind err:%v", err)
+		return ctx.JSON(http.StatusBadRequest,
+			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "Params Invalid"})
+	}
+
+	if err := us.mysql.Where("uid = ?", userInfo.Uid).Updates(&userInfo).Error; err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerListUsers|Update User Info Error|%v", err)
+		return ctx.JSON(http.StatusBadRequest,
+			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "System failure"})
+	}
+
+	return ctx.JSON(http.StatusOK, httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpOK, Msg: "Update User Info Success"})
 }
 
 func (us *UserServer) HandlerListUsers(ctx echo.Context) error {

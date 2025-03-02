@@ -1,0 +1,22 @@
+{
+  "name": "cos",
+  "port": 19002,
+  "rpc_port": 29002,
+  "host": "127.0.0.1",
+  "redis": {
+    "host": "127.0.0.1",
+    "port": 6379,
+    "username": "root",
+    "password": "",
+    "db": 0
+  },
+  "s3": {
+    "endpoint": "http://127.0.0.1:9000",
+    "access_key": "admin",
+    "secret_key": "admin@123",
+    "bucket": [
+      "learnx"
+    ],
+    "region": "cn-north"
+  }
+}

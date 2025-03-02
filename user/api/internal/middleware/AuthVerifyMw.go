@@ -8,10 +8,9 @@ import (
 	"github.com/labstack/echo"
 	"github.com/redis/go-redis/v9"
 	"net/http"
-	"user/config"
+	"user/api/config"
+	"user/api/internal/core"
 )
-
-const RedisTokenKey = "user:login:token"
 
 type Token struct {
 	Uid  string `json:"uid"`
@@ -23,7 +22,7 @@ func AuthVerifyMw(next echo.HandlerFunc, redis *redis.Client) echo.HandlerFunc {
 		auth := c.Request().Header.Get(httpx.CustomHttpHeader.Authorization.String())
 
 		// 先从redis中查询token是否过期和合法
-		result, err := redis.Get(c.Request().Context(), RedisTokenKey).Result()
+		result, err := redis.Get(c.Request().Context(), core.RedisTokenKey).Result()
 		if err != nil || auth != result {
 			logx.GetLogger("OS_Server").Errorf("AuthVerifyMw|Get Token From Redis Error|%v", err)
 			return c.JSON(http.StatusUnauthorized, httpx.HttpResponse{

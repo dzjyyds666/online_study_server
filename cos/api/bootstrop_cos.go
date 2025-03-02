@@ -1,18 +1,16 @@
 package main
 
 import (
+	"cos/api/config"
+	"cos/api/internal/server"
 	"flag"
 	"fmt"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
-	"user/config"
-	"user/internal/server"
 )
 
-// user 启动类
 func main() {
-
-	var configPath = flag.String("-c", "./config/config.json", "config file path")
+	var configPath = flag.String("c", "./config/config.json", "config file path")
 
 	err := config.RefreshEtcdConfig(*configPath)
 	if err != nil {
@@ -24,13 +22,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	e := echo.New()
-	userServer, err := server.NewUserServer()
+
+	cosServer, err := server.NewCosServer()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("UserServer|StartError|NewUserServer|err:%v", err)
-		return
+		panic(err)
 	}
-	server.RegisterRouter(e, userServer)
+	e := echo.New()
+
+	server.RegisterRouter(e, cosServer)
 
 	e.Logger.Fatal(e.Start(fmt.Sprint(":", *config.GloableConfig.Port)))
 }

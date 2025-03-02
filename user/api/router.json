@@ -1,11 +1,1 @@
-{
-  "version": "v1",
-  "time": 1740833460,
-  "routes": [
-    {
-      "method": "GET",
-      "path": "/v1/api/admin/list/users",
-      "name": "user/internal/server.(*UserServer).HandlerApplyUpload-fm"
-    }
-  ]
-}
+{"version":"v1","time":1740925469,"routes":[{"method":"GET","path":"/v1/api/user/update","name":"user/internal/server.(*UserServer).UpdateUserInfo"},{"method":"POST","path":"/v1/api/login","name":"user/internal/server.(*UserServer).HandlerLogin"},{"method":"POST","path":"/v1/api/signup","name":"user/internal/server.(*UserServer).SignUp"},{"method":"Get","path":"/v1/api/send/verifyCode","name":"user/internal/server.(*UserServer).SendMessage"},{"method":"GET","path":"/v1/api/admin/user/list","name":"user/internal/server.(*UserServer).HandlerListUsers"}]}

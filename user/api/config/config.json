@@ -8,7 +8,7 @@
     "port": 3306,
     "username": "root",
     "password": "rootroot",
-    "database": "user"
+    "database": "learnX"
   },
   "redis": {
     "host": "127.0.0.1",

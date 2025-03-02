@@ -22,3 +22,23 @@ var UserRole = struct {
 	Teacher: "teacher",
 	Student: "student",
 }
+
+var UserStatus = struct {
+	Active   int8
+	Inactive int8
+	Deleted  int8
+}{
+	Active:   0,
+	Inactive: 1,
+	Deleted:  2,
+}
+
+var UserGender = struct {
+	Male    int8
+	Female  int8
+	UnKnown int8
+}{
+	Male:    0,
+	Female:  1,
+	UnKnown: 2,
+}

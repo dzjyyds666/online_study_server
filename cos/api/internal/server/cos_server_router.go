@@ -8,33 +8,10 @@ import (
 	"os"
 	"strings"
 	"time"
-	mymiddleware "user/api/internal/middleware"
 )
 
-func RegisterRouter(e *echo.Echo, us *UserServer) {
-
-	AuthMw := func(next echo.HandlerFunc) echo.HandlerFunc {
-		return mymiddleware.AuthVerifyMw(next, us.redis)
-	}
-
+func RegisterRouter(e *echo.Echo, cs *CosServer) {
 	e.Use(middleware.Recover())
-
-	globApiPrefix := e.Group("/v1/api")
-	globApiPrefix.Add("POST", "/login", us.HandlerLogin)
-	globApiPrefix.Add("POST", "/signup", us.SignUp)
-	globApiPrefix.Add("Get", "/send/verifyCode", us.SendMessage)
-
-	adminGroup := globApiPrefix.Group("/admin")
-	// token验证中间件
-	adminGroup.Use(AuthMw)
-	adminGroup.Add("GET", "/user/list", us.HandlerListUsers)
-
-	userGroup := globApiPrefix.Group("")
-	userGroup.Use(AuthMw)
-	userGroup.Add("GET", "/user/update", us.UpdateUserInfo)
-
-	router := FilterRouter(e.Routes())
-	RecordRouteToFile(router)
 }
 
 // 过滤系统路由
