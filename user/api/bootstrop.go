@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
@@ -10,7 +11,16 @@ import (
 
 // user 启动类
 func main() {
-	err := config.LoadConfigFromEtcd()
+
+	var configPath = flag.String("-c", "./config/config.json", "config file path")
+
+	err := config.RefreshEtcdConfig(*configPath)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("main|RefreshEtcdConfig|err:%v", err)
+		return
+	}
+
+	err = config.LoadConfigFromEtcd()
 	if err != nil {
 		panic(err)
 	}

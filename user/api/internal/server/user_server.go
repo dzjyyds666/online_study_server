@@ -3,11 +3,13 @@ package server
 import (
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"github.com/dzjyyds666/opensource/httpx"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
+	"gopkg.in/gomail.v2"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"net/http"
@@ -17,11 +19,10 @@ import (
 	mymiddleware "user/internal/middleware"
 )
 
-const redisTokenKey = "user:login:token"
-
 type UserServer struct {
-	redis *redis.Client // redis
-	mysql *gorm.DB      // mysql数据库
+	redis *redis.Client  // redis
+	mysql *gorm.DB       // mysql数据库
+	email *gomail.Dialer // 邮件
 }
 
 func NewUserServer() (*UserServer, error) {
@@ -32,6 +33,12 @@ func NewUserServer() (*UserServer, error) {
 		Password: *config.GloableConfig.Redis.Password,
 		DB:       *config.GloableConfig.Redis.DB,
 	})
+
+	dialer := gomail.NewDialer(
+		*config.GloableConfig.Email.Host,
+		*config.GloableConfig.Email.Port,
+		*config.GloableConfig.Email.User,
+		*config.GloableConfig.Email.Password)
 
 	// gorm连接mysql
 	dsn := *config.GloableConfig.Mysql.Username + ":" + *config.GloableConfig.Mysql.Password + "@tcp(" + *config.GloableConfig.Mysql.Host + ":" + strconv.Itoa(*config.GloableConfig.Mysql.Port) + ")/" + *config.GloableConfig.Mysql.Database + "?charset=utf8mb4&parseTime=True&loc=Local"
@@ -44,6 +51,7 @@ func NewUserServer() (*UserServer, error) {
 	userServer := &UserServer{
 		redis: client,
 		mysql: mysql,
+		email: dialer,
 	}
 	return userServer, nil
 }
@@ -85,7 +93,7 @@ func (us *UserServer) HandlerLogin(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpInternalError, Msg: "JSON Marshal Error"})
 	}
 
-	err = us.redis.Set(ctx.Request().Context(), redisTokenKey, string(marshal), time.Duration(*config.GloableConfig.Jwt.Expire)*time.Second).Err()
+	err = us.redis.Set(ctx.Request().Context(), mymiddleware.RedisTokenKey, string(marshal), time.Duration(*config.GloableConfig.Jwt.Expire)*time.Second).Err()
 	if nil != err {
 		logx.GetLogger("OS_Server").Errorf("HandlerLogin|Token Set To Redis Error|%v", err)
 		return ctx.JSON(http.StatusBadRequest,
@@ -107,6 +115,52 @@ func (us *UserServer) SignUp(ctx echo.Context) error {
 	signUpInfo.Uid = "learnX-" + GenerateRandomString(10)
 
 	return nil
+}
+
+func (us *UserServer) SendMessage(ctx echo.Context) error {
+	to := ctx.Param("email")
+	subject := ctx.Param("subject")
+
+	htmlTemplate := `<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnX</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; text-align: center; padding: 20px; }
+        .email-container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); display: inline-block; max-width: 400px; width: 100%; }
+        .verification-code { font-size: 24px; font-weight: bold; color: #007bff; margin: 20px 0; }
+        .footer { margin-top: 15px; font-size: 14px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <h2>您的验证码</h2>
+        <p>请使用以下验证码完成验证：</p>
+        <p class="verification-code">%s</p>
+        <p class="footer">如果您没有请求此验证码，请忽略此邮件。</p>
+    </div>
+</body>
+</html>`
+
+	verfiyCode := GenerateRandomString(6)
+
+	htmlTemplate = fmt.Sprintf(htmlTemplate, verfiyCode)
+
+	message := gomail.NewMessage()
+	message.SetHeader("From", message.FormatAddress(*config.GloableConfig.Email.Sender, *config.GloableConfig.Email.Alias))
+	message.SetHeader("To", to)
+	message.SetHeader("Subject", subject)
+	message.SetBody("text/html", htmlTemplate)
+
+	if err := us.email.DialAndSend(message); err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerListUsers|SendMessage|Error|%v", err)
+		return ctx.JSON(http.StatusBadRequest,
+			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpInternalError, Msg: "Send Message Error"})
+	}
+
+	return ctx.JSON(http.StatusOK, httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpOK, Msg: "Send Message Success"})
 }
 
 func (us *UserServer) HandlerListUsers(ctx echo.Context) error {

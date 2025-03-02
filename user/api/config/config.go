@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"github.com/dzjyyds666/opensource/logx"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"io"
+	"os"
 	"time"
 )
 
@@ -20,6 +22,7 @@ type Config struct {
 	Mysql Mysql `json:"mysql"`
 	Redis Redis `json:"redis"`
 	Jwt   Jwt   `json:"jwt"`
+	Email Email `json:"email"`
 }
 
 type Mysql struct {
@@ -41,6 +44,15 @@ type Redis struct {
 type Jwt struct {
 	Secretkey *string `json:"secret_key"`
 	Expire    *int    `json:"expire"`
+}
+
+type Email struct {
+	Host     *string `mapstructure:"host"`
+	Port     *int    `mapstructure:"port"`
+	User     *string `mapstructure:"user"`
+	Password *string `mapstructure:"password"`
+	Sender   *string `mapstructure:"sender"`
+	Alias    *string `mapstructure:"alias"`
 }
 
 func LoadConfigFromEtcd() error {
@@ -70,7 +82,21 @@ func LoadConfigFromEtcd() error {
 	return nil
 }
 
-func RefreshEtcdConfig(jsonConfig string) error {
+func RefreshEtcdConfig(path string) error {
+	// 从文件中读取到配置，写入etcd
+	open, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+
+	defer open.Close()
+	all, err := io.ReadAll(open)
+	if err != nil {
+		return err
+	}
+
+	jsonConfig := string(all)
+
 	// 从etcd中加载配置
 	client, err := clientv3.New(clientv3.Config{Endpoints: []string{"127.0.0.1:2379"}, DialTimeout: 5 * time.Second})
 	if err != nil {

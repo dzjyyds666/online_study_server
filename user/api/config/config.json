@@ -20,5 +20,13 @@
   "jwt": {
     "secret_key": "aaron519",
     "expire": 259200
+  },
+  "email": {
+    "host": "smtp.163.com",
+    "port": 465,
+    "user": "15664621607@163.com",
+    "password": "KTfcXrQuAcKjRAKz",
+    "sender": "15664621607@163.com",
+    "alias": "LearnX"
   }
 }

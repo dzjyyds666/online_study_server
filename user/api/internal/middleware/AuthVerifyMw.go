@@ -6,18 +6,31 @@ import (
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/dzjyyds666/opensource/sdk"
 	"github.com/labstack/echo"
+	"github.com/redis/go-redis/v9"
 	"net/http"
 	"user/config"
 )
+
+const RedisTokenKey = "user:login:token"
 
 type Token struct {
 	Uid  string `json:"uid"`
 	Role string `json:"role"`
 }
 
-func AuthVerifyMw(next echo.HandlerFunc) echo.HandlerFunc {
+func AuthVerifyMw(next echo.HandlerFunc, redis *redis.Client) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		auth := c.Request().Header.Get(httpx.CustomHttpHeader.Authorization.String())
+
+		// 先从redis中查询token是否过期和合法
+		result, err := redis.Get(c.Request().Context(), RedisTokenKey).Result()
+		if err != nil || auth != result {
+			logx.GetLogger("OS_Server").Errorf("AuthVerifyMw|Get Token From Redis Error|%v", err)
+			return c.JSON(http.StatusUnauthorized, httpx.HttpResponse{
+				StatusCode: httpx.HttpStatusCode.HttpUnauthorized,
+				Msg:        "invalid_token", // token非法
+			})
+		}
 
 		jwtToken, err := sdk.ParseJwtToken(*config.GloableConfig.Jwt.Secretkey, auth)
 		if err != nil {
