@@ -12,6 +12,10 @@ import (
 
 func RegisterRouter(e *echo.Echo, cs *CosServer) {
 	e.Use(middleware.Recover())
+	cos := e.Group("/v1/api/cos")
+	cos.Add("post", "/applyUpload", cs.HandlerApplyUpload)
+
+	RecordRouteToFile(FilterRouter(e.Routes()))
 }
 
 // 过滤系统路由
