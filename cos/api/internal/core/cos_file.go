@@ -1,11 +1,10 @@
 package core
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/google/uuid"
 	"github.com/labstack/echo"
@@ -18,7 +17,10 @@ type CosFile struct {
 	Fid         *string `json:"fid,omitempty"`
 	FileMD5     *string `json:"file_md5,omitempty"`
 	FileSize    *int64  `json:"file_size,omitempty"`
+	FileType    *string `json:"file_type,omitempty"`
 	DirectoryId *string `json:"directory_id,omitempty"`
+
+	r io.Reader
 }
 
 func (cf *CosFile) WithFileName(fileName string) *CosFile {
@@ -46,22 +48,27 @@ func (cf *CosFile) WithDirectoryId(directoryId string) *CosFile {
 	return cf
 }
 
-var ErrPrepareIndexExits = fmt.Errorf("PrepareIndex Exits")
+func (cf *CosFile) WithReader(r io.Reader) *CosFile {
+	cf.r = r
+	return cf
+}
 
-func (cf *CosFile) PrepareIndex(ctx echo.Context, redis *redis.Client) error {
+var ErrPrepareIndexExits = fmt.Errorf("CraetePrepareIndex Exits")
+
+func (cf *CosFile) CraetePrepareIndex(ctx echo.Context, redis *redis.Client) error {
 	marshal, err := json.Marshal(cf)
 	if err != nil {
-		logx.GetLogger("OS_Server").Infof("PrepareIndex|Marshal Error|%v", err)
+		logx.GetLogger("OS_Server").Infof("CraetePrepareIndex|Marshal Error|%v", err)
 		return err
 	}
 
-	exists, err := redis.SetNX(ctx.Request().Context(), fmt.Sprintf(RedisPrepareIndexKey, *cf.DirectoryId, *cf.Fid), marshal, 0).Result()
+	exists, err := redis.SetNX(ctx.Request().Context(), fmt.Sprintf(RedisPrepareIndexKey, *cf.Fid), marshal, 0).Result()
 	if err != nil {
-		logx.GetLogger("OS_Server").Infof("PrepareIndex|SetNX Error|%v", err)
+		logx.GetLogger("OS_Server").Infof("CraetePrepareIndex|SetNX Error|%v", err)
 		return err
 	}
 	if !exists {
-		logx.GetLogger("OS_Server").Errorf("PrepareIndex|PrepareIndex Exits")
+		logx.GetLogger("OS_Server").Errorf("CraetePrepareIndex|CraetePrepareIndex Exits")
 		return ErrPrepareIndexExits
 	}
 
@@ -76,19 +83,18 @@ func (cf *CosFile) CraeteIndex(ctx echo.Context, redis *redis.Client) error {
 	}
 
 	// 从redis中删除prepare文件
-	_, err = redis.Del(ctx.Request().Context(), fmt.Sprintf(RedisPrepareIndexKey, *cf.DirectoryId, *cf.Fid)).Result()
+	_, err = redis.Del(ctx.Request().Context(), fmt.Sprintf(RedisPrepareIndexKey, *cf.Fid)).Result()
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("CraeteIndex|Del Error|%v", err)
 		return err
 	}
 
 	// 插入index文件到redis中
-	_, err = redis.SetNX(ctx.Request().Context(), fmt.Sprintf(RedisIndexKey, *cf.DirectoryId, *cf.Fid), marshal, 0).Result()
+	_, err = redis.SetNX(ctx.Request().Context(), fmt.Sprintf(RedisIndexKey, *cf.Fid), marshal, 0).Result()
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("CraeteIndex|Set Error|%v", err)
 		return err
 	}
-
 	return nil
 }
 
@@ -100,14 +106,39 @@ func (cf *CosFile) GetFilePath() string {
 	return fmt.Sprintf("%s/%s", *cf.DirectoryId, *cf.Fid)
 }
 
-func CalculateMD5(r io.Reader) (string, error) {
-	hash := md5.New()
+func (cf *CosFile) PutObject(ctx echo.Context, client *s3.Client, bucket *string) error {
+	key := cf.GetFilePath()
 
-	_, err := io.Copy(hash, r)
+	_, err := client.PutObject(ctx.Request().Context(), &s3.PutObjectInput{
+		Body:          cf.r,
+		Bucket:        bucket,
+		Key:           aws.String(key),
+		ContentMD5:    cf.FileMD5,
+		ContentLength: cf.FileSize,
+		ContentType:   cf.FileType,
+	})
 	if err != nil {
-		return "", err
+		logx.GetLogger("OS_Server").Errorf("PutObject Error|%v", err)
+		return err
 	}
-	return hex.EncodeToString(hash.Sum(nil)), nil
+
+	return nil
+}
+
+// todo 计算文件的md5
+func (cf *CosFile) CalculateMD5() error {
+	//hash := md5.New()
+	//
+	//reader := io.TeeReader(cf.r, hash)
+	//
+	//_, err := io.Copy(hash, cf.r)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//cf.WithFileMD5(hex.EncodeToString(hash.Sum(nil)))
+
+	return nil
 }
 
 func GenerateFid() string {

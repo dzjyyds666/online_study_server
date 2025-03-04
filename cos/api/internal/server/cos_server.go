@@ -6,7 +6,6 @@ import (
 	"cos/api/internal/core"
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	S3config "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -18,6 +17,8 @@ import (
 	"strconv"
 	"time"
 )
+
+var defaultBucket = config.GloableConfig.S3.Bucket[0]
 
 type CosServer struct {
 	s3Client *s3.Client
@@ -82,9 +83,9 @@ func (cs *CosServer) HandlerApplyUpload(ctx echo.Context) error {
 	fid := core.GenerateFid()
 	cosFile.WithFid(fid)
 
-	err = cosFile.PrepareIndex(ctx, cs.redis)
+	err = cosFile.CraetePrepareIndex(ctx, cs.redis)
 	if err != nil && !errors.Is(err, core.ErrPrepareIndexExits) {
-		logx.GetLogger("OS_Server").Errorf("HandlerApplyUpload|PrepareIndex err:%v", err)
+		logx.GetLogger("OS_Server").Errorf("HandlerApplyUpload|CraetePrepareIndex err:%v", err)
 		return ctx.JSON(http.StatusBadRequest, httpx.HttpResponse{
 			StatusCode: httpx.HttpStatusCode.HttpInternalError,
 			Msg:        "system error",
@@ -122,20 +123,29 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 	}
 	defer open.Close()
 
-	md5, err := core.CalculateMD5(open)
+	open.Seek(0, 0)
+
+	//uploadFile := &core.CosFile{
+	//	DirectoryId: &dirId,
+	//	FileMD5:     &md5,
+	//	FileName:    &filename,
+	//	FileSize:    &fileSize,
+	//	Fid:         &fid,
+	//}
+
+	var uploadFile *core.CosFile
+
+	uploadFile.WithFid(fid).
+		WithDirectoryId(dirId).
+		WithFileName(filename).
+		WithFileSize(fileSize).
+		WithReader(open)
+
+	md5, err := uploadFile.CalculateMD5()
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|CalculateMD5 err:%v", err)
 		return ctx.JSON(http.StatusBadRequest,
 			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "System Error"})
-	}
-	open.Seek(0, 0)
-
-	uploadFile := &core.CosFile{
-		DirectoryId: &dirId,
-		FileMD5:     &md5,
-		FileName:    &filename,
-		FileSize:    &fileSize,
-		Fid:         &fid,
 	}
 
 	// 校验文件是否与初始化上传文件一致
@@ -152,11 +162,7 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "File is Invalid"})
 	}
 
-	_, err = cs.s3Client.PutObject(ctx.Request().Context(), &s3.PutObjectInput{
-		Body:   open,
-		Bucket: config.GloableConfig.S3.Bucket[0],
-		Key:    aws.String(uploadFile.GetFilePath()),
-	})
+	uploadFile.PutObject(ctx, cs.s3Client, defaultBucket)
 
 	if nil != err {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|PutObject err:%v", err)
@@ -171,7 +177,7 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "System Error"})
 	}
 
-	return ctx.JSON(http.StatusOK, httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpOK, Msg: "ok"})
+	return ctx.JSON(http.StatusOK, httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpOK, Msg: "Upload Success", Data: fid})
 }
 
 func (cs *CosServer) checkAndCreateBucket() error {
