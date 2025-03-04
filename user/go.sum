@@ -19,6 +19,8 @@ github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/r
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f/go.mod h1:cuUVRXasLTGF7a8hSLbxyZXjz+1KgoB3wDUb6vlszIc=
 github.com/dzjyyds666/opensource v0.0.0-20250301025633-0b625d265c46 h1:Zd5y/7j7i2O2M57ZXMCDreQyTxv2fNSM6ZERXoUD8tM=
 github.com/dzjyyds666/opensource v0.0.0-20250301025633-0b625d265c46/go.mod h1:/vd4ujfVdXNieaqnRrYWdEeMZsY2hDj9Wx39boHIj7M=
+github.com/dzjyyds666/opensource/httpx v0.0.0-20250304143637-61eeb207c43e h1:wzRiZ3KaiaTqzomg02TbMdzssiwUZHRSVzdMMGZ2BhM=
+github.com/dzjyyds666/opensource/httpx v0.0.0-20250304143637-61eeb207c43e/go.mod h1:peuPScjLUkWC4BHCtri5jEYWEib8vVI97AlwKAK6w4Y=
 github.com/dzjyyds666/opensource/logx v0.0.0-20250301025633-0b625d265c46 h1:W3AxfJiYc/Jkca/con+MJb4/sQmjZ0U36IsuVUjFddw=
 github.com/dzjyyds666/opensource/logx v0.0.0-20250301025633-0b625d265c46/go.mod h1:aToy2QiT9rSCVOtDeyiH9BUL35fHqeF84yFXz2auzOM=
 github.com/go-sql-driver/mysql v1.7.0/go.mod h1:OXbVy3sEdcQ2Doequ6Z5BW6fXNQTmx+9S1MCJN5yJMI=

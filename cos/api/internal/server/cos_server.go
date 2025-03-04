@@ -6,6 +6,7 @@ import (
 	"cos/api/internal/core"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	S3config "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -18,12 +19,11 @@ import (
 	"time"
 )
 
-var defaultBucket = config.GloableConfig.S3.Bucket[0]
-
 type CosServer struct {
 	s3Client *s3.Client
 	hcli     *http.Client
 	redis    *redis.Client
+	bucket   string
 }
 
 func NewCosServer() (*CosServer, error) {
@@ -56,6 +56,7 @@ func NewCosServer() (*CosServer, error) {
 		s3Client: s3Client,
 		hcli:     hcli,
 		redis:    client,
+		bucket:   aws.ToString(config.GloableConfig.S3.Bucket[0]),
 	}
 
 	err = cosServer.checkAndCreateBucket()
@@ -73,10 +74,7 @@ func (cs *CosServer) HandlerApplyUpload(ctx echo.Context) error {
 	err := ctx.Bind(cosFile)
 	if err != nil {
 		logx.GetLogger("OS_Server").Infof("HandlerApplyUpload|Params bind Error|%v", err)
-		return ctx.JSON(http.StatusBadRequest, httpx.HttpResponse{
-			StatusCode: httpx.HttpStatusCode.HttpBadRequest,
-			Msg:        "Params Invalid",
-		})
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, "Params Invalid")
 	}
 
 	// uuid生成fid
@@ -86,30 +84,27 @@ func (cs *CosServer) HandlerApplyUpload(ctx echo.Context) error {
 	err = cosFile.CraetePrepareIndex(ctx, cs.redis)
 	if err != nil && !errors.Is(err, core.ErrPrepareIndexExits) {
 		logx.GetLogger("OS_Server").Errorf("HandlerApplyUpload|CraetePrepareIndex err:%v", err)
-		return ctx.JSON(http.StatusBadRequest, httpx.HttpResponse{
-			StatusCode: httpx.HttpStatusCode.HttpInternalError,
-			Msg:        "system error",
-		})
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, "System Error")
 	} else if errors.Is(err, core.ErrPrepareIndexExits) {
 		// 获取redis中的数据
 		if err != nil {
 			logx.GetLogger("OS_Server").Errorf("HandlerApplyUpload|Get err:%v", err)
-			return ctx.JSON(http.StatusBadRequest,
-				httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: err.Error()})
+			//return ctx.JSON(http.StatusBadRequest,
+			//	httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: err.Error()})
+			return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, err.Error())
 		}
 	}
-	return ctx.JSON(http.StatusOK, httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpOK, Msg: "ok", Data: fid})
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, fid)
 }
 
 func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 
 	fid := ctx.Param("fid")
-	dirId := ctx.Param("dirid")
+	dirId := ctx.QueryParam("dirid")
 	file, err := ctx.FormFile("file")
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|FormFile err:%v", err)
-		return ctx.JSON(http.StatusBadRequest,
-			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: err.Error()})
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, "Params Invalid")
 	}
 
 	filename := file.Filename
@@ -118,20 +113,11 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 	open, err := file.Open()
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|Open err:%v", err)
-		return ctx.JSON(http.StatusBadRequest,
-			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "System Error"})
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, "System Error")
 	}
 	defer open.Close()
 
 	open.Seek(0, 0)
-
-	//uploadFile := &core.CosFile{
-	//	DirectoryId: &dirId,
-	//	FileMD5:     &md5,
-	//	FileName:    &filename,
-	//	FileSize:    &fileSize,
-	//	Fid:         &fid,
-	//}
 
 	var uploadFile *core.CosFile
 
@@ -141,43 +127,67 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 		WithFileSize(fileSize).
 		WithReader(open)
 
-	md5, err := uploadFile.CalculateMD5()
+	err = uploadFile.CalculateMD5()
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|CalculateMD5 err:%v", err)
-		return ctx.JSON(http.StatusBadRequest,
-			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "System Error"})
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, "System Error")
 	}
 
 	// 校验文件是否与初始化上传文件一致
-	index, err := core.QueryPrepareIndex(ctx, cs.redis, uploadFile)
+	index, err := core.QueryPrepareIndex(ctx, cs.redis, aws.ToString(uploadFile.Fid))
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|QueryPrepareIndex err:%v", err)
-		return ctx.JSON(http.StatusBadRequest,
-			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "Get PerpareIndex Error"})
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, "System Error")
 	}
 
 	if !index.IsMatch(uploadFile) {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|QueryPrepareIndex|Not Match")
-		return ctx.JSON(http.StatusBadRequest,
-			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "File is Invalid"})
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, "File is Invalid")
 	}
 
-	uploadFile.PutObject(ctx, cs.s3Client, defaultBucket)
-
+	err = uploadFile.PutObject(ctx, cs.s3Client, aws.String(cs.bucket))
 	if nil != err {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|PutObject err:%v", err)
-		return ctx.JSON(http.StatusBadRequest,
-			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "Upload Failed"})
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, "Upload Failed")
 	}
 
 	err = index.CraeteIndex(ctx, cs.redis)
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|CraeteIndex err:%v", err)
-		return ctx.JSON(http.StatusBadRequest,
-			httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "System Error"})
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, "System Error")
 	}
 
-	return ctx.JSON(http.StatusOK, httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpOK, Msg: "Upload Success", Data: fid})
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, uploadFile)
+}
+
+func (cs *CosServer) HandlerGetFile(ctx echo.Context) error {
+	// 获取文件,直接拼接url访问minio
+
+	fid := ctx.Param("fid")
+	index, err := core.QueryIndex(ctx, cs.redis, fid)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerGetFile|QueryIndex err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, "Index File Not Exist")
+	}
+
+	path := index.GetFilePath()
+
+	url := aws.ToString(config.GloableConfig.S3.Endpoint) + "/" + cs.bucket + path
+
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerGetFile|NewRequest err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, "System Error")
+	}
+
+	resp, err := cs.hcli.Do(request)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerGetFile|Do err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, "Get File Error")
+	}
+	defer resp.Body.Close()
+
+	return ctx.Stream(http.StatusOK, aws.ToString(index.FileType), resp.Body)
 }
 
 func (cs *CosServer) checkAndCreateBucket() error {

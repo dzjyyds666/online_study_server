@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -103,7 +104,7 @@ func (cf *CosFile) IsMatch(cos *CosFile) bool {
 }
 
 func (cf *CosFile) GetFilePath() string {
-	return fmt.Sprintf("%s/%s", *cf.DirectoryId, *cf.Fid)
+	return fmt.Sprintf("/%s/%s", *cf.DirectoryId, *cf.Fid)
 }
 
 func (cf *CosFile) PutObject(ctx echo.Context, client *s3.Client, bucket *string) error {
@@ -146,6 +147,60 @@ func GenerateFid() string {
 	return u.String()
 }
 
-func QueryPrepareIndex(ctx echo.Context, redis *redis.Client, file *CosFile) (*CosFile, error) {
-	return nil, nil
+var ErrFidNotExits = fmt.Errorf("Fid Not Exits")
+
+func QueryPrepareIndex(ctx echo.Context, rs *redis.Client, fid string) (*CosFile, error) {
+	// 从redis中获取到prepare文件
+	if len(fid) <= 0 {
+		return nil, ErrFidNotExits
+	}
+
+	key := fmt.Sprintf(RedisPrepareIndexKey, fid)
+	result, err := rs.Get(ctx.Request().Context(), key).Result()
+	if err != nil && !errors.Is(err, redis.Nil) {
+		logx.GetLogger("OS_Server").Errorf("QueryPrepareIndex|Get Error|%v", err)
+		return nil, err
+	}
+
+	if errors.Is(err, redis.Nil) {
+		logx.GetLogger("OS_Server").Infof("QueryPrepareIndex|Prepare Index Not Exits|%v", err)
+		return nil, err
+	}
+
+	var prepareFile *CosFile
+
+	if err := json.Unmarshal([]byte(result), prepareFile); err != nil {
+		logx.GetLogger("OS_Server").Errorf("QueryPrepareIndex|Unmarshal Error|%v", err)
+		return nil, err
+	}
+
+	return prepareFile, nil
+}
+
+func QueryIndex(ctx echo.Context, rs *redis.Client, fid string) (*CosFile, error) {
+	// 从redis中获取到prepare文件
+	if len(fid) <= 0 {
+		return nil, ErrFidNotExits
+	}
+
+	key := fmt.Sprintf(RedisIndexKey, fid)
+	result, err := rs.Get(ctx.Request().Context(), key).Result()
+	if err != nil && !errors.Is(err, redis.Nil) {
+		logx.GetLogger("OS_Server").Errorf("QueryPrepareIndex|Get Error|%v", err)
+		return nil, err
+	}
+
+	if errors.Is(err, redis.Nil) {
+		logx.GetLogger("OS_Server").Infof("QueryPrepareIndex|Prepare Index Not Exits|%v", err)
+		return nil, err
+	}
+
+	var indexFile *CosFile
+
+	if err := json.Unmarshal([]byte(result), indexFile); err != nil {
+		logx.GetLogger("OS_Server").Errorf("QueryPrepareIndex|Unmarshal Error|%v", err)
+		return nil, err
+	}
+
+	return indexFile, nil
 }
