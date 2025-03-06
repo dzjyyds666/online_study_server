@@ -217,6 +217,24 @@ func (cs *CosServer) HandlerGetFile(ctx echo.Context) error {
 	return ctx.Stream(http.StatusOK, aws.ToString(index.FileType), resp.Body)
 }
 
+func (cs *CosServer) HandlerInitMultipartUpload(ctx echo.Context) error {
+	var initupload core.InitMultipartUpload
+	err := ctx.Bind(&initupload)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerInitMultipartUpload|Bind err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	initupload.WithBucket(cs.bucket)
+
+	// 初始化上传文件
+	err = initupload.InitUpload(ctx, cs.s3Client)
+
+	return nil
+}
+
 func (cs *CosServer) checkAndCreateBucket() error {
 	for _, bucket := range config.GloableConfig.S3.Bucket {
 		_, err := cs.s3Client.HeadBucket(context.TODO(), &s3.HeadBucketInput{

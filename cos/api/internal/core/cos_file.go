@@ -22,6 +22,7 @@ type CosFile struct {
 	FileSize    *int64  `json:"file_size,omitempty"`
 	FileType    *string `json:"file_type,omitempty"`
 	DirectoryId *string `json:"directory_id,omitempty"`
+	IsMultiPart *bool   `json:"is_multi_part,omitempty"`
 
 	r io.Reader
 }
