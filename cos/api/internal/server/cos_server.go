@@ -230,7 +230,7 @@ func (cs *CosServer) HandlerInitMultipartUpload(ctx echo.Context) error {
 	initupload.WithBucket(cs.bucket)
 
 	// 初始化上传文件
-	err = initupload.InitUpload(ctx, cs.s3Client)
+	upload, err = initupload.InitUpload(ctx, cs.s3Client)
 
 	return nil
 }
