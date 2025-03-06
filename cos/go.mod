@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.29.8
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.61
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.78.0
-	github.com/dzjyyds666/opensource/httpx v0.0.0-20250304143637-61eeb207c43e
+	github.com/dzjyyds666/opensource/httpx v0.0.0-20250304144348-4cd1e2ea3607
 	github.com/dzjyyds666/opensource/logx v0.0.0-20250301025633-0b625d265c46
 	github.com/google/uuid v1.6.0
 	github.com/labstack/echo v3.3.10+incompatible
@@ -48,8 +48,8 @@ require (
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0 // indirect
 	golang.org/x/crypto v0.35.0 // indirect
-	golang.org/x/net v0.35.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	google.golang.org/genproto v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d // indirect

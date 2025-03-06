@@ -4,6 +4,7 @@ import (
 	"context"
 	"cos/api/config"
 	"cos/api/internal/core"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -70,11 +71,15 @@ func NewCosServer() (*CosServer, error) {
 
 // 需要传入文件的名称，md5，长度，文件夹id
 func (cs *CosServer) HandlerApplyUpload(ctx echo.Context) error {
-	var cosFile *core.CosFile
-	err := ctx.Bind(cosFile)
+
+	decoder := json.NewDecoder(ctx.Request().Body)
+	var cosFile core.CosFile
+	err := decoder.Decode(&cosFile)
 	if err != nil {
 		logx.GetLogger("OS_Server").Infof("HandlerApplyUpload|Params bind Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, "Params Invalid")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
 	}
 
 	// uuid生成fid
@@ -89,12 +94,12 @@ func (cs *CosServer) HandlerApplyUpload(ctx echo.Context) error {
 		// 获取redis中的数据
 		if err != nil {
 			logx.GetLogger("OS_Server").Errorf("HandlerApplyUpload|Get err:%v", err)
-			//return ctx.JSON(http.StatusBadRequest,
-			//	httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: err.Error()})
-			return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, err.Error())
+			return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+				"msg": err.Error(),
+			})
 		}
 	}
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, fid)
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, cosFile)
 }
 
 func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
@@ -104,7 +109,9 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 	file, err := ctx.FormFile("file")
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|FormFile err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, "Params Invalid")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
 	}
 
 	filename := file.Filename
@@ -113,48 +120,62 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 	open, err := file.Open()
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|Open err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, "System Error")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Open File Error",
+		})
 	}
 	defer open.Close()
 
+	// 计算文件的md5值
+	md5, err := core.CalculateMD5(open)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|CalculateMD5 err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "CalculateMD5 Error",
+		})
+	}
+
 	open.Seek(0, 0)
 
-	var uploadFile *core.CosFile
+	var uploadFile core.CosFile
 
 	uploadFile.WithFid(fid).
 		WithDirectoryId(dirId).
 		WithFileName(filename).
 		WithFileSize(fileSize).
-		WithReader(open)
-
-	err = uploadFile.CalculateMD5()
-	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|CalculateMD5 err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, "System Error")
-	}
+		WithReader(open).
+		WithFileMD5(md5)
 
 	// 校验文件是否与初始化上传文件一致
 	index, err := core.QueryPrepareIndex(ctx, cs.redis, aws.ToString(uploadFile.Fid))
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|QueryPrepareIndex err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, "System Error")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Query PrepareIndex Error",
+		})
 	}
 
-	if !index.IsMatch(uploadFile) {
+	if !index.IsMatch(&uploadFile) {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|QueryPrepareIndex|Not Match")
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, "File is Invalid")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
+			"msg": "File Not Match",
+		})
 	}
 
 	err = uploadFile.PutObject(ctx, cs.s3Client, aws.String(cs.bucket))
 	if nil != err {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|PutObject err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, "Upload Failed")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
+			"msg": "PutObject Error",
+		})
 	}
 
 	err = index.CraeteIndex(ctx, cs.redis)
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|CraeteIndex err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, "System Error")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "CraeteIndex Error",
+		})
 	}
 
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, uploadFile)
@@ -167,7 +188,9 @@ func (cs *CosServer) HandlerGetFile(ctx echo.Context) error {
 	index, err := core.QueryIndex(ctx, cs.redis, fid)
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerGetFile|QueryIndex err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, "Index File Not Exist")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
+			"msg": "Index File Not Exist",
+		})
 	}
 
 	path := index.GetFilePath()
@@ -177,13 +200,17 @@ func (cs *CosServer) HandlerGetFile(ctx echo.Context) error {
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerGetFile|NewRequest err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, "System Error")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "NewRequest err",
+		})
 	}
 
 	resp, err := cs.hcli.Do(request)
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerGetFile|Do err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, "Get File Error")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Get File Error",
+		})
 	}
 	defer resp.Body.Close()
 

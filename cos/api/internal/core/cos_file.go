@@ -1,6 +1,8 @@
 package core
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -41,6 +43,11 @@ func (cf *CosFile) WithFileMD5(fileMD5 string) *CosFile {
 
 func (cf *CosFile) WithFileSize(fileSize int64) *CosFile {
 	cf.FileSize = aws.Int64(fileSize)
+	return cf
+}
+
+func (cf *CosFile) WithFileType(fileType string) *CosFile {
+	cf.FileType = aws.String(fileType)
 	return cf
 }
 
@@ -111,10 +118,10 @@ func (cf *CosFile) PutObject(ctx echo.Context, client *s3.Client, bucket *string
 	key := cf.GetFilePath()
 
 	_, err := client.PutObject(ctx.Request().Context(), &s3.PutObjectInput{
-		Body:          cf.r,
-		Bucket:        bucket,
-		Key:           aws.String(key),
-		ContentMD5:    cf.FileMD5,
+		Body:   cf.r,
+		Bucket: bucket,
+		Key:    aws.String(key),
+		//ContentMD5:    cf.FileMD5,
 		ContentLength: cf.FileSize,
 		ContentType:   cf.FileType,
 	})
@@ -127,19 +134,20 @@ func (cf *CosFile) PutObject(ctx echo.Context, client *s3.Client, bucket *string
 }
 
 // todo 计算文件的md5
-func (cf *CosFile) CalculateMD5() error {
-	//hash := md5.New()
-	//
-	//reader := io.TeeReader(cf.r, hash)
-	//
-	//_, err := io.Copy(hash, cf.r)
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//cf.WithFileMD5(hex.EncodeToString(hash.Sum(nil)))
-
-	return nil
+func CalculateMD5(reader io.Reader) (string, error) {
+	buffer := make([]byte, 1024)
+	md5Hash := md5.New()
+	for {
+		n, err := reader.Read(buffer)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return "", err
+		}
+		md5Hash.Write(buffer[:n])
+	}
+	return hex.EncodeToString(md5Hash.Sum(nil)), nil
 }
 
 func GenerateFid() string {
@@ -167,14 +175,14 @@ func QueryPrepareIndex(ctx echo.Context, rs *redis.Client, fid string) (*CosFile
 		return nil, err
 	}
 
-	var prepareFile *CosFile
+	var prepareFile CosFile
 
-	if err := json.Unmarshal([]byte(result), prepareFile); err != nil {
+	if err := json.Unmarshal([]byte(result), &prepareFile); err != nil {
 		logx.GetLogger("OS_Server").Errorf("QueryPrepareIndex|Unmarshal Error|%v", err)
 		return nil, err
 	}
 
-	return prepareFile, nil
+	return &prepareFile, nil
 }
 
 func QueryIndex(ctx echo.Context, rs *redis.Client, fid string) (*CosFile, error) {
@@ -195,12 +203,12 @@ func QueryIndex(ctx echo.Context, rs *redis.Client, fid string) (*CosFile, error
 		return nil, err
 	}
 
-	var indexFile *CosFile
+	var indexFile CosFile
 
-	if err := json.Unmarshal([]byte(result), indexFile); err != nil {
+	if err := json.Unmarshal([]byte(result), &indexFile); err != nil {
 		logx.GetLogger("OS_Server").Errorf("QueryPrepareIndex|Unmarshal Error|%v", err)
 		return nil, err
 	}
 
-	return indexFile, nil
+	return &indexFile, nil
 }
