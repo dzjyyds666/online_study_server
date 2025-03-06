@@ -13,6 +13,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/redis/go-redis/v9"
 	"io"
+	"path"
 )
 
 type CosFile struct {
@@ -112,11 +113,13 @@ func (cf *CosFile) IsMatch(cos *CosFile) bool {
 }
 
 func (cf *CosFile) GetFilePath() string {
-	return fmt.Sprintf("/%s/%s", *cf.DirectoryId, *cf.Fid)
+	return fmt.Sprintf("/%s/%s%s", *cf.DirectoryId, *cf.Fid, path.Ext(*cf.FileName))
 }
 
 func (cf *CosFile) PutObject(ctx echo.Context, client *s3.Client, bucket *string) error {
 	key := cf.GetFilePath()
+
+	logx.GetLogger("OS_Server").Infof("PutObject|%v", *cf.FileType)
 
 	_, err := client.PutObject(ctx.Request().Context(), &s3.PutObjectInput{
 		Body:   cf.r,

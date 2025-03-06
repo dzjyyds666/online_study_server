@@ -11,6 +11,7 @@ import (
 	S3config "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/dzjyyds666/opensource/httpx"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
@@ -155,12 +156,7 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 		})
 	}
 
-	if !index.IsMatch(&uploadFile) {
-		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|QueryPrepareIndex|Not Match")
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
-			"msg": "File Not Match",
-		})
-	}
+	uploadFile.WithFileType(aws.ToString(index.FileType))
 
 	err = uploadFile.PutObject(ctx, cs.s3Client, aws.String(cs.bucket))
 	if nil != err {
@@ -230,9 +226,199 @@ func (cs *CosServer) HandlerInitMultipartUpload(ctx echo.Context) error {
 	initupload.WithBucket(cs.bucket)
 
 	// 初始化上传文件
-	upload, err = initupload.InitUpload(ctx, cs.s3Client)
+	uploadid, err := initupload.InitUpload(ctx, cs.s3Client)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerInitMultipartUpload|InitUpload err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "InitUpload Error",
+		})
+	}
 
-	return nil
+	initupload.WithUploadId(uploadid)
+	marshal, err := json.Marshal(&initupload)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerInitMultipartUpload|Marshal err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Marshal Error",
+		})
+	}
+
+	// 添加redis中的init文件
+	_, err = cs.redis.Set(ctx.Request().Context(), fmt.Sprintf(core.RedisInitIndexKey, initupload.Fid), string(marshal), 0).Result()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerInitMultipartUpload|Set err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Redis Set Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, initupload)
+}
+
+func (cs *CosServer) HandlerMultiUpload(ctx echo.Context) error {
+	fid := ctx.Param("fid")
+	if len(fid) <= 0 {
+		logx.GetLogger("OS_Server").Errorf("HandlerMultiUpload|fid is empty")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	partidStr := ctx.QueryParam("partid")
+	if len(partidStr) <= 0 {
+		logx.GetLogger("OS_Server").Errorf("HandlerMultiUpload|partid is empty")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	partid, _ := strconv.ParseInt(partidStr, 10, 64)
+
+	init, err := core.QueryIndexToInit(ctx, cs.redis, fid)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerMultiUpload|QueryIndexToInit err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "QueryIndexToInit Error",
+		})
+	}
+
+	ETag, err := init.MultipartUpload(ctx, int(partid), cs.s3Client)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerMultiUpload|MultipartUpload err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "MultipartUpload Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"partid": partid,
+		"etag":   ETag,
+	})
+}
+
+type EndPart struct {
+	PartId int32  `json:"part_id"`
+	ETag   string `json:"etag"`
+}
+
+func (cs *CosServer) CompleteUpload(ctx echo.Context) error {
+
+	fid := ctx.Param("fid")
+	if len(fid) <= 0 {
+		logx.GetLogger("OS_Server").Errorf("CompleteUpload|fid is empty")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	var endparts []EndPart
+	err := ctx.Bind(&endparts)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("CompleteUpload|Bind err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	// redis中获取上传文件信息
+	result, err := cs.redis.Get(ctx.Request().Context(), fmt.Sprintf(core.RedisInitIndexKey, fid)).Result()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("CompleteUpload|Get err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Redis Get Error",
+		})
+	}
+
+	var init core.InitMultipartUpload
+	err = json.Unmarshal([]byte(result), &init)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("CompleteUpload|Unmarshal err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "json Unmarshal Error",
+		})
+	}
+
+	completeParts := make([]types.CompletedPart, len(endparts))
+	for i, endpart := range endparts {
+		completeParts[i] = types.CompletedPart{
+			ETag:       &endpart.ETag,
+			PartNumber: &endpart.PartId,
+		}
+	}
+
+	_, err = cs.s3Client.CompleteMultipartUpload(ctx.Request().Context(), &s3.CompleteMultipartUploadInput{
+		Bucket:   aws.String(cs.bucket),
+		Key:      aws.String(init.GetFilePath()),
+		UploadId: aws.String(init.UploadId),
+		MultipartUpload: &types.CompletedMultipartUpload{
+			Parts: completeParts,
+		},
+	})
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("CompleteUpload|CompleteMultipartUpload err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "CompleteMult Error",
+		})
+	}
+	// 修改prepare文件为index
+	prepareKey := fmt.Sprintf(core.RedisPrepareIndexKey, init.Fid)
+	index := fmt.Sprintf(core.RedisIndexKey, init.Fid)
+	err = cs.redis.RenameNX(ctx.Request().Context(), prepareKey, index).Err()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("CompleteUpload|RenameNX err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "RenameNX Error",
+		})
+	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"msg": "CompleteUpload Success",
+	})
+}
+
+func (cs *CosServer) HandlerAbortUpload(ctx echo.Context) error {
+	fid := ctx.Param("fid")
+	if len(fid) == 0 {
+		logx.GetLogger("OS_Server").Errorf("HandlerAbortUpload|fid is empty")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	// 查询init文件
+	init, err := core.QueryIndexToInit(ctx, cs.redis, fid)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerAbortUpload|QueryIndexToInit err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "QueryIndexToInit Error",
+		})
+	}
+
+	_, err = cs.s3Client.AbortMultipartUpload(ctx.Request().Context(), &s3.AbortMultipartUploadInput{
+		Bucket:   aws.String(cs.bucket),
+		Key:      aws.String(init.GetFilePath()),
+		UploadId: aws.String(init.UploadId),
+	})
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerAbortUpload|AbortMultipartUpload err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "AbortMultipartUpload Error",
+		})
+	}
+
+	// 删除redis中的prepare文件和init文件
+	prepareKey := fmt.Sprintf(core.RedisPrepareIndexKey, fid)
+	initKey := fmt.Sprintf(core.RedisInitIndexKey, fid)
+	err = cs.redis.Del(ctx.Request().Context(), prepareKey, initKey).Err()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerAbortUpload|Del err|%s|%s|%v", prepareKey, initKey, err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Redis Del Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"msg": "AbortUpload Success",
+	})
 }
 
 func (cs *CosServer) checkAndCreateBucket() error {

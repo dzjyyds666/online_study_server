@@ -28,10 +28,12 @@ func RegisterRouter(e *echo.Echo, us *UserServer) {
 	// token验证中间件
 	adminGroup.Use(AuthMw)
 	adminGroup.Add("GET", "/user/list", us.HandlerListUsers)
+	adminGroup.Add("GET", "/user/delete", us.HandlerDeleteUser)
 
 	userGroup := globApiPrefix.Group("")
 	userGroup.Use(AuthMw)
 	userGroup.Add("GET", "/user/update", us.UpdateUserInfo)
+	userGroup.Add("GET", "/user/info/:fid", us.HandlerQueryUserInfo)
 
 	router := FilterRouter(e.Routes())
 	RecordRouteToFile(router)
