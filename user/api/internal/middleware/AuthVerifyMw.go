@@ -7,7 +7,6 @@ import (
 	"github.com/dzjyyds666/opensource/sdk"
 	"github.com/labstack/echo"
 	"github.com/redis/go-redis/v9"
-	"net/http"
 	"user/api/config"
 	"user/api/internal/core"
 )
@@ -17,7 +16,13 @@ type Token struct {
 	Role string `json:"role"`
 }
 
-func AuthVerifyMw(next echo.HandlerFunc, redis *redis.Client) echo.HandlerFunc {
+func AuthMw(permission string, ds *redis.Client) echo.MiddlewareFunc {
+	return func(handlerFunc echo.HandlerFunc) echo.HandlerFunc {
+		return AuthVerifyMw(handlerFunc, permission, ds)
+	}
+}
+
+func AuthVerifyMw(next echo.HandlerFunc, permission string, redis *redis.Client) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		auth := c.Request().Header.Get(httpx.CustomHttpHeader.Authorization.String())
 
@@ -25,27 +30,37 @@ func AuthVerifyMw(next echo.HandlerFunc, redis *redis.Client) echo.HandlerFunc {
 		result, err := redis.Get(c.Request().Context(), core.RedisTokenKey).Result()
 		if err != nil || auth != result {
 			logx.GetLogger("OS_Server").Errorf("AuthVerifyMw|Get Token From Redis Error|%v", err)
-			return c.JSON(http.StatusUnauthorized, httpx.HttpResponse{
-				StatusCode: httpx.HttpStatusCode.HttpUnauthorized,
-				Msg:        "invalid_token", // token非法
+			//return c.JSON(http.StatusUnauthorized, httpx.HttpResponse{
+			//	StatusCode: httpx.HttpStatusCode.HttpUnauthorized,
+			//	Msg:        "invalid_token", // token非法
+			//})
+
+			return httpx.JsonResponse(c, httpx.HttpStatusCode.HttpUnauthorized, echo.Map{
+				"msg": "invalid_token",
 			})
 		}
 
 		jwtToken, err := sdk.ParseJwtToken(*config.GloableConfig.Jwt.Secretkey, auth)
 		if err != nil {
 			logx.GetLogger("OS_Server").Errorf("AuthVerifyMw|ParseJwtToken err:%v", err)
-			return c.JSON(http.StatusUnauthorized, httpx.HttpResponse{
-				StatusCode: httpx.HttpStatusCode.HttpUnauthorized,
-				Msg:        "invalid_token", // token非法
+			//return c.JSON(http.StatusUnauthorized, httpx.HttpResponse{
+			//	StatusCode: httpx.HttpStatusCode.HttpUnauthorized,
+			//	Msg:        "invalid_token", // token非法
+			//})
+			return httpx.JsonResponse(c, httpx.HttpStatusCode.HttpUnauthorized, echo.Map{
+				"msg": "invalid_token",
 			})
 		} else {
 			var token Token
 			err := json.Unmarshal([]byte(jwtToken), &token)
 			if err != nil {
 				logx.GetLogger("OS_Server").Errorf("AuthVerifyMw|Token err:%v", err)
-				return c.JSON(http.StatusUnauthorized, httpx.HttpResponse{
-					StatusCode: httpx.HttpStatusCode.HttpUnauthorized,
-					Msg:        "invalid_token", // token非法
+				//return c.JSON(http.StatusUnauthorized, httpx.HttpResponse{
+				//	StatusCode: httpx.HttpStatusCode.HttpUnauthorized,
+				//	Msg:        "invalid_token", // token非法
+				//})
+				return httpx.JsonResponse(c, httpx.HttpStatusCode.HttpUnauthorized, echo.Map{
+					"msg": "invalid_token",
 				})
 			} else {
 				c.Set("uid", token.Uid)

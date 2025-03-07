@@ -13,10 +13,6 @@ import (
 
 func RegisterRouter(e *echo.Echo, us *UserServer) {
 
-	AuthMw := func(next echo.HandlerFunc) echo.HandlerFunc {
-		return mymiddleware.AuthVerifyMw(next, us.redis)
-	}
-
 	e.Use(middleware.Recover())
 
 	globApiPrefix := e.Group("/v1/api")
@@ -26,12 +22,10 @@ func RegisterRouter(e *echo.Echo, us *UserServer) {
 
 	adminGroup := globApiPrefix.Group("/admin")
 	// token验证中间件
-	adminGroup.Use(AuthMw)
-	adminGroup.Add("GET", "/user/list", us.HandlerListUsers)
+	adminGroup.Add("GET", "/user/list", us.HandlerListUsers, mymiddleware.AuthMw("admin", us.redis))
 	adminGroup.Add("GET", "/user/delete", us.HandlerDeleteUser)
 
 	userGroup := globApiPrefix.Group("")
-	userGroup.Use(AuthMw)
 	userGroup.Add("GET", "/user/update", us.UpdateUserInfo)
 	userGroup.Add("GET", "/user/info/:fid", us.HandlerQueryUserInfo)
 
@@ -74,3 +68,33 @@ func RecordRouteToFile(routes []*echo.Route) {
 		logx.GetLogger("OS_Server").Errorf("RecordRouteToFile|WriteFile Error|%v", err)
 	}
 }
+
+//func RegisterRouter(e *echo.Echo, us *UserServer) {
+//	AuthMw := func(next echo.HandlerFunc, permission Permission) echo.HandlerFunc {
+//		return mymiddleware.AuthVerifyMw(next, us.redis, permission)
+//	}
+//
+//	e.Use(middleware.Recover())
+//
+//	globApiPrefix := e.Group("/v1/api")
+//	globApiPrefix.Add("POST", "/login", us.HandlerLogin)
+//	globApiPrefix.Add("POST", "/signup", us.SignUp)
+//	globApiPrefix.Add("GET", "/send/verifyCode", us.SendMessage)
+//
+//	adminGroup := globApiPrefix.Group("/admin")
+//	// token验证中间件，传递权限信息
+//	adminGroup.Use(AuthMw(echo.HandlerFunc(us.HandlerListUsers), Permission{Role: "admin", Action: "list"}))
+//	adminGroup.Use(AuthMw(echo.HandlerFunc(us.HandlerDeleteUser), Permission{Role: "admin", Action: "delete"}))
+//	adminGroup.Add("GET", "/user/list", us.HandlerListUsers)
+//	adminGroup.Add("GET", "/user/delete", us.HandlerDeleteUser)
+//
+//	userGroup := globApiPrefix.Group("")
+//	// token验证中间件，传递权限信息
+//	userGroup.Use(AuthMw(echo.HandlerFunc(us.UpdateUserInfo), Permission{Role: "user", Action: "update"}))
+//	userGroup.Use(AuthMw(echo.HandlerFunc(us.HandlerQueryUserInfo), Permission{Role: "user", Action: "query"}))
+//	userGroup.Add("GET", "/user/update", us.UpdateUserInfo)
+//	userGroup.Add("GET", "/user/info/:fid", us.HandlerQueryUserInfo)
+//
+//	router := FilterRouter(e.Routes())
+//	RecordRouteToFile(router)
+//}

@@ -62,7 +62,7 @@ func LoadConfigFromEtcd() error {
 		return err
 	}
 
-	//logx.GetLogger("OS_Server").Infof("LoadConfigFromEtcd|SUCC|GloableConfig|%v", common.ToStringWithoutError(GloableConfig))
+	//logx.GetLogger("OS_Server").Infof("LoadConfigFromEtcd|SUCC|GloableConfig|%v", console.ToStringWithoutError(GloableConfig))
 	return nil
 }
 
@@ -97,6 +97,6 @@ func RefreshEtcdConfig(path string) error {
 		return err
 	}
 
-	//logx.GetLogger("OS_Server").Infof("RefreshEtcdConfig|SUCC|GloableConfig|%v", common.ToStringWithoutError(GloableConfig))
+	//logx.GetLogger("OS_Server").Infof("RefreshEtcdConfig|SUCC|GloableConfig|%v", console.ToStringWithoutError(GloableConfig))
 	return nil
 }
