@@ -7,6 +7,7 @@ const (
 	RedisTeacherClassListKey     = "class:teacher:%s:class:list" // zset [uid] 储存教师对应的课程列表信息，根据时间进行排序
 	RedisStudentSubscribeListKey = "class:student:%s:subscribe:list"
 	RedisClassSubscribeStuList   = "class:class:%s:subscribe:stu:list"
+	RedisClassListKey            = "class:list"
 )
 
 func BuildClassVideoListKey(classId string) string {

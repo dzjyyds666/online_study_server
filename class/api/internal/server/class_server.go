@@ -4,6 +4,7 @@ import (
 	"class/api/config"
 	"class/api/internal/core"
 	"crypto/rand"
+	"errors"
 	"github.com/dzjyyds666/opensource/httpx"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
@@ -96,7 +97,7 @@ func (cls *ClassServer) HandlerCreateClass(ctx echo.Context) error {
 
 	// 把该课程加入教师的课程列表中
 	err = cls.redis.ZAdd(ctx.Request().Context(), core.BuildTeacherClassListKey(tuid), redis.Z{
-		Score:  float64(time.Now().Unix()),
+		Score:  float64(class.CreateTs),
 		Member: cid,
 	}).Err()
 
@@ -106,6 +107,19 @@ func (cls *ClassServer) HandlerCreateClass(ctx echo.Context) error {
 			"msg": "insert Redis Error",
 		})
 	}
+
+	// 把该课程加入到课程list中
+	_, err = cls.redis.ZAdd(ctx.Request().Context(), core.RedisClassListKey, redis.Z{
+		Score:  float64(class.CreateTs),
+		Member: cid,
+	}).Result()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerCreateClass|Add Class To ClassList Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "insert Redis Error",
+		})
+	}
+
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, class)
 }
 
@@ -288,6 +302,51 @@ func (cls *ClassServer) HandlerPutClassInTrash(ctx echo.Context) error {
 		})
 	}
 
+	// 从classlist中移除
+	err = cls.redis.ZRem(ctx.Request().Context(), core.RedisClassListKey, class.Cid).Err()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Remove Class From ClassList Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Remove Class From ClassList Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, class)
+}
+
+// 恢复课程
+func (cls *ClassServer) HandlerRecoverClass(ctx echo.Context) error {
+	cid := ctx.Param("cid")
+	if len(cid) <= 0 {
+		logx.GetLogger("OS_Server").Errorf("HandlerRecoverClass|cid is empty")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "cid is empty",
+		})
+	}
+	uid := ctx.Get("uid")
+
+	// 修改数据库中的内容
+	var class Class
+	err := cls.mysql.Where("cid = ? AND owner = ?", cid, uid).First(&class).Error
+	if err != nil {
+		logx.GetLogger("OS_Server").Infof("HandlerRecoverClass|Query Class Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Query Class Error",
+		})
+	}
+
+	// 把课程添加到classlist中
+	err = cls.redis.ZAdd(ctx.Request().Context(), core.RedisClassListKey, redis.Z{
+		Score:  float64(class.CreateTs),
+		Member: cid,
+	}).Err()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerRecoverClass|Add Class To ClassList Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Add Class To ClassList Error",
+		})
+	}
+
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, class)
 }
 
@@ -375,11 +434,40 @@ func (cls *ClassServer) HandlerQueryClassInfo(ctx echo.Context) error {
 		})
 	}
 
+	// 查看本人的订阅中有没有该class
+	uid := ctx.Get("uid")
+	key := core.BuildStudentSubscribeListKey(uid.(string))
+	result, err := cls.redis.ZScore(ctx.Request().Context(), key, cid).Result()
+	if err != nil && !errors.Is(err, redis.Nil) {
+		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Query Class Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Query Class Error",
+		})
+	}
+
+	// 查询订阅人数
+	classKey := core.BuildClassSubscribeStuList(cid)
+	subscribeCount, err := cls.redis.ZCard(ctx.Request().Context(), classKey).Result()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Query Class Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Query Class Error",
+		})
+	}
+
+	idSubscribe := false
+
+	if result > 0 {
+		idSubscribe = true
+	}
+
 	// todo rpc调用用户信息查询教师信息
 
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
 		"class": class,
 		//"teacher":teacher,
+		"idSubscribe":    idSubscribe,
+		"subscribeCount": subscribeCount,
 	})
 }
 
@@ -396,8 +484,69 @@ func (cls *ClassServer) HandlerSubscribeClass(ctx echo.Context) error {
 
 	// 写入学生的订阅课程列表
 	stuKey := core.BuildStudentSubscribeListKey(uid.(string))
-	err := cls.redis.SAdd(ctx.Request().Context(), stuKey, cid).Err()
-	//if err
+	err := cls.redis.ZAdd(ctx.Request().Context(), stuKey, redis.Z{
+		Score:  float64(time.Now().Unix()),
+		Member: cid,
+	}).Err()
+	if err != nil {
+		logx.GetLogger("OS_Server").Infof("HandlerSubscribeClass|Add Subscribe Class Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Add Subscribe Class Error",
+		})
+	}
+
+	// 把学生写入课程的订阅学生列表
+	classKey := core.BuildClassSubscribeStuList(cid)
+	err = cls.redis.ZAdd(ctx.Request().Context(), classKey, redis.Z{
+		Score:  float64(time.Now().Unix()),
+		Member: uid,
+	}).Err()
+
+	if err != nil {
+		logx.GetLogger("OS_Server").Infof("HandlerSubscribeClass|Add Subscribe Class Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Add Subscribe Class Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"msg": "Subscribe Class Success",
+	})
+}
+
+func (cls *ClassServer) HandlerCancleSubscribeClass(ctx echo.Context) error {
+	cid := ctx.Param("cid")
+	if len(cid) <= 0 {
+		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|cid is empty")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "cid is empty",
+		})
+	}
+	uid := ctx.Get("uid")
+
+	// 去除学生的订阅课程列表
+	stuKey := core.BuildStudentSubscribeListKey(uid.(string))
+	err := cls.redis.ZRem(ctx.Request().Context(), stuKey, cid).Err()
+	if err != nil {
+		logx.GetLogger("OS_Server").Infof("HandlerSubscribeClass|Cancle Subscribe Class Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Cancle Subscribe Class Error",
+		})
+	}
+
+	// 去除课程的订阅学生列表
+	classKey := core.BuildClassSubscribeStuList(cid)
+	err = cls.redis.ZRem(ctx.Request().Context(), classKey, uid).Err()
+	if err != nil {
+		logx.GetLogger("OS_Server").Infof("HandlerSubscribeClass|Cancle Subscribe Class Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Cancle Subscribe Class Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"msg": "Cancle Subscribe Class Success",
+	})
 }
 
 func GenerateRandomString(length int) string {

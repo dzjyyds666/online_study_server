@@ -14,14 +14,20 @@ import (
 func RegisterRouter(e *echo.Echo, cls *ClassServer) {
 	e.Use(middleware.Recover())
 
-	globApiPrefix := e.Group("/v1/api/class")
-	teacher := globApiPrefix.Group("/tch")
+	globApiPrefix := e.Group("/v1/api")
+	teacher := globApiPrefix.Group("/tch/class")
 	teacher.Add("POST", "/craete", cls.HandlerCreateClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
 	teacher.Add("POST", "/upload", cls.HandlerClassAddVideo, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
 	teacher.Add("POST", "/update", cls.HandlerUpdateClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
 	teacher.Add("POST", "/delete/cvideo", cls.HandlerDeleteVideo, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
 	teacher.Add("POST", "/delete/ctransh", cls.HandlerPutClassInTrash, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
-	teacher.Add("Get", "/delete/class/:cid", cls.HandlerDeleteClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
+	teacher.Add("Get", "/delete/:cid", cls.HandlerDeleteClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
+	teacher.Add("POST", "/recover/:cid", cls.HandlerRecoverClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
+
+	student := globApiPrefix.Group("/stu/class")
+	student.Add("POST", "/query/:cid", cls.HandlerQueryClassInfo, mymiddleware.AuthMw(mymiddleware.UserRole.Student, cls.redis))
+	student.Add("POST", "/subscribe/:cid", cls.HandlerSubscribeClass, mymiddleware.AuthMw(mymiddleware.UserRole.Student, cls.redis))
+	student.Add("POST", "/cancle/:cid", cls.HandlerCancleSubscribeClass, mymiddleware.AuthMw(mymiddleware.UserRole.Student, cls.redis))
 
 	RecordRouteToFile(FilterRouter(e.Routes()))
 }
