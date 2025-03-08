@@ -22,7 +22,7 @@ func RegisterRouter(e *echo.Echo, us *UserServer) {
 
 	adminGroup := globApiPrefix.Group("/admin")
 	// token验证中间件
-	adminGroup.Add("GET", "/user/list", us.HandlerListUsers, mymiddleware.AuthMw("admin", us.redis))
+	adminGroup.Add("GET", "/user/list", us.HandlerListUsers, mymiddleware.AuthMw(UserRole.Admin, us.redis))
 	adminGroup.Add("GET", "/user/delete", us.HandlerDeleteUser)
 
 	userGroup := globApiPrefix.Group("")

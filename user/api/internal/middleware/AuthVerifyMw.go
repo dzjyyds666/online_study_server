@@ -13,16 +13,16 @@ import (
 
 type Token struct {
 	Uid  string `json:"uid"`
-	Role string `json:"role"`
+	Role int    `json:"role"`
 }
 
-func AuthMw(permission string, ds *redis.Client) echo.MiddlewareFunc {
+func AuthMw(permission int, ds *redis.Client) echo.MiddlewareFunc {
 	return func(handlerFunc echo.HandlerFunc) echo.HandlerFunc {
 		return AuthVerifyMw(handlerFunc, permission, ds)
 	}
 }
 
-func AuthVerifyMw(next echo.HandlerFunc, permission string, redis *redis.Client) echo.HandlerFunc {
+func AuthVerifyMw(next echo.HandlerFunc, permission int, redis *redis.Client) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		auth := c.Request().Header.Get(httpx.CustomHttpHeader.Authorization.String())
 

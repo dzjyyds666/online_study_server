@@ -1,6 +1,7 @@
 package server
 
 import (
+	mymiddleware "class/api/internal/middleware"
 	"encoding/json"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
@@ -12,6 +13,12 @@ import (
 
 func RegisterRouter(e *echo.Echo, cls *ClassServer) {
 	e.Use(middleware.Recover())
+
+	globApiPrefix := e.Group("/v1/api/class")
+	teacher := globApiPrefix.Group("/tch")
+	teacher.Add("POST", "/craete", cls.HandlerCreateClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
+	teacher.Add("POST", "/upload", cls.HandlerUploadClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
+	teacher.Add("POST", "/update", cls.HandlerUpdateClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
 
 	RecordRouteToFile(FilterRouter(e.Routes()))
 }

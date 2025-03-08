@@ -1,7 +1,7 @@
 {
   "name": "user",
-  "port": 19001,
-  "rpc_port": 29001,
+  "port": 19003,
+  "rpc_port": 29003,
   "host": "127.0.0.1",
   "mysql": {
     "host": "127.0.0.1",
@@ -15,7 +15,7 @@
     "port": 6379,
     "username": "root",
     "password": "",
-    "db": 0
+    "db": 3
   },
   "jwt": {
     "secret_key": "aaron519",

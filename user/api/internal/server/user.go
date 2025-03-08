@@ -7,20 +7,20 @@ type UserInfo struct {
 	Password string `json:"password" gorm:"password"`
 	Avatar   string `json:"avatar" gorm:"avatar"`
 	Gender   int8   `json:"gender" gorm:"gender"`
-	Role     string `json:"role" gorm:"role"`
+	Role     int    `json:"role" gorm:"role"`
 	Status   int8   `json:"status" gorm:"status"`
 	CreateTs int64  `json:"create_ts" gorm:"create_ts"`
 	UpdateTs int64  `json:"update_ts" gorm:"update_ts"`
 }
 
 var UserRole = struct {
-	Admin   string
-	Teacher string
-	Student string
+	Admin   int
+	Teacher int
+	Student int
 }{
-	Admin:   "admin",
-	Teacher: "teacher",
-	Student: "student",
+	Admin:   3,
+	Teacher: 2,
+	Student: 1,
 }
 
 var UserStatus = struct {

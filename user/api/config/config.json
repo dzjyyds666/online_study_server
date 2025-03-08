@@ -15,7 +15,7 @@
     "port": 6379,
     "username": "root",
     "password": "",
-    "db": 0
+    "db": 1
   },
   "jwt": {
     "secret_key": "aaron519",

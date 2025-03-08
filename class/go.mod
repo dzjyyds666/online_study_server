@@ -3,6 +3,7 @@ module class
 go 1.23.3
 
 require (
+	github.com/dzjyyds666/opensource/httpx v0.0.0-20250305150926-66661c9f8725
 	github.com/dzjyyds666/opensource/logx v0.0.0-20250305150926-66661c9f8725
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/redis/go-redis/v9 v9.7.1
@@ -16,6 +17,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/go-sql-driver/mysql v1.7.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
