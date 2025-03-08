@@ -8,6 +8,8 @@ type Class struct {
 	IsComplete int    `json:"is_complete" gorm:"is_complete"`
 	IsDelete   int    `json:"is_delete" gorm:"is_delete"`
 	Owner      string `json:"owner" gorm:"owner"`
+	CreateTs   int64  `json:"create_ts" gorm:"create_ts"`
+	UpdateTs   int64  `json:"update_ts" gorm:"upload_ts"`
 }
 
 func (cl *Class) TableName() string {
