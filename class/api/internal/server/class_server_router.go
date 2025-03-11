@@ -14,7 +14,7 @@ import (
 func RegisterRouter(e *echo.Echo, cls *ClassServer) {
 	e.Use(middleware.Recover())
 
-	globApiPrefix := e.Group("/v1/api")
+	globApiPrefix := e.Group("/v1/class")
 	teacher := globApiPrefix.Group("/tch/class")
 	teacher.Add("POST", "/craete", cls.HandlerCreateClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
 	teacher.Add("POST", "/upload", cls.HandlerClassAddVideo, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))

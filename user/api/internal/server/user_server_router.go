@@ -13,23 +13,31 @@ import (
 
 func RegisterRouter(e *echo.Echo, us *UserServer) {
 
+	// 跨域
+	e.Use(middleware.CORS())
+
+	// 输出当前路由的信息
+	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+		Format: `{"time":"${time_rfc3339_nano}","method":"${method}","uri":"${uri}","status":${status},"error":"${error}","latency":${latency},"latency_human":"${latency_human}","bytes_in":${bytes_in},"bytes_out":${bytes_out}}` + "\n",
+	}))
+
 	e.Use(middleware.Recover())
 
-	globApiPrefix := e.Group("/v1/api")
-	globApiPrefix.Add("POST", "/login", us.HandlerLogin)
-	globApiPrefix.Add("POST", "/signup", us.SignUp)
-	globApiPrefix.Add("Get", "/send/verifyCode", us.SendMessage)
+	globApiPrefix := e.Group("/v1")
+	globApiPrefix.Add("POST", "/user/signin", us.HandlerLogin)
+	globApiPrefix.Add("POST", "/user/signup", us.HandleSignUp)
 
-	adminGroup := globApiPrefix.Group("/admin")
+	adminGroup := globApiPrefix.Group("/user/admin")
 	// token验证中间件
-	adminGroup.Add("GET", "/user/list", us.HandlerListUsers, mymiddleware.AuthMw(UserRole.Admin, us.redis))
-	adminGroup.Add("GET", "/user/delete", us.HandlerDeleteUser)
+	adminGroup.Add("GET", "/list", us.HandlerListUsers, mymiddleware.AuthMw(UserRole.Admin, us.redis))
+	adminGroup.Add("GET", "/delete", us.HandlerDeleteUser)
 
-	userGroup := globApiPrefix.Group("")
-	userGroup.Add("GET", "/user/update", us.UpdateUserInfo)
-	userGroup.Add("GET", "/user/info/:fid", us.HandlerQueryUserInfo)
+	userGroup := globApiPrefix.Group("/user")
+	userGroup.Add("POST", "/update/:uid", us.UpdateUserInfo)
+	userGroup.Add("GET", "/info/:uid", us.HandlerQueryUserInfo, mymiddleware.AuthMw(UserRole.Student, us.redis))
 
 	router := FilterRouter(e.Routes())
+
 	RecordRouteToFile(router)
 }
 
@@ -68,33 +76,3 @@ func RecordRouteToFile(routes []*echo.Route) {
 		logx.GetLogger("OS_Server").Errorf("RecordRouteToFile|WriteFile Error|%v", err)
 	}
 }
-
-//func RegisterRouter(e *echo.Echo, us *UserServer) {
-//	AuthMw := func(next echo.HandlerFunc, permission Permission) echo.HandlerFunc {
-//		return mymiddleware.AuthVerifyMw(next, us.redis, permission)
-//	}
-//
-//	e.Use(middleware.Recover())
-//
-//	globApiPrefix := e.Group("/v1/api")
-//	globApiPrefix.Add("POST", "/login", us.HandlerLogin)
-//	globApiPrefix.Add("POST", "/signup", us.SignUp)
-//	globApiPrefix.Add("GET", "/send/verifyCode", us.SendMessage)
-//
-//	adminGroup := globApiPrefix.Group("/admin")
-//	// token验证中间件，传递权限信息
-//	adminGroup.Use(AuthMw(echo.HandlerFunc(us.HandlerListUsers), Permission{Role: "admin", Action: "list"}))
-//	adminGroup.Use(AuthMw(echo.HandlerFunc(us.HandlerDeleteUser), Permission{Role: "admin", Action: "delete"}))
-//	adminGroup.Add("GET", "/user/list", us.HandlerListUsers)
-//	adminGroup.Add("GET", "/user/delete", us.HandlerDeleteUser)
-//
-//	userGroup := globApiPrefix.Group("")
-//	// token验证中间件，传递权限信息
-//	userGroup.Use(AuthMw(echo.HandlerFunc(us.UpdateUserInfo), Permission{Role: "user", Action: "update"}))
-//	userGroup.Use(AuthMw(echo.HandlerFunc(us.HandlerQueryUserInfo), Permission{Role: "user", Action: "query"}))
-//	userGroup.Add("GET", "/user/update", us.UpdateUserInfo)
-//	userGroup.Add("GET", "/user/info/:fid", us.HandlerQueryUserInfo)
-//
-//	router := FilterRouter(e.Routes())
-//	RecordRouteToFile(router)
-//}

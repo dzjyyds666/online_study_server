@@ -1,9 +1,9 @@
 package server
 
 type UserInfo struct {
-	Uid      string `gorm:"uid;primaryKeys" json:"uid"`
-	Username string `json:"username" gorm:"username"`
-	Account  string `json:"account" gorm:"account"`
+	Uid      string `gorm:"uid;primaryKey" json:"uid"`
+	Username string `json:"username" gorm:"username;index:idx_username"`
+	Account  string `json:"account" gorm:"account;index:idx_account;unique"`
 	Password string `json:"password" gorm:"password"`
 	Avatar   string `json:"avatar" gorm:"avatar"`
 	Gender   int8   `json:"gender" gorm:"gender"`

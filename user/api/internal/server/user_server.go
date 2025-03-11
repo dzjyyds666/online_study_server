@@ -4,8 +4,10 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/dzjyyds666/opensource/common"
 	"github.com/dzjyyds666/opensource/httpx"
 	"github.com/dzjyyds666/opensource/logx"
+	"github.com/dzjyyds666/opensource/sdk"
 	"github.com/labstack/echo"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
@@ -48,6 +50,11 @@ func NewUserServer() (*UserServer, error) {
 		return nil, err
 	}
 
+	err = mysql.AutoMigrate(&UserInfo{})
+	if err != nil {
+		return nil, err
+	}
+
 	userServer := &UserServer{
 		redis: client,
 		mysql: mysql,
@@ -60,8 +67,6 @@ type login struct {
 	Account  string `json:"account"`
 	Password string `json:"password"`
 }
-
-// todo 邮箱验证码登录
 
 func (us *UserServer) HandlerLogin(ctx echo.Context) error {
 	var loginInfo login
@@ -93,67 +98,42 @@ func (us *UserServer) HandlerLogin(ctx echo.Context) error {
 		Role: userInfo.Role,
 	}
 
-	marshal, err := json.Marshal(&tokenInfo)
-	if nil != err {
-		logx.GetLogger("OS_Server").Errorf("HandlerLogin|JSON Marshal Error|%v", err)
-		//return ctx.JSON(http.StatusBadRequest, httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpInternalError, Msg: "JSON Marshal Error"})
+	logx.GetLogger("OS_Server").Infof("HandlerLogin|Login Success|%s", common.ToStringWithoutError(tokenInfo))
+
+	bytes, _ := json.Marshal(tokenInfo)
+	token, err := sdk.CreateJwtToken(*config.GloableConfig.Jwt.Secretkey, bytes)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerLogin|CreateJwtToken Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "JSON Marshal Error",
+			"msg": "login Error",
 		})
 	}
 
-	err = us.redis.Set(ctx.Request().Context(), core.RedisTokenKey, string(marshal), time.Duration(*config.GloableConfig.Jwt.Expire)*time.Second).Err()
+	err = us.redis.Set(ctx.Request().Context(), fmt.Sprintf(core.RedisTokenKey, tokenInfo.Uid), token, time.Duration(*config.GloableConfig.Jwt.Expire)*time.Second).Err()
 	if nil != err {
 		logx.GetLogger("OS_Server").Errorf("HandlerLogin|Token Set To Redis Error|%v", err)
-		//return ctx.JSON(http.StatusBadRequest,
-		//	httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpInternalError, Msg: "Token Set To Redis Error"})
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Token Set To Redis Error",
 		})
 	}
 
-	//return ctx.JSON(http.StatusOK, httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpOK, Msg: "Login Success", Data: string(marshal)})
+	logx.GetLogger("OS_Server").Infof("HandlerLogin|Login Success|%s", common.ToStringWithoutError(tokenInfo))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
-		"token": string(marshal),
+		"token": token,
+		"id":    userInfo.Uid,
 	})
 }
 
-type signUp struct {
-	Account    string `json:"account"`
-	Password   string `json:"password"`
-	VerifyCode string `json:"verify_code"`
-}
-
-func (us *UserServer) SignUp(ctx echo.Context) error {
-	var signUpInfo signUp
+func (us *UserServer) HandleSignUp(ctx echo.Context) error {
+	var signUpInfo login
 	if err := ctx.Bind(&signUpInfo); err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerLogin|ctx.Bind err:%v", err)
-		//return ctx.JSON(http.StatusBadRequest,
-		//	httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "Params Invalid"})
+		logx.GetLogger("OS_Server").Errorf("HandleSignUp|ctx.Bind err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
 	}
 
-	// 从redis中获取到邮箱验证码
-	result, err := us.redis.Get(ctx.Request().Context(), core.RedisVerifyCodeKey).Result()
-	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerListUsers|Get Verify Code From Redis Error|%v", err)
-		//return ctx.JSON(http.StatusBadRequest,
-		//	httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "System failure"})
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Redis Get Error",
-		})
-	}
-
-	if result != signUpInfo.VerifyCode {
-		logx.GetLogger("OS_Server").Errorf("HandlerListUsers|Verify Code Not Match|%v", err)
-		//return ctx.JSON(http.StatusBadRequest,
-		//	httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "Verify Code Not Match"})
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
-			"msg": "Verify Code Not Match",
-		})
-	}
+	logx.GetLogger("OS_Server").Infof("HandleSignUp|SignUp Success|%s", common.ToStringWithoutError(signUpInfo))
 
 	var userInfo UserInfo
 	// 生成uid
@@ -170,18 +150,16 @@ func (us *UserServer) SignUp(ctx echo.Context) error {
 
 	// 插入数据库
 	if err = us.mysql.Create(&userInfo).Error; err != nil {
-		logx.GetLogger("OS_Server").Errorf("SendMessage|Create User Error|%v", err)
+		logx.GetLogger("OS_Server").Errorf("HandleSignUp|Create User Error|%v", err)
 		//return ctx.JSON(http.StatusBadRequest,
 		//	httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpBadRequest, Msg: "System failure"})
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "insert Mysql Error",
+			"msg": "Sign Up Error",
 		})
 	}
 
-	//return ctx.JSON(http.StatusOK, httpx.HttpResponse{StatusCode: httpx.HttpStatusCode.HttpOK, Msg: "SignUp Success"})
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
-		"msg": "SignUp Success",
-	})
+	logx.GetLogger("OS_Server").Infof("HandleSignUp|Create User Success|%s", common.ToStringWithoutError(userInfo))
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, userInfo)
 }
 
 func (us *UserServer) SendMessage(ctx echo.Context) error {
@@ -249,7 +227,6 @@ func (us *UserServer) SendMessage(ctx echo.Context) error {
 }
 
 func (us *UserServer) UpdateUserInfo(ctx echo.Context) error {
-
 	var userInfo UserInfo
 	if err := ctx.Bind(userInfo); err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerListUsers|ctx.Bind err:%v", err)
@@ -276,7 +253,7 @@ func (us *UserServer) UpdateUserInfo(ctx echo.Context) error {
 }
 
 func (us *UserServer) HandlerQueryUserInfo(ctx echo.Context) error {
-	uid := ctx.Param("uid")
+	uid := ctx.Get("uid").(string)
 	if len(uid) <= 0 {
 		logx.GetLogger("OS_Server").Errorf("HandlerListUsers|uid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
@@ -286,7 +263,7 @@ func (us *UserServer) HandlerQueryUserInfo(ctx echo.Context) error {
 
 	// 数据库中查询用户信息
 	var userInfo UserInfo
-	err := us.mysql.First(&userInfo, "uid = ?", uid).Error
+	err := us.mysql.First(&userInfo, "uid = ?", uid).Select("username", "account", "avatar", "role", "create_ts", "gender").Error
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerListUsers|err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
