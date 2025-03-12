@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.78.0
 	github.com/dzjyyds666/opensource/httpx v0.0.0-20250304144348-4cd1e2ea3607
 	github.com/dzjyyds666/opensource/logx v0.0.0-20250301025633-0b625d265c46
+	github.com/gabriel-vasile/mimetype v1.4.8
 	github.com/google/uuid v1.6.0
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/redis/go-redis/v9 v9.7.1

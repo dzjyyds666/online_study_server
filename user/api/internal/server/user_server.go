@@ -121,6 +121,7 @@ func (us *UserServer) HandlerLogin(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
 		"token": token,
 		"id":    userInfo.Uid,
+		"role":  userInfo.Role,
 	})
 }
 

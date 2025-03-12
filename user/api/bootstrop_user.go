@@ -11,8 +11,8 @@ import (
 
 // user 启动类
 func main() {
-	var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\user\\api\\config\\config.json", "config file path")
-
+	//var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\user\\api\\config\\config.json", "config file path")
+	var configPath = flag.String("c", "/Users/zhijundu/GolandProjects/online_study_server/user/api/config/config.json", "config file path")
 	err := config.RefreshEtcdConfig(*configPath)
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("main|RefreshEtcdConfig|err:%v", err)

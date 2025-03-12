@@ -135,7 +135,16 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 			"msg": "CalculateMD5 Error",
 		})
 	}
+	open.Seek(0, 0)
 
+	// 计算文件的type
+	fileType, err := core.GetFileType(open)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|GetFileType err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "GetFileType Error",
+		})
+	}
 	open.Seek(0, 0)
 
 	var uploadFile core.CosFile
@@ -145,32 +154,14 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 		WithFileName(filename).
 		WithFileSize(fileSize).
 		WithReader(open).
-		WithFileMD5(md5)
+		WithFileMD5(md5).
+		WithFileType(fileType)
 
-	// 校验文件是否与初始化上传文件一致
-	index, err := core.QueryPrepareIndex(ctx, cs.redis, aws.ToString(uploadFile.Fid))
-	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|QueryPrepareIndex err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Query PrepareIndex Error",
-		})
-	}
-
-	uploadFile.WithFileType(aws.ToString(index.FileType))
-
-	err = uploadFile.PutObject(ctx, cs.s3Client, aws.String(cs.bucket))
+	err = uploadFile.UploadSingleFile(ctx, cs.s3Client, aws.String(cs.bucket), cs.redis)
 	if nil != err {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|PutObject err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
 			"msg": "PutObject Error",
-		})
-	}
-
-	err = index.CraeteIndex(ctx, cs.redis)
-	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|CraeteIndex err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "CraeteIndex Error",
 		})
 	}
 

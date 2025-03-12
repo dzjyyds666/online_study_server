@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/dzjyyds666/opensource/logx"
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/google/uuid"
 	"github.com/labstack/echo"
 	"github.com/redis/go-redis/v9"
@@ -17,15 +18,24 @@ import (
 )
 
 type CosFile struct {
-	FileName    *string `json:"file_name,omitempty"`
-	Fid         *string `json:"fid,omitempty"`
-	FileMD5     *string `json:"file_md5,omitempty"`
-	FileSize    *int64  `json:"file_size,omitempty"`
-	FileType    *string `json:"file_type,omitempty"`
-	DirectoryId *string `json:"directory_id,omitempty"`
-	IsMultiPart *bool   `json:"is_multi_part,omitempty"`
+	FileName    *string      `json:"file_name,omitempty"`
+	Fid         *string      `json:"fid,omitempty"`
+	FileMD5     *string      `json:"file_md5,omitempty"`
+	FileSize    *int64       `json:"file_size,omitempty"`
+	FileType    *string      `json:"file_type,omitempty"`
+	DirectoryId *string      `json:"directory_id,omitempty"`
+	IsMultiPart *bool        `json:"is_multi_part,omitempty"`
+	SourceFile  *string      `json:"source_file_file,omitempty"`
+	Attachment  []Attachment `json:"attachment,omitempty"`
 
 	r io.Reader
+}
+
+type Attachment struct {
+	Fid      *string `json:"fid,omitempty"`
+	FileName *string `json:"file_name,omitempty"`
+	FileSize *int64  `json:"file_size,omitempty"`
+	FileType *string `json:"file_type,omitempty"`
 }
 
 func (cf *CosFile) WithFileName(fileName string) *CosFile {
@@ -61,6 +71,10 @@ func (cf *CosFile) WithDirectoryId(directoryId string) *CosFile {
 func (cf *CosFile) WithReader(r io.Reader) *CosFile {
 	cf.r = r
 	return cf
+}
+
+func (cf *CosFile) IsAttachment() bool {
+	return len(aws.ToString(cf.SourceFile)) > 0
 }
 
 var ErrPrepareIndexExits = fmt.Errorf("CraetePrepareIndex Exits")
@@ -100,7 +114,7 @@ func (cf *CosFile) CraeteIndex(ctx echo.Context, redis *redis.Client) error {
 	}
 
 	// 插入index文件到redis中
-	_, err = redis.SetNX(ctx.Request().Context(), fmt.Sprintf(RedisIndexKey, *cf.Fid), marshal, 0).Result()
+	_, err = redis.Set(ctx.Request().Context(), fmt.Sprintf(RedisIndexKey, *cf.Fid), marshal, 0).Result()
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("CraeteIndex|Set Error|%v", err)
 		return err
@@ -113,7 +127,62 @@ func (cf *CosFile) IsMatch(cos *CosFile) bool {
 }
 
 func (cf *CosFile) GetFilePath() string {
-	return fmt.Sprintf("/%s/%s%s", *cf.DirectoryId, *cf.Fid, path.Ext(*cf.FileName))
+
+	if cf.IsAttachment() {
+		return fmt.Sprintf("/%s/%s/attachment/%s%s", *cf.DirectoryId, *cf.SourceFile, *cf.Fid, path.Ext(*cf.FileName))
+	}
+
+	return fmt.Sprintf("/%s/%s/%s%s", *cf.DirectoryId, *cf.Fid, *cf.Fid, path.Ext(*cf.FileName))
+}
+
+func (cf *CosFile) UploadSingleFile(ctx echo.Context, client *s3.Client, bucket *string, ds *redis.Client) error {
+	// 先上传文件到minio
+	err := cf.PutObject(ctx, client, bucket)
+	if err != nil {
+		logx.GetLogger("OS_Server").Infof("UploadSingleFile|PutObject Error|%v", err)
+		return err
+	}
+
+	// 判断文件是不是附件，如果是的话，就修改源文件的indexinfo
+	if cf.IsAttachment() {
+		sourfileKey := buildFileIndexKey(*cf.SourceFile)
+		result, err := ds.Get(ctx.Request().Context(), sourfileKey).Result()
+		if err != nil {
+			logx.GetLogger("OS_Server").Errorf("UploadSingleFile|Get SourceFile Error|%v", err)
+		}
+		var sourceFile CosFile
+		err = json.Unmarshal([]byte(result), &sourceFile)
+		if err != nil {
+			return err
+		}
+		attachment := Attachment{
+			Fid:      cf.Fid,
+			FileName: cf.FileName,
+			FileSize: cf.FileSize,
+			FileType: cf.FileType,
+		}
+		sourceFile.Attachment = append(sourceFile.Attachment, attachment)
+
+		marshal, err := json.Marshal(&sourceFile)
+		if err != nil {
+			return err
+		}
+
+		_, err = ds.Set(ctx.Request().Context(), sourfileKey, marshal, 0).Result()
+		if err != nil {
+			logx.GetLogger("OS_Server").Errorf("UploadSingleFile|Set SourceFile Error|%v", err)
+			return err
+		}
+	}
+
+	// 插入源文件的indexInfo
+	err = cf.CraeteIndex(ctx, ds)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("UploadSingleFile|CraeteIndex Error|%v", err)
+		return err
+	}
+	logx.GetLogger("OS_Server").Infof("UploadSingleFile|UploadSingleFile Success")
+	return err
 }
 
 func (cf *CosFile) PutObject(ctx echo.Context, client *s3.Client, bucket *string) error {
@@ -152,6 +221,18 @@ func CalculateMD5(reader io.Reader) (string, error) {
 		md5Hash.Write(buffer[:n])
 	}
 	return hex.EncodeToString(md5Hash.Sum(nil)), nil
+}
+
+func GetFileType(reader io.Reader) (string, error) {
+	buffer := make([]byte, 512)
+	n, err := reader.Read(buffer)
+	if err != nil {
+		return "", err
+	}
+
+	detect := mimetype.Detect(buffer[:n])
+
+	return detect.String(), nil
 }
 
 func GenerateFid() string {
