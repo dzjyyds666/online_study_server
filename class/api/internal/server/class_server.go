@@ -549,6 +549,58 @@ func (cls *ClassServer) HandlerCancleSubscribeClass(ctx echo.Context) error {
 	})
 }
 
+func (cls *ClassServer) HandlerCreateChapter(ctx echo.Context) error {
+	var chapter core.Chapter
+	cid := ctx.Param("cid")
+	if err := ctx.Bind(chapter); err != nil || len(cid) <= 0 {
+		logx.GetLogger("OS_Server").Errorf("HandlerListUsers|ctx.Bind err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	// 生成章节id
+	chid := "ch_" + GenerateRandomString(8)
+	chapter.Chid = &chid
+	createTs := time.Now().Unix()
+	chapter.CreateTs = &createTs
+
+	err := chapter.CreateChapter(ctx.Request().Context(), cid, cls.redis)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerCreateChapter|Create Chapter Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Create Chapter Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, chapter)
+}
+
+func (cls *ClassServer) HandlerRenameChapter(ctx echo.Context) error {
+	var chapter core.Chapter
+	if err := ctx.Bind(chapter); err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerRenameChapter|ctx.Bind err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	err := chapter.RanameChapter(ctx.Request().Context(), *chapter.ChapterName, cls.redis)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerRenameChapter|Rename Chapter Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Rename Chapter Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, chapter)
+}
+
+func (cls *ClassServer) HandlerUploadResuorce(ctx echo.Context) error {
+
+	return nil
+}
+
 func GenerateRandomString(length int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	bytes := make([]byte, length)

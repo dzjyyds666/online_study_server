@@ -8,6 +8,9 @@ const (
 	RedisStudentSubscribeListKey = "class:student:%s:subscribe:list"
 	RedisClassSubscribeStuList   = "class:class:%s:subscribe:stu:list"
 	RedisClassListKey            = "class:list"
+	RedisClassChapterKey         = "class:class:%s:chapter:list"           // zet [classid] 存储课程对应的章节列表
+	RedisChapterIndexKey         = "class:class:chapter:%s:index"          // 章节的index信息
+	RedisChapterResourceKey      = "class:class:chapter:resource:%s:index" // 章节资源的index文件
 )
 
 func BuildClassVideoListKey(classId string) string {
@@ -24,4 +27,16 @@ func BuildStudentSubscribeListKey(uid string) string {
 
 func BuildClassSubscribeStuList(classId string) string {
 	return fmt.Sprintf(RedisClassSubscribeStuList, classId)
+}
+
+func BuildClassChapterKey(classId string) string {
+	return fmt.Sprintf(RedisClassChapterKey, classId)
+}
+
+func BuildChapterIndexKey(chapterId string) string {
+	return fmt.Sprintf(RedisChapterIndexKey, chapterId)
+}
+
+func BuildChapterResourceKey(fid string) string {
+	return fmt.Sprintf(RedisChapterResourceKey, fid)
 }
