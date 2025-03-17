@@ -4,21 +4,19 @@ import (
 	"class/api/config"
 	"class/api/internal/core"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"github.com/dzjyyds666/opensource/httpx"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/mongo"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
 	"strconv"
 	"time"
 )
 
 type ClassServer struct {
 	redis *redis.Client
-	mysql *gorm.DB
 	mongo *mongo.Database
 }
 
@@ -32,16 +30,14 @@ func NewClassServer() (*ClassServer, error) {
 		DB:       *config.GloableConfig.Redis.DB,
 	})
 
-	// 连接mysql
-	dsn := *config.GloableConfig.Mysql.Username + ":" + *config.GloableConfig.Mysql.Password + "@tcp(" + *config.GloableConfig.Mysql.Host + ":" + strconv.Itoa(*config.GloableConfig.Mysql.Port) + ")/" + *config.GloableConfig.Mysql.Database + "?charset=utf8mb4&parseTime=True&loc=Local"
-	msClient, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("NewClassServer|gorm.Open err:%v", err)
-		return nil, err
-	}
+	//// 连接mysql
+	//dsn := *config.GloableConfig.Mysql.Username + ":" + *config.GloableConfig.Mysql.Password + "@tcp(" + *config.GloableConfig.Mysql.Host + ":" + strconv.Itoa(*config.GloableConfig.Mysql.Port) + ")/" + *config.GloableConfig.Mysql.Database + "?charset=utf8mb4&parseTime=True&loc=Local"
+	//msClient, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	//if err != nil {
+	//	logx.GetLogger("OS_Server").Errorf("NewClassServer|gorm.Open err:%v", err)
+	//	return nil, err
+	//}
 
-	msClient.AutoMigrate(&ClassType{}, &Class{})
-	//
 	//mongodsn := "mongodb://" + *config.GloableConfig.Mongo.Username + ":" + *config.GloableConfig.Mongo.Password + "@ip:" + *config.GloableConfig.Mongo.Host + "/" + strconv.Itoa(*config.GloableConfig.Mongo.Port)
 	//// 连接mongo
 	//mgClient, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(mongodsn))
@@ -53,7 +49,6 @@ func NewClassServer() (*ClassServer, error) {
 
 	return &ClassServer{
 		redis: dsClient,
-		mysql: msClient,
 		//mongo: database,
 	}, nil
 }
@@ -66,7 +61,7 @@ func NewClassServer() (*ClassServer, error) {
 		ClassDesc  string `json:"class_desc" gorm:"class_desc"`
 */
 func (cls *ClassServer) HandlerCreateClass(ctx echo.Context) error {
-	var class Class
+	var class core.Class
 	err := ctx.Bind(&class)
 	if err == nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerCreateClass|ctx.Bind err:%v", err)
@@ -79,25 +74,31 @@ func (cls *ClassServer) HandlerCreateClass(ctx echo.Context) error {
 
 	//生成随机的classId
 	cid := "cl_" + GenerateRandomString(8)
-	class.Cid = cid
-	class.IsComplete = ClassStatus.UnComplete
-	class.IsDelete = ClassStatus.NotDelete
-	class.Owner = tuid
-	class.CreateTs = time.Now().Unix()
-	class.UpdateTs = time.Now().Unix()
+	class.WithCid(cid).
+		WithCreateTs(time.Now().Unix()).
+		WithDeleted(false).
+		WithArchive(false).
+		WithTeacher(tuid)
 
-	// 插入mysql
-	err = cls.mysql.Create(&class).Error
+	marshal, err := json.Marshal(&class)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerCreateClass|Create Class Error|%v", err)
+		logx.GetLogger("OS_Server").Errorf("HandlerCreateClass|Marshal Class Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "insert Mysql Error",
+			"msg": "system internal",
+		})
+	}
+
+	err = cls.redis.Set(ctx.Request().Context(), core.BuildClassInfoKey(cid), marshal, 0).Err()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerCreateClass|Marshal Class Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "create class error",
 		})
 	}
 
 	// 把该课程加入教师的课程列表中
 	err = cls.redis.ZAdd(ctx.Request().Context(), core.BuildTeacherClassListKey(tuid), redis.Z{
-		Score:  float64(class.CreateTs),
+		Score:  float64(*class.CreateTs),
 		Member: cid,
 	}).Err()
 
@@ -110,7 +111,7 @@ func (cls *ClassServer) HandlerCreateClass(ctx echo.Context) error {
 
 	// 把该课程加入到课程list中
 	_, err = cls.redis.ZAdd(ctx.Request().Context(), core.RedisClassListKey, redis.Z{
-		Score:  float64(class.CreateTs),
+		Score:  float64(*class.CreateTs),
 		Member: cid,
 	}).Result()
 	if err != nil {
@@ -123,52 +124,72 @@ func (cls *ClassServer) HandlerCreateClass(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, class)
 }
 
+func (cls *ClassServer) HandleListClass(ctx echo.Context) error {
+	var classLists core.ClassList
+	if err := ctx.Bind(&classLists); err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandleListClass|ctx.Bind err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Param Invalid",
+		})
+	}
+	uid := ctx.Get("uid")
+	classLists, err := classLists.QueryClassList(ctx.Request().Context(), uid.(string), cls.redis)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandleListClass|QueryClassList Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Query Class List Error",
+		})
+	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, classLists)
+}
+
 type classVideo struct {
 	Cid string `json:"cid"`
 	Fid string `json:"fid"`
 }
 
-func (cls *ClassServer) HandlerClassAddVideo(ctx echo.Context) error {
-	// 在reids中插入课程的视频
-	var upload classVideo
-	err := ctx.Bind(&upload)
-	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("UploadClass|ctx.Bind err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
-			"msg": "Param Invalid",
-		})
+/*
+	func (cls *ClassServer) HandlerClassAddVideo(ctx echo.Context) error {
+		// 在reids中插入课程的视频
+		var upload classVideo
+		err := ctx.Bind(&upload)
+		if err != nil {
+			logx.GetLogger("OS_Server").Errorf("UploadClass|ctx.Bind err:%v", err)
+			return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+				"msg": "Param Invalid",
+			})
+		}
+		key := core.BuildClassVideoListKey(upload.Cid)
+		err = cls.redis.ZAdd(ctx.Request().Context(), key, redis.Z{
+			Score:  float64(time.Now().Unix()),
+			Member: upload.Fid,
+		}).Err()
+
+		if err != nil {
+			logx.GetLogger("OS_Server").Errorf("UploadClass|Add Class To Teacher List Error|%v", err)
+			return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+				"msg": "upload class video err",
+			})
+		}
+
+		var class Class
+		class.Cid = upload.Cid
+		class.UpdateTs = time.Now().Unix()
+
+		// 修改mysql的更新时间
+		err = cls.mysql.Model(&class).Where("cid = ?", upload.Cid).Updates(&class).Error
+		if err != nil {
+			logx.GetLogger("OS_Server").Errorf("HandlerUpdateClass|Update Class Error|%v", err)
+			return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+				"msg": "Update Class Error",
+			})
+		}
+
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, upload)
 	}
-	key := core.BuildClassVideoListKey(upload.Cid)
-	err = cls.redis.ZAdd(ctx.Request().Context(), key, redis.Z{
-		Score:  float64(time.Now().Unix()),
-		Member: upload.Fid,
-	}).Err()
-
-	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("UploadClass|Add Class To Teacher List Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "upload class video err",
-		})
-	}
-
-	var class Class
-	class.Cid = upload.Cid
-	class.UpdateTs = time.Now().Unix()
-
-	// 修改mysql的更新时间
-	err = cls.mysql.Model(&class).Where("cid = ?", upload.Cid).Updates(&class).Error
-	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerUpdateClass|Update Class Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Update Class Error",
-		})
-	}
-
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, upload)
-}
-
+*/
 func (cls *ClassServer) HandlerUpdateClass(ctx echo.Context) error {
-	var class Class
+	var class core.Class
 	err := ctx.Bind(&class)
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerUpdateClass|ctx.Bind err:%v", err)
@@ -177,25 +198,33 @@ func (cls *ClassServer) HandlerUpdateClass(ctx echo.Context) error {
 		})
 	}
 
-	if class.Cid == "" {
+	if class.Cid == nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerUpdateClass|ctx.Bind err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "classid can not be null",
 		})
 	}
 
-	class.UpdateTs = time.Now().Unix()
-
-	err = cls.mysql.Model(&class).Where("cid = ?", class.Cid).Updates(&class).Error
+	marshal, err := json.Marshal(&class)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerUpdateClass|Update Class Error|%v", err)
+		logx.GetLogger("OS_Server").Errorf("HandlerUpdateClass|Marshal Class Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Update Class Error",
+			"msg": "system internal",
 		})
 	}
+
+	err = cls.redis.Set(ctx.Request().Context(), core.BuildClassInfoKey(*class.Cid), marshal, 0).Err()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerUpdateClass|Marshal Class Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "system internal",
+		})
+	}
+
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, class)
 }
 
+/*
 // 删除课程的某一节视频 传过来视频的fid class对应的视频列表下面删除掉视频，然后rpc调用存储服务删除文件
 func (cls *ClassServer) HandlerDeleteVideo(ctx echo.Context) error {
 
@@ -250,11 +279,12 @@ func (cls *ClassServer) HandlerDeleteVideo(ctx echo.Context) error {
 
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, video)
 }
+*/
 
 // 上传完课程信息之后
 // 把课程移入垃圾箱
 func (cls *ClassServer) HandlerPutClassInTrash(ctx echo.Context) error {
-	var class Class
+	var class core.Class
 	err := ctx.Bind(&class)
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|ctx.Bind err:%v", err)
@@ -264,7 +294,7 @@ func (cls *ClassServer) HandlerPutClassInTrash(ctx echo.Context) error {
 	}
 
 	// 先查询这个课程下面是否有没有删除的视频，如果有，不允许删除
-	videoKey := core.BuildClassVideoListKey(class.Cid)
+	videoKey := core.BuildClassVideoListKey(*class.Cid)
 	videoCount, err := cls.redis.ZCard(ctx.Request().Context(), videoKey).Result()
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Get Video Count Error|%v", err)
@@ -280,25 +310,29 @@ func (cls *ClassServer) HandlerPutClassInTrash(ctx echo.Context) error {
 		})
 	}
 
-	uid := ctx.Get("uid")
-
 	// 更新mysql的数据，把课程的删除为修改为delete
-	result := cls.mysql.
-		Model(&class).
-		Where("cid = ? AND owner = ?", class.Cid, uid).
-		Updates(map[string]interface{}{"is_delete": ClassStatus.Delete, "update_ts": time.Now().Unix()})
-
-	if result.Error != nil {
-		logx.GetLogger("OS_Server").Infof("HandlerDeleteClass|Update Class Error|%v", err)
+	result, err := cls.redis.Get(ctx.Request().Context(), core.BuildClassInfoKey(*class.Cid)).Result()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Get Class Info Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Update Class Error",
+			"msg": "Get Class Info Error",
+		})
+	}
+	err = json.Unmarshal([]byte(result), &class)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Unmarshal Class Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Unmarshal Class Error",
 		})
 	}
 
-	if result.RowsAffected == 0 {
+	class.WithDeleted(true)
+	marshal, _ := json.Marshal(&class)
+	err = cls.redis.Set(ctx.Request().Context(), core.BuildClassInfoKey(*class.Cid), marshal, 0).Err()
+	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Update Class Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
-			"msg": "no class match",
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Update Class Error",
 		})
 	}
 
@@ -323,21 +357,39 @@ func (cls *ClassServer) HandlerRecoverClass(ctx echo.Context) error {
 			"msg": "cid is empty",
 		})
 	}
-	uid := ctx.Get("uid")
 
 	// 修改数据库中的内容
-	var class Class
-	err := cls.mysql.Where("cid = ? AND owner = ?", cid, uid).First(&class).Error
+	var class core.Class
+	result, err := cls.redis.Get(ctx.Request().Context(), core.BuildClassInfoKey(cid)).Result()
 	if err != nil {
-		logx.GetLogger("OS_Server").Infof("HandlerRecoverClass|Query Class Error|%v", err)
+		logx.GetLogger("OS_Server").Errorf("HandlerRecoverClass|Get Class Info Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Query Class Error",
+			"msg": "Get Class Info Error",
+		})
+	}
+
+	err = json.Unmarshal([]byte(result), &class)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerRecoverClass|Unmarshal Class Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Unmarshal Class Error",
+		})
+	}
+
+	class.WithDeleted(false)
+
+	marshal, _ := json.Marshal(&class)
+	err = cls.redis.Set(ctx.Request().Context(), core.BuildClassInfoKey(cid), marshal, 0).Err()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerRecoverClass|Update Class Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Update Class Error",
 		})
 	}
 
 	// 把课程添加到classlist中
 	err = cls.redis.ZAdd(ctx.Request().Context(), core.RedisClassListKey, redis.Z{
-		Score:  float64(class.CreateTs),
+		Score:  float64(*class.CreateTs),
 		Member: cid,
 	}).Err()
 	if err != nil {
@@ -360,24 +412,32 @@ func (cls *ClassServer) HandlerDeleteClass(ctx echo.Context) error {
 	}
 
 	// mysql中查询数据
-	var class Class
-	err := cls.mysql.Where("cid = ?", cid).First(&class).Error
+	var class core.Class
+	result, err := cls.redis.Get(ctx.Request().Context(), core.BuildClassInfoKey(cid)).Result()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Query Class Error|%v", err)
+		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Get Class Info Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Query Class Error",
+			"msg": "Get Class Info Error",
+		})
+	}
+
+	err = json.Unmarshal([]byte(result), &class)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Unmarshal Class Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Unmarshal Class Error",
 		})
 	}
 
 	uid := ctx.Get("uid")
-	if class.Owner != uid {
+	if class.Teacher != uid {
 		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Not Owner|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
 			"msg": "You Can Not Delete other's class",
 		})
 	}
 
-	if class.IsDelete != ClassStatus.Delete {
+	if !*class.Deleted {
 		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Class Not In Trash|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
 			"msg": "Class Not In Trash",
@@ -385,7 +445,7 @@ func (cls *ClassServer) HandlerDeleteClass(ctx echo.Context) error {
 	}
 
 	// redis老师的课表中删除改课程
-	key := core.BuildTeacherClassListKey(class.Owner)
+	key := core.BuildTeacherClassListKey(*class.Teacher)
 	err = cls.redis.ZRem(ctx.Request().Context(), key, cid).Err()
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Delete Class From Teacher List Error|%v", err)
@@ -394,12 +454,11 @@ func (cls *ClassServer) HandlerDeleteClass(ctx echo.Context) error {
 		})
 	}
 
-	// mysql中删除课程
-	err = cls.mysql.Where("cid = ?", cid).Delete(&class).Error
+	err = cls.redis.Del(ctx.Request().Context(), core.BuildClassInfoKey(cid)).Err()
 	if err != nil {
-		logx.GetLogger("OS_Server").Infof("HandlerDeleteClass|Delete Class Error|%v", err)
+		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Delete Class From ClassList Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Delete Class Error",
+			"msg": "Delete Class From ClassList Error",
 		})
 	}
 
@@ -418,8 +477,8 @@ func (cls *ClassServer) HandlerQueryClassInfo(ctx echo.Context) error {
 		})
 	}
 
-	var class Class
-	err := cls.mysql.Where("cid = ?", cid).First(&class).Error
+	var class core.Class
+	classInfo, err := cls.redis.Get(ctx.Request().Context(), core.BuildClassInfoKey(cid)).Result()
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Query Class Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -427,10 +486,11 @@ func (cls *ClassServer) HandlerQueryClassInfo(ctx echo.Context) error {
 		})
 	}
 
-	if class.IsDelete == ClassStatus.Delete {
-		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Class is deleted|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
-			"msg": "Class is deleted",
+	err = json.Unmarshal([]byte(classInfo), &class)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Query Class Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Query Class Error",
 		})
 	}
 
@@ -597,8 +657,42 @@ func (cls *ClassServer) HandlerRenameChapter(ctx echo.Context) error {
 }
 
 func (cls *ClassServer) HandlerUploadResuorce(ctx echo.Context) error {
+	var resource core.ClassResource
+	chid := ctx.Param("chid")
+	if err := ctx.Bind(&resource); err != nil || len(chid) <= 0 {
+		logx.GetLogger("OS_Server").Errorf("HandlerUploadResuorce|ctx.Bind err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
 
-	return nil
+	err := resource.CreateResource(ctx.Request().Context(), chid, cls.redis)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerUploadResuorce|Create Resource Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "upload Resource Error",
+		})
+	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, resource)
+}
+
+func (cls *ClassServer) HandlerDeleteResource(ctx echo.Context) error {
+	fid := ctx.Param("fid")
+	if len(fid) <= 0 {
+		logx.GetLogger("OS_Server").Errorf("HandlerDeleteResource|fid is empty")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "fid is empty",
+		})
+	}
+
+	var resource core.ClassResource
+	resource.Fid = &fid
+
+	resource.DeleteResource(ctx.Request().Context(), cls.redis)
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"msg": "delete resource success",
+	})
 }
 
 func GenerateRandomString(length int) string {

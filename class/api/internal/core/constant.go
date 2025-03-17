@@ -6,11 +6,15 @@ const (
 	RedisClassVideoKey           = "class:%s:video:list"         // zset [classid]  存储课程对应视频的fid，根据视频上传的时间进行排序
 	RedisTeacherClassListKey     = "class:teacher:%s:class:list" // zset [uid] 储存教师对应的课程列表信息，根据时间进行排序
 	RedisStudentSubscribeListKey = "class:student:%s:subscribe:list"
-	RedisClassSubscribeStuList   = "class:class:%s:subscribe:stu:list"
-	RedisClassListKey            = "class:list"
-	RedisClassChapterKey         = "class:class:%s:chapter:list"           // zet [classid] 存储课程对应的章节列表
+
+	RedisClassSubscribeStuList = "class:class:%s:subscribe:stu:list"
+	RedisClassListKey          = "class:list"
+	RedisClassChapterKey       = "class:class:%s:chapter:list" // zet [classid] 存储课程对应的章节列表
+	RedisClassInfoKey          = "class:class:%s:info"
+
 	RedisChapterIndexKey         = "class:class:chapter:%s:index"          // 章节的index信息
-	RedisChapterResourceKey      = "class:class:chapter:resource:%s:index" // 章节资源的index文件
+	RedisChapterResourceIndexKey = "class:class:chapter:resource:%s:index" // 章节资源的index文件
+	RedisChapterResourceKey      = "class:class:chapter:%s:resource:list"  // zset [chid] 章节的资源列表
 )
 
 func BuildClassVideoListKey(classId string) string {
@@ -37,6 +41,14 @@ func BuildChapterIndexKey(chapterId string) string {
 	return fmt.Sprintf(RedisChapterIndexKey, chapterId)
 }
 
-func BuildChapterResourceKey(fid string) string {
-	return fmt.Sprintf(RedisChapterResourceKey, fid)
+func BuildChapterResourceKey(chapterId string) string {
+	return fmt.Sprintf(RedisChapterResourceKey, chapterId)
+}
+
+func BuildChapterResourceIndexKey(fid string) string {
+	return fmt.Sprintf(RedisChapterResourceIndexKey, fid)
+}
+
+func BuildClassInfoKey(classId string) string {
+	return fmt.Sprintf(RedisClassInfoKey, classId)
 }

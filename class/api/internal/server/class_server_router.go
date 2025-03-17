@@ -24,6 +24,8 @@ func RegisterRouter(e *echo.Echo, cls *ClassServer) {
 	teacher.Add("Get", "/delete/:cid", cls.HandlerDeleteClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
 	teacher.Add("POST", "/recover/:cid", cls.HandlerRecoverClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
 	teacher.Add("POST", "/create/chapter/:cid", cls.HandlerCreateChapter, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
+	teacher.Add("POST", "/rename/chapter", cls.HandlerRenameChapter, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
+	teacher.Add("POST", "/upload/resource/:chid", cls.HandlerUploadResuorce, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher, cls.redis))
 
 	student := globApiPrefix.Group("/stu/class")
 	student.Add("POST", "/query/:cid", cls.HandlerQueryClassInfo, mymiddleware.AuthMw(mymiddleware.UserRole.Student, cls.redis))
