@@ -29,12 +29,12 @@ func RegisterRouter(e *echo.Echo, us *UserServer) {
 
 	adminGroup := globApiPrefix.Group("/user/admin")
 	// token验证中间件
-	adminGroup.Add("GET", "/list", us.HandlerListUsers, mymiddleware.AuthMw(UserRole.Admin, us.redis))
+	adminGroup.Add("GET", "/list", us.HandlerListUsers, mymiddleware.AuthMw(UserRole.Admin))
 	adminGroup.Add("GET", "/delete", us.HandlerDeleteUser)
 
 	userGroup := globApiPrefix.Group("/user")
 	userGroup.Add("POST", "/update/:uid", us.UpdateUserInfo)
-	userGroup.Add("GET", "/info/:uid", us.HandlerQueryUserInfo, mymiddleware.AuthMw(UserRole.Student, us.redis))
+	userGroup.Add("GET", "/info/:uid", us.HandlerQueryUserInfo, mymiddleware.AuthMw(UserRole.Student))
 
 	router := FilterRouter(e.Routes())
 

@@ -35,6 +35,7 @@ func (s *StudyClass) WithStudentNumber(number int64) *StudyClass {
 
 // 把教学班加入老师的教学班列表，课程对应的教学班列表
 func (sc *StudyClass) CreateStudyClass(ctx context.Context, ds *redis.Client) error {
+
 	teacherKey := BuildStudyClassTeacherKey(sc.Tid)
 	err := ds.ZAdd(ctx, teacherKey, redis.Z{
 		Member: sc.SCid,
@@ -77,19 +78,20 @@ type StudyClassList struct {
 	ReferSCid    string       `json:"refer_scid"`
 	Limit        int64        `json:"limit"`
 	Tid          string       `json:"tid"`
+	Cid          string       `json:"cid"`
 }
 
-func (sc *StudyClass) QueryStudyClassList(ctx context.Context, ds *redis.Client, list *StudyClassList) (*StudyClassList, error) {
+func (scl *StudyClassList) QueryStudyClassList(ctx context.Context, ds *redis.Client) (*StudyClassList, error) {
 
 	zrangeBy := &redis.ZRangeBy{
 		Min:    "0",
 		Max:    strconv.FormatInt(math.MaxInt64, 10),
 		Offset: 0,
-		Count:  list.Limit,
+		Count:  scl.Limit,
 	}
 
-	if len(list.ReferSCid) > 0 {
-		score, err := ds.ZScore(ctx, BuildStudyClassTeacherKey(list.Tid), list.ReferSCid).Result()
+	if len(scl.ReferSCid) > 0 {
+		score, err := ds.ZScore(ctx, BuildStudyClassTeacherKey(scl.Tid), scl.ReferSCid).Result()
 		if err != nil {
 			logx.GetLogger("OS_Server").Errorf("QueryStudyClassList|Get ReferSCid Score Error|%v", err)
 			return nil, err
@@ -97,7 +99,7 @@ func (sc *StudyClass) QueryStudyClassList(ctx context.Context, ds *redis.Client,
 		zrangeBy.Min = "(" + strconv.FormatInt(int64(score), 10)
 	}
 
-	scids, err := ds.ZRangeByScore(ctx, BuildStudyClassClassKey(list.Tid), zrangeBy).Result()
+	scids, err := ds.ZRangeByScore(ctx, BuildStudyClassClassKey(scl.Tid), zrangeBy).Result()
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("QueryStudyClassList|Get SCid List Error|%v", err)
 		return nil, err
@@ -116,8 +118,37 @@ func (sc *StudyClass) QueryStudyClassList(ctx context.Context, ds *redis.Client,
 			logx.GetLogger("OS_Server").Errorf("QueryStudyClassList|Unmarshal StudyClass Info Error|%v", err)
 			return nil, err
 		}
-		list.StudyClasses = append(list.StudyClasses, studyClass)
+		if studyClass.Cid == scl.Cid {
+			scl.StudyClasses = append(scl.StudyClasses, studyClass)
+		}
 	}
 
-	return list, nil
+	return scl, nil
+}
+
+func (sc *StudyClass) DeleteStudyClass(ctx context.Context, ds *redis.Client) error {
+	// 删除教师教学班
+	teacherKey := BuildStudyClassTeacherKey(sc.Tid)
+	err := ds.Del(ctx, teacherKey).Err()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("DeleteStudyClass|Delete Teacher SCid Error|%v", err)
+		return err
+	}
+
+	// 删除课程教学班
+	classKey := BuildStudyClassClassKey(sc.Cid)
+	err = ds.Del(ctx, classKey).Err()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("DeleteStudyClass|Delete Class SCid Error|%v", err)
+		return err
+	}
+
+	// 删除教学班的信息
+	infoKey := BuildStudyClassInfoKey(sc.SCid)
+	err = ds.Del(ctx, infoKey).Err()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("DeleteStudyClass|Delete SCid Info Error|%v", err)
+		return err
+	}
+	return nil
 }

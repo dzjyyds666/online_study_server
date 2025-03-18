@@ -62,23 +62,23 @@ func NewClassServer() (*ClassServer, error) {
 */
 func (cls *ClassServer) HandlerCreateClass(ctx echo.Context) error {
 	var class core.Class
-	err := ctx.Bind(&class)
-	if err == nil {
+	decoder := json.NewDecoder(ctx.Request().Body)
+	if err := decoder.Decode(&class); err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerCreateClass|ctx.Bind err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Param Invalid",
 		})
 	}
 
-	tuid := ctx.Get("owner").(string)
+	tuid := ctx.Get("uid")
 
 	//生成随机的classId
-	cid := "cl_" + GenerateRandomString(8)
+	cid := "ci_" + GenerateRandomString(8)
 	class.WithCid(cid).
 		WithCreateTs(time.Now().Unix()).
 		WithDeleted(false).
 		WithArchive(false).
-		WithTeacher(tuid)
+		WithTeacher(tuid.(string))
 
 	marshal, err := json.Marshal(&class)
 	if err != nil {
@@ -97,7 +97,7 @@ func (cls *ClassServer) HandlerCreateClass(ctx echo.Context) error {
 	}
 
 	// 把该课程加入教师的课程列表中
-	err = cls.redis.ZAdd(ctx.Request().Context(), core.BuildTeacherClassListKey(tuid), redis.Z{
+	err = cls.redis.ZAdd(ctx.Request().Context(), core.BuildTeacherClassListKey(tuid.(string)), redis.Z{
 		Score:  float64(*class.CreateTs),
 		Member: cid,
 	}).Err()
@@ -191,22 +191,22 @@ func (cls *ClassServer) HandlerPutClassInTrash(ctx echo.Context) error {
 		})
 	}
 
-	// 先查询这个课程下面是否有没有删除的视频，如果有，不允许删除
-	videoKey := core.BuildClassVideoListKey(*class.Cid)
-	videoCount, err := cls.redis.ZCard(ctx.Request().Context(), videoKey).Result()
-	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Get Video Count Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Get Video Count Error",
-		})
-	}
-
-	if videoCount > 0 {
-		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Has Video|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
-			"msg": "Has Video",
-		})
-	}
+	//// 先查询这个课程下面是否有没有删除的视频，如果有，不允许删除
+	//videoKey := core.BuildClassVideoListKey(*class.Cid)
+	//videoCount, err := cls.redis.ZCard(ctx.Request().Context(), videoKey).Result()
+	//if err != nil {
+	//	logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Get Video Count Error|%v", err)
+	//	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+	//		"msg": "Get Video Count Error",
+	//	})
+	//}
+	//
+	//if videoCount > 0 {
+	//	logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Has Video|%v", err)
+	//	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
+	//		"msg": "Has Video",
+	//	})
+	//}
 
 	// 更新mysql的数据，把课程的删除为修改为delete
 	result, err := cls.redis.Get(ctx.Request().Context(), core.BuildClassInfoKey(*class.Cid)).Result()
@@ -240,6 +240,29 @@ func (cls *ClassServer) HandlerPutClassInTrash(ctx echo.Context) error {
 		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Remove Class From ClassList Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Remove Class From ClassList Error",
+		})
+	}
+
+	// 从老师的正常课程列表清除
+	teacherKey := core.BuildStudyClassTeacherKey(*class.Teacher)
+	err = cls.redis.ZRem(ctx.Request().Context(), teacherKey, class.Cid).Err()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Remove Class From Teacher List Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Remove Class From Teacher List Error",
+		})
+	}
+
+	// 从加入老师的删除列表中
+	teacherKey = core.BuildTeahcerClassDeletedKey(*class.Teacher)
+	err = cls.redis.ZAdd(ctx.Request().Context(), teacherKey, redis.Z{
+		Member: class.Cid,
+		Score:  float64(time.Now().Unix()),
+	}).Err()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Add Class To Teacher Deleted List Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Add Class To Teacher Deleted List Error",
 		})
 	}
 
@@ -604,4 +627,66 @@ func GenerateRandomString(length int) string {
 		bytes[i] = letters[b%byte(len(letters))]
 	}
 	return string(bytes)
+}
+
+func (cls *ClassServer) HandleCreateStudyClass(ctx echo.Context) error {
+	var studyClass core.StudyClass
+	if err := ctx.Bind(&studyClass); err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandleCreateStudyClass|ctx.Bind err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	studyClass.SCid = "sc_" + GenerateRandomString(8)
+
+	err := studyClass.CreateStudyClass(ctx.Request().Context(), cls.redis)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandleCreateStudyClass|Create StudyClass Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Create StudyClass Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, studyClass)
+}
+
+func (cls *ClassServer) HandleQueryStudyClass(ctx echo.Context) error {
+	var studyClassList core.StudyClassList
+	if err := ctx.Bind(&studyClassList); err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandleQueryStudyClass|ctx.Bind err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	list, err := studyClassList.QueryStudyClassList(ctx.Request().Context(), cls.redis)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandleQueryStudyClass|Query StudyClass Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Query StudyClass Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
+}
+
+func (cls *ClassServer) HandleDeleteStudyClass(ctx echo.Context) error {
+	var studyClass core.StudyClass
+	if err := ctx.Bind(&studyClass); err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandleDeleteStudyClass|ctx.Bind err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	err := studyClass.DeleteStudyClass(ctx.Request().Context(), cls.redis)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("HandleDeleteStudyClass|Delete StudyClass Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Delete StudyClass Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, studyClass)
 }

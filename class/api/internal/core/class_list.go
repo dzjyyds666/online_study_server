@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 	"math"
 	"strconv"
 )
@@ -14,6 +13,7 @@ type ClassList struct {
 	ClassInfos []Class `json:"class_infos"`
 	Limit      *int64  `json:"limit"`
 	ReferCid   *string `json:"refer_cid"`
+	Deleted    *bool   `json:"deleted"`
 }
 
 func (cl *ClassList) WithClassInfos(infos []Class) *ClassList {
@@ -33,7 +33,9 @@ func (cl *ClassList) WithReferCid(cid string) *ClassList {
 
 func (cl *ClassList) QueryClassList(ctx context.Context, uid string, ds *redis.Client) (ClassList, error) {
 	classKey := BuildTeacherClassListKey(uid)
-
+	if cl.Deleted != nil && *cl.Deleted {
+		classKey = BuildStudentSubscribeListKey(uid)
+	}
 	zrangeBy := redis.ZRangeBy{
 		Min:    "0",
 		Max:    strconv.FormatInt(math.MaxInt64, 10),
@@ -41,7 +43,7 @@ func (cl *ClassList) QueryClassList(ctx context.Context, uid string, ds *redis.C
 		Count:  *cl.Limit,
 	}
 
-	if len(*cl.ReferCid) > 0 {
+	if cl.ReferCid != nil {
 		score, err := ds.ZScore(ctx, classKey, *cl.ReferCid).Result()
 		if err != nil {
 			logx.GetLogger("OS_Server").Errorf("QueryClassList|Get ReferCid Score Error|%v", err)
