@@ -138,7 +138,7 @@ func (us *UserServer) HandleSignUp(ctx echo.Context) error {
 
 	var userInfo UserInfo
 	// 生成uid
-	userInfo.Uid = "LX_" + GenerateRandomString(10)
+	userInfo.Uid = "ui_" + GenerateRandomString(10)
 	userInfo.Role = UserRole.Student
 	userInfo.Username = "LearnX-" + GenerateRandomString(5)
 	userInfo.Account = signUpInfo.Account

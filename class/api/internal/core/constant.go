@@ -15,6 +15,10 @@ const (
 	RedisChapterIndexKey         = "class:class:chapter:%s:index"          // 章节的index信息
 	RedisChapterResourceIndexKey = "class:class:chapter:resource:%s:index" // 章节资源的index文件
 	RedisChapterResourceKey      = "class:class:chapter:%s:resource:list"  // zset [chid] 章节的资源列表
+
+	RedisStudyClassTeacherKey = "class:%s:study_class:list" // 老师对应教学班列表 set
+	REdisStudyClassClassKey   = "class:%s:study_class:list" // 课程对应的教学班列表 set
+	RedisStudyClassInfoKey    = "class:study_class:%s:info"
 )
 
 func BuildClassVideoListKey(classId string) string {
@@ -51,4 +55,16 @@ func BuildChapterResourceIndexKey(fid string) string {
 
 func BuildClassInfoKey(classId string) string {
 	return fmt.Sprintf(RedisClassInfoKey, classId)
+}
+
+func BuildStudyClassTeacherKey(tid string) string {
+	return fmt.Sprintf(RedisStudyClassTeacherKey, tid)
+}
+
+func BuildStudyClassClassKey(cid string) string {
+	return fmt.Sprintf(REdisStudyClassClassKey, cid)
+}
+
+func BuildStudyClassInfoKey(scid string) string {
+	return fmt.Sprintf(RedisStudyClassInfoKey, scid)
 }

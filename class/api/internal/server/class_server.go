@@ -143,51 +143,6 @@ func (cls *ClassServer) HandleListClass(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, classLists)
 }
 
-type classVideo struct {
-	Cid string `json:"cid"`
-	Fid string `json:"fid"`
-}
-
-/*
-	func (cls *ClassServer) HandlerClassAddVideo(ctx echo.Context) error {
-		// 在reids中插入课程的视频
-		var upload classVideo
-		err := ctx.Bind(&upload)
-		if err != nil {
-			logx.GetLogger("OS_Server").Errorf("UploadClass|ctx.Bind err:%v", err)
-			return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
-				"msg": "Param Invalid",
-			})
-		}
-		key := core.BuildClassVideoListKey(upload.Cid)
-		err = cls.redis.ZAdd(ctx.Request().Context(), key, redis.Z{
-			Score:  float64(time.Now().Unix()),
-			Member: upload.Fid,
-		}).Err()
-
-		if err != nil {
-			logx.GetLogger("OS_Server").Errorf("UploadClass|Add Class To Teacher List Error|%v", err)
-			return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-				"msg": "upload class video err",
-			})
-		}
-
-		var class Class
-		class.Cid = upload.Cid
-		class.UpdateTs = time.Now().Unix()
-
-		// 修改mysql的更新时间
-		err = cls.mysql.Model(&class).Where("cid = ?", upload.Cid).Updates(&class).Error
-		if err != nil {
-			logx.GetLogger("OS_Server").Errorf("HandlerUpdateClass|Update Class Error|%v", err)
-			return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-				"msg": "Update Class Error",
-			})
-		}
-
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, upload)
-	}
-*/
 func (cls *ClassServer) HandlerUpdateClass(ctx echo.Context) error {
 	var class core.Class
 	err := ctx.Bind(&class)
@@ -223,63 +178,6 @@ func (cls *ClassServer) HandlerUpdateClass(ctx echo.Context) error {
 
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, class)
 }
-
-/*
-// 删除课程的某一节视频 传过来视频的fid class对应的视频列表下面删除掉视频，然后rpc调用存储服务删除文件
-func (cls *ClassServer) HandlerDeleteVideo(ctx echo.Context) error {
-
-	var video classVideo
-	err := ctx.Bind(&video)
-	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerDeleteVideo|ctx.Bind err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
-			"msg": "Param Invalid",
-		})
-	}
-
-	uid := ctx.Get("uid")
-
-	// 先校验一下改课程是不是这个老师的课程，如果不是，返回错误
-	var class Class
-	err = cls.mysql.Where("cid = ?", video.Cid).First(&class).Error
-	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerDeleteVideo|QueryClassInfoError|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Query Classinfo Error",
-		})
-	}
-
-	if class.Owner != uid {
-		logx.GetLogger("OS_Server").Errorf("HandlerDeleteVideo|NotOwner|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
-			"msg": "You Can Not Edit other's class",
-		})
-	}
-
-	key := core.BuildClassVideoListKey(video.Cid)
-
-	err = cls.redis.ZRem(ctx.Request().Context(), key, video.Fid).Err()
-	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerDeleteVideo|DeleteVideoError|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Delete Video Error",
-		})
-	}
-
-	class.UpdateTs = time.Now().Unix()
-	err = cls.mysql.Model(&class).Where("cid = ?", video.Cid).Updates(&class).Error
-	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerDeleteVideo|Update Class Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Update Class Error",
-		})
-	}
-
-	// todo 调用rpc代码删除文件
-
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, video)
-}
-*/
 
 // 上传完课程信息之后
 // 把课程移入垃圾箱
