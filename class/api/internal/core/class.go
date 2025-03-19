@@ -1,5 +1,12 @@
 package core
 
+import (
+	"context"
+	"encoding/json"
+	"github.com/dzjyyds666/opensource/logx"
+	"github.com/redis/go-redis/v9"
+)
+
 type Class struct {
 	Cid          *string      `json:"cid"`
 	ClassName    *string      `json:"class_name"`
@@ -51,4 +58,96 @@ func (ci *Class) WithArchive(archive bool) *Class {
 func (ci *Class) WithDeleted(deleted bool) *Class {
 	ci.Deleted = &deleted
 	return ci
+}
+
+type UpdateChapters struct {
+	Delete   bool
+	Chapters []Chapter
+}
+
+type UpdateStudyClass struct {
+	Delete     bool
+	StudyClass []StudyClass
+}
+
+// todo 如何更加优雅的实现
+func (ci *Class) QueryClassInfo(ctx context.Context, ds *redis.Client, updateChapter *UpdateChapters, updateStudyClass *UpdateStudyClass) error {
+	// 先去redis中获取原始的课程信息
+	infoKey := BuildClassInfoKey(*ci.Cid)
+	result, err := ds.Get(ctx, infoKey).Result()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("QueryCLassInfo|Get Class Info Error|%v", err)
+		return err
+	}
+
+	var originInfo Class
+	if err := json.Unmarshal([]byte(result), &originInfo); err != nil {
+		logx.GetLogger("OS_Server").Errorf("QueryCLassInfo|Unmarshal Class Info Error|%v", err)
+		return err
+	}
+
+	// 先替换所有的字段
+	if ci.ClassName != nil {
+		originInfo.ClassName = ci.ClassName
+	}
+
+	if ci.ClassDesc != nil {
+		originInfo.ClassDesc = ci.ClassDesc
+	}
+
+	if ci.ClassType != nil {
+		originInfo.ClassType = ci.ClassType
+	}
+
+	if ci.Archive == nil {
+		originInfo.Archive = ci.Archive
+	}
+
+	if ci.Deleted == nil {
+		originInfo.Deleted = ci.Deleted
+	}
+
+	if updateChapter != nil {
+		// 删除章节
+		if updateChapter.Delete {
+			for _, item := range updateChapter.Chapters {
+				for i, chapter := range originInfo.ChapterLists {
+					if chapter.Chid == item.Chid {
+						originInfo.ChapterLists = append(originInfo.ChapterLists[:i], originInfo.ChapterLists[i+1:]...)
+					}
+				}
+			}
+		} else {
+			originInfo.ChapterLists = append(originInfo.ChapterLists, updateChapter.Chapters...)
+		}
+	}
+
+	if updateStudyClass != nil {
+		if updateStudyClass.Delete {
+			for _, item := range updateStudyClass.StudyClass {
+				for i, studyClass := range originInfo.StudyClass {
+					if studyClass.SCid == item.SCid {
+						originInfo.StudyClass = append(originInfo.StudyClass[:i], originInfo.StudyClass[i+1:]...)
+					}
+				}
+			}
+		} else {
+			originInfo.StudyClass = append(originInfo.StudyClass, updateStudyClass.StudyClass...)
+		}
+	}
+
+	// 重新写入reids
+	classInfoStr, err := json.Marshal(originInfo)
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("QueryCLassInfo|Marshal Class Info Error|%v", err)
+		return err
+	}
+
+	err = ds.Set(ctx, infoKey, string(classInfoStr), 0).Err()
+	if err != nil {
+		logx.GetLogger("OS_Server").Errorf("QueryCLassInfo|Set Class Info Error|%v", err)
+		return err
+	}
+
+	return nil
 }

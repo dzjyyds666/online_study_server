@@ -191,24 +191,7 @@ func (cls *ClassServer) HandlerPutClassInTrash(ctx echo.Context) error {
 		})
 	}
 
-	//// 先查询这个课程下面是否有没有删除的视频，如果有，不允许删除
-	//videoKey := core.BuildClassVideoListKey(*class.Cid)
-	//videoCount, err := cls.redis.ZCard(ctx.Request().Context(), videoKey).Result()
-	//if err != nil {
-	//	logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Get Video Count Error|%v", err)
-	//	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-	//		"msg": "Get Video Count Error",
-	//	})
-	//}
-	//
-	//if videoCount > 0 {
-	//	logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Has Video|%v", err)
-	//	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
-	//		"msg": "Has Video",
-	//	})
-	//}
-
-	// 更新mysql的数据，把课程的删除为修改为delete
+	// 把课程的删除为修改为delete
 	result, err := cls.redis.Get(ctx.Request().Context(), core.BuildClassInfoKey(*class.Cid)).Result()
 	if err != nil {
 		logx.GetLogger("OS_Server").Errorf("HandlerDeleteClass|Get Class Info Error|%v", err)
