@@ -13,6 +13,7 @@ import (
 
 func RegisterRouter(e *echo.Echo, cls *ClassServer) {
 	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
 
 	globApiPrefix := e.Group("/v1/class")
 	teacher := globApiPrefix.Group("/tch")

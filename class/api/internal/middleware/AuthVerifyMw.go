@@ -23,9 +23,7 @@ func AuthMw(permission int) echo.MiddlewareFunc {
 
 func AuthVerifyMw(next echo.HandlerFunc, permission int) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		logx.GetLogger("OS_Server").Infof("AuthVerifyMw|permission:%v", permission)
 		auth := c.Request().Header.Get(httpx.CustomHttpHeader.Authorization.String())
-
 		jwtToken, err := sdk.ParseJwtToken(*config.GloableConfig.Jwt.Secretkey, auth)
 		if err != nil {
 			logx.GetLogger("OS_Server").Errorf("AuthVerifyMw|ParseJwtToken err:%v", err)
@@ -50,7 +48,6 @@ func AuthVerifyMw(next echo.HandlerFunc, permission int) echo.HandlerFunc {
 						"msg": "permission denied",
 					})
 				}
-
 				c.Set("uid", token.Uid)
 				c.Set("role", token.Role)
 				return next(c)
