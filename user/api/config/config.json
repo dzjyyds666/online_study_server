@@ -19,7 +19,7 @@
   },
   "jwt": {
     "secret_key": "aaron519",
-    "expire": 259200
+    "expire": 2592000
   },
   "email": {
     "host": "smtp.163.com",

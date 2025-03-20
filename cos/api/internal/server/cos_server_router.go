@@ -12,9 +12,10 @@ import (
 
 func RegisterRouter(e *echo.Echo, cs *CosServer) {
 	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
 	cos := e.Group("/v1/cos")
 	cos.Add("POST", "/upload/apply", cs.HandlerApplyUpload)
-	cos.Add("POST", "/upload/:fid", cs.HandlerSingleUpload)
+	cos.Add("POST", "/upload/single/:fid", cs.HandlerSingleUpload)
 	cos.Add("GET", "/file/:fid", cs.HandlerGetFile)
 
 	cos.Add("POST", "/upload/init", cs.HandlerInitMultipartUpload)

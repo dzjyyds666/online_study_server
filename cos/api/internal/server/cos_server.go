@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/dzjyyds666/opensource/common"
 	"github.com/dzjyyds666/opensource/httpx"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
@@ -100,6 +101,7 @@ func (cs *CosServer) HandlerApplyUpload(ctx echo.Context) error {
 			})
 		}
 	}
+	logx.GetLogger("OS_Server").Infof("HandlerApplyUpload|CraetePrepareIndex|Succ|%s", common.ToStringWithoutError(cosFile))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, cosFile)
 }
 
@@ -114,6 +116,23 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 			"msg": "Params Invalid",
 		})
 	}
+
+	logx.GetLogger("OS_Server").Infof("HandlerSingleUpload|UploadSingleFile|%s", fid)
+
+	// 查询redis中有没有预备的信息
+	//cosFile, err := core.QueryPrepareIndex(ctx, cs.redis, fid)
+	//if err != nil {
+	//	logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|QueryPrepareIndex err:%v", err)
+	//	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+	//		"msg": "QueryPrepareIndex Error",
+	//	})
+	//}
+	//
+	//if cosFile == nil {
+	//	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
+	//		"msg": "Prepare Index Not Exist",
+	//	})
+	//}
 
 	filename := file.Filename
 	fileSize := file.Size
@@ -157,6 +176,8 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 		WithFileMD5(md5).
 		WithFileType(fileType)
 
+	logx.GetLogger("OS_Server").Infof("HandlerSingleUpload|UploadSingleFile|Info|%s", common.ToStringWithoutError(uploadFile))
+
 	err = uploadFile.UploadSingleFile(ctx, cs.s3Client, aws.String(cs.bucket), cs.redis)
 	if nil != err {
 		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|PutObject err:%v", err)
@@ -164,6 +185,8 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 			"msg": "PutObject Error",
 		})
 	}
+
+	logx.GetLogger("OS_Server").Infof("HandlerSingleUpload|UploadSingleFile|Succ|%s", fid)
 
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, uploadFile)
 }
