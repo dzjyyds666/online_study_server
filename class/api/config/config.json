@@ -1,7 +1,6 @@
 {
   "name": "user",
   "port": 19003,
-  "rpc_port": 29003,
   "host": "127.0.0.1",
   "mysql": {
     "host": "127.0.0.1",

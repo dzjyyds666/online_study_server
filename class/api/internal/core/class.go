@@ -73,16 +73,16 @@ type UpdateStudyClass struct {
 // todo 如何更加优雅的实现
 func (ci *Class) QueryClassInfo(ctx context.Context, ds *redis.Client, updateChapter *UpdateChapters, updateStudyClass *UpdateStudyClass) error {
 	// 先去redis中获取原始的课程信息
-	infoKey := BuildClassInfoKey(*ci.Cid)
+	infoKey := BuildClassInfo(*ci.Cid)
 	result, err := ds.Get(ctx, infoKey).Result()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("QueryCLassInfo|Get Class Info Error|%v", err)
+		logx.GetLogger("study").Errorf("QueryCLassInfo|Get Class Info Error|%v", err)
 		return err
 	}
 
 	var originInfo Class
 	if err := json.Unmarshal([]byte(result), &originInfo); err != nil {
-		logx.GetLogger("OS_Server").Errorf("QueryCLassInfo|Unmarshal Class Info Error|%v", err)
+		logx.GetLogger("study").Errorf("QueryCLassInfo|Unmarshal Class Info Error|%v", err)
 		return err
 	}
 
@@ -139,13 +139,13 @@ func (ci *Class) QueryClassInfo(ctx context.Context, ds *redis.Client, updateCha
 	// 重新写入reids
 	classInfoStr, err := json.Marshal(originInfo)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("QueryCLassInfo|Marshal Class Info Error|%v", err)
+		logx.GetLogger("study").Errorf("QueryCLassInfo|Marshal Class Info Error|%v", err)
 		return err
 	}
 
 	err = ds.Set(ctx, infoKey, string(classInfoStr), 0).Err()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("QueryCLassInfo|Set Class Info Error|%v", err)
+		logx.GetLogger("study").Errorf("QueryCLassInfo|Set Class Info Error|%v", err)
 		return err
 	}
 

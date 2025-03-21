@@ -31,15 +31,15 @@ func (ch *Chapter) WithCreateTs(ts int64) *Chapter {
 }
 
 func (ch *Chapter) RanameChapter(ctx context.Context, newName string, ds *redis.Client) error {
-	chapterKey := BuildChapterIndexKey(*ch.Chid)
+	chapterKey := BuildChapterInfo(*ch.Chid)
 	result, err := ds.Get(ctx, chapterKey).Result()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("RanameChapter|Get Chapter Error|%v", err)
+		logx.GetLogger("study").Errorf("RanameChapter|Get Chapter Error|%v", err)
 		return err
 	}
 	err = json.Unmarshal([]byte(result), ch)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("RanameChapter|Unmarshal Chapter Error|%v", err)
+		logx.GetLogger("study").Errorf("RanameChapter|Unmarshal Chapter Error|%v", err)
 		return err
 	}
 
@@ -47,12 +47,12 @@ func (ch *Chapter) RanameChapter(ctx context.Context, newName string, ds *redis.
 
 	marshal, err := json.Marshal(ch)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("CreateChapter|Marshal Chapter Error|%v", err)
+		logx.GetLogger("study").Errorf("CreateChapter|Marshal Chapter Error|%v", err)
 		return err
 	}
 	_, err = ds.Set(ctx, chapterKey, string(marshal), 0).Result()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("CreateChapter|Set Chapter Error|%v", err)
+		logx.GetLogger("study").Errorf("CreateChapter|Set Chapter Error|%v", err)
 		return err
 	}
 	return nil
@@ -62,22 +62,22 @@ func (ci *Chapter) CreateChapter(ctx context.Context, cid string, ds *redis.Clie
 	// 从reids中获取到class的indexinfo
 	chapterStr, _ := json.Marshal(ci)
 
-	classKey := BuildClassChapterKey(cid)
+	classKey := BuildClassChapterList(cid)
 	_, err := ds.ZAdd(ctx, classKey, redis.Z{
 		Member: ci.Chid,
 		Score:  float64(time.Now().Unix()),
 	}).Result()
 
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("CreateChapter|Add Chapter Error|%v", err)
+		logx.GetLogger("study").Errorf("CreateChapter|Add Chapter Error|%v", err)
 		return err
 	}
 
 	// 把章节的信息存储到reids中
-	chapterKey := BuildChapterIndexKey(*ci.Chid)
+	chapterKey := BuildChapterInfo(*ci.Chid)
 	_, err = ds.Set(ctx, chapterKey, string(chapterStr), 0).Result()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("CreateChapter|Set Chapter Info Error|%v", err)
+		logx.GetLogger("study").Errorf("CreateChapter|Set Chapter Info Error|%v", err)
 		return err
 	}
 	return nil

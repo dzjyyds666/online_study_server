@@ -82,17 +82,17 @@ var ErrPrepareIndexExits = fmt.Errorf("CraetePrepareIndex Exits")
 func (cf *CosFile) CraetePrepareIndex(ctx echo.Context, redis *redis.Client) error {
 	marshal, err := json.Marshal(cf)
 	if err != nil {
-		logx.GetLogger("OS_Server").Infof("CraetePrepareIndex|Marshal Error|%v", err)
+		logx.GetLogger("study").Infof("CraetePrepareIndex|Marshal Error|%v", err)
 		return err
 	}
 
 	exists, err := redis.SetNX(ctx.Request().Context(), fmt.Sprintf(RedisPrepareIndexKey, *cf.Fid), marshal, 0).Result()
 	if err != nil {
-		logx.GetLogger("OS_Server").Infof("CraetePrepareIndex|SetNX Error|%v", err)
+		logx.GetLogger("study").Infof("CraetePrepareIndex|SetNX Error|%v", err)
 		return err
 	}
 	if !exists {
-		logx.GetLogger("OS_Server").Errorf("CraetePrepareIndex|CraetePrepareIndex Exits")
+		logx.GetLogger("study").Errorf("CraetePrepareIndex|CraetePrepareIndex Exits")
 		return ErrPrepareIndexExits
 	}
 
@@ -102,21 +102,21 @@ func (cf *CosFile) CraetePrepareIndex(ctx echo.Context, redis *redis.Client) err
 func (cf *CosFile) CraeteIndex(ctx echo.Context, redis *redis.Client) error {
 	marshal, err := json.Marshal(cf)
 	if err != nil {
-		logx.GetLogger("OS_Server").Infof("CraeteIndex|Marshal Error|%v", err)
+		logx.GetLogger("study").Infof("CraeteIndex|Marshal Error|%v", err)
 		return err
 	}
 
 	// 从redis中删除prepare文件
 	_, err = redis.Del(ctx.Request().Context(), fmt.Sprintf(RedisPrepareIndexKey, *cf.Fid)).Result()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("CraeteIndex|Del Error|%v", err)
+		logx.GetLogger("study").Errorf("CraeteIndex|Del Error|%v", err)
 		return err
 	}
 
 	// 插入index文件到redis中
 	_, err = redis.Set(ctx.Request().Context(), fmt.Sprintf(RedisIndexKey, *cf.Fid), marshal, 0).Result()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("CraeteIndex|Set Error|%v", err)
+		logx.GetLogger("study").Errorf("CraeteIndex|Set Error|%v", err)
 		return err
 	}
 	return nil
@@ -139,7 +139,7 @@ func (cf *CosFile) UploadSingleFile(ctx echo.Context, client *s3.Client, bucket 
 	// 先上传文件到minio
 	err := cf.PutObject(ctx, client, bucket)
 	if err != nil {
-		logx.GetLogger("OS_Server").Infof("UploadSingleFile|PutObject Error|%v", err)
+		logx.GetLogger("study").Infof("UploadSingleFile|PutObject Error|%v", err)
 		return err
 	}
 
@@ -148,7 +148,7 @@ func (cf *CosFile) UploadSingleFile(ctx echo.Context, client *s3.Client, bucket 
 		sourfileKey := buildFileIndexKey(*cf.SourceFile)
 		result, err := ds.Get(ctx.Request().Context(), sourfileKey).Result()
 		if err != nil {
-			logx.GetLogger("OS_Server").Errorf("UploadSingleFile|Get SourceFile Error|%v", err)
+			logx.GetLogger("study").Errorf("UploadSingleFile|Get SourceFile Error|%v", err)
 		}
 		var sourceFile CosFile
 		err = json.Unmarshal([]byte(result), &sourceFile)
@@ -170,7 +170,7 @@ func (cf *CosFile) UploadSingleFile(ctx echo.Context, client *s3.Client, bucket 
 
 		_, err = ds.Set(ctx.Request().Context(), sourfileKey, marshal, 0).Result()
 		if err != nil {
-			logx.GetLogger("OS_Server").Errorf("UploadSingleFile|Set SourceFile Error|%v", err)
+			logx.GetLogger("study").Errorf("UploadSingleFile|Set SourceFile Error|%v", err)
 			return err
 		}
 	}
@@ -178,17 +178,17 @@ func (cf *CosFile) UploadSingleFile(ctx echo.Context, client *s3.Client, bucket 
 	// 插入源文件的indexInfo
 	err = cf.CraeteIndex(ctx, ds)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("UploadSingleFile|CraeteIndex Error|%v", err)
+		logx.GetLogger("study").Errorf("UploadSingleFile|CraeteIndex Error|%v", err)
 		return err
 	}
-	logx.GetLogger("OS_Server").Infof("UploadSingleFile|UploadSingleFile Success")
+	logx.GetLogger("study").Infof("UploadSingleFile|UploadSingleFile Success")
 	return err
 }
 
 func (cf *CosFile) PutObject(ctx echo.Context, client *s3.Client, bucket *string) error {
 	key := cf.GetFilePath()
 
-	logx.GetLogger("OS_Server").Infof("PutObject|%v", *cf.FileType)
+	logx.GetLogger("study").Infof("PutObject|%v", *cf.FileType)
 
 	_, err := client.PutObject(ctx.Request().Context(), &s3.PutObjectInput{
 		Body:   cf.r,
@@ -199,7 +199,7 @@ func (cf *CosFile) PutObject(ctx echo.Context, client *s3.Client, bucket *string
 		ContentType:   cf.FileType,
 	})
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("PutObject Error|%v", err)
+		logx.GetLogger("study").Errorf("PutObject Error|%v", err)
 		return err
 	}
 
@@ -251,19 +251,19 @@ func QueryPrepareIndex(ctx echo.Context, rs *redis.Client, fid string) (*CosFile
 	key := fmt.Sprintf(RedisPrepareIndexKey, fid)
 	result, err := rs.Get(ctx.Request().Context(), key).Result()
 	if err != nil && !errors.Is(err, redis.Nil) {
-		logx.GetLogger("OS_Server").Errorf("QueryPrepareIndex|Get Error|%v", err)
+		logx.GetLogger("study").Errorf("QueryPrepareIndex|Get Error|%v", err)
 		return nil, err
 	}
 
 	if errors.Is(err, redis.Nil) {
-		logx.GetLogger("OS_Server").Infof("QueryPrepareIndex|Prepare Index Not Exits|%v", err)
+		logx.GetLogger("study").Infof("QueryPrepareIndex|Prepare Index Not Exits|%v", err)
 		return nil, err
 	}
 
 	var prepareFile CosFile
 
 	if err := json.Unmarshal([]byte(result), &prepareFile); err != nil {
-		logx.GetLogger("OS_Server").Errorf("QueryPrepareIndex|Unmarshal Error|%v", err)
+		logx.GetLogger("study").Errorf("QueryPrepareIndex|Unmarshal Error|%v", err)
 		return nil, err
 	}
 
@@ -279,19 +279,19 @@ func QueryIndex(ctx echo.Context, rs *redis.Client, fid string) (*CosFile, error
 	key := fmt.Sprintf(RedisIndexKey, fid)
 	result, err := rs.Get(ctx.Request().Context(), key).Result()
 	if err != nil && !errors.Is(err, redis.Nil) {
-		logx.GetLogger("OS_Server").Errorf("QueryPrepareIndex|Get Error|%v", err)
+		logx.GetLogger("study").Errorf("QueryPrepareIndex|Get Error|%v", err)
 		return nil, err
 	}
 
 	if errors.Is(err, redis.Nil) {
-		logx.GetLogger("OS_Server").Infof("QueryPrepareIndex|Prepare Index Not Exits|%v", err)
+		logx.GetLogger("study").Infof("QueryPrepareIndex|Prepare Index Not Exits|%v", err)
 		return nil, err
 	}
 
 	var indexFile CosFile
 
 	if err := json.Unmarshal([]byte(result), &indexFile); err != nil {
-		logx.GetLogger("OS_Server").Errorf("QueryPrepareIndex|Unmarshal Error|%v", err)
+		logx.GetLogger("study").Errorf("QueryPrepareIndex|Unmarshal Error|%v", err)
 		return nil, err
 	}
 

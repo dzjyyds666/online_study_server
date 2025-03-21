@@ -10,11 +10,11 @@ import (
 )
 
 func main() {
-	var configPath = flag.String("c", "/Users/zhijundu/GolandProjects/online_study_server/class/api/config/config.json", "config file path")
+	var configPath = flag.String("c", "/Users/zhijundu/GolandProjects/online_study_server/class/api/config/config.json", "config.json file path")
 
 	err := config.RefreshEtcdConfig(*configPath)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("main|RefreshEtcdConfig|err:%v", err)
+		logx.GetLogger("study").Errorf("main|RefreshEtcdConfig|err:%v", err)
 		return
 	}
 
@@ -25,7 +25,7 @@ func main() {
 	e := echo.New()
 	userServer, err := server.NewClassServer()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("UserServer|StartError|NewUserServer|err:%v", err)
+		logx.GetLogger("study").Errorf("UserServer|StartError|NewUserServer|err:%v", err)
 		return
 	}
 	server.RegisterRouter(e, userServer)

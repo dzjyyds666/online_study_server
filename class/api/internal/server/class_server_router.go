@@ -18,19 +18,17 @@ func RegisterRouter(e *echo.Echo, cls *ClassServer) {
 	globApiPrefix := e.Group("/v1/class")
 	teacher := globApiPrefix.Group("/tch")
 	teacher.Add("POST", "/list", cls.HandleListClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
-	teacher.Add("POST", "/create", cls.HandlerCreateClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
-	teacher.Add("POST", "/update", cls.HandlerUpdateClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
-	teacher.Add("POST", "/delete/ctransh", cls.HandlerPutClassInTrash, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
-	teacher.Add("GET", "/delete/:cid", cls.HandlerDeleteClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
-	teacher.Add("POST", "/recover/:cid", cls.HandlerRecoverClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
-	teacher.Add("POST", "/create/chapter/:cid", cls.HandlerCreateChapter, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
-	teacher.Add("POST", "/rename/chapter", cls.HandlerRenameChapter, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
-	teacher.Add("POST", "/upload/resource/:chid", cls.HandlerUploadResuorce, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
+	teacher.Add("POST", "/create", cls.HandleCreateClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
+	teacher.Add("POST", "/update", cls.HandleUpdateClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
+	teacher.Add("POST", "/delete/ctransh", cls.HandlePutClassInTrash, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
+	teacher.Add("GET", "/delete/:cid", cls.HandleDeleteClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
+	teacher.Add("POST", "/recover/:cid", cls.HandleRecoverClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
+	teacher.Add("POST", "/create/chapter/:cid", cls.HandleCreateChapter, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
+	teacher.Add("POST", "/rename/chapter", cls.HandleRenameChapter, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
+	teacher.Add("POST", "/upload/resource/:chid", cls.HandleCreateResource, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
 
 	student := globApiPrefix.Group("/stu")
-	student.Add("POST", "/query/:cid", cls.HandlerQueryClassInfo, mymiddleware.AuthMw(mymiddleware.UserRole.Student))
-	student.Add("POST", "/subscribe/:cid", cls.HandlerSubscribeClass, mymiddleware.AuthMw(mymiddleware.UserRole.Student))
-	student.Add("POST", "/cancle/:cid", cls.HandlerCancleSubscribeClass, mymiddleware.AuthMw(mymiddleware.UserRole.Student))
+	student.Add("POST", "/query/:cid", cls.HandleQueryClassInfo, mymiddleware.AuthMw(mymiddleware.UserRole.Student))
 
 	RecordRouteToFile(FilterRouter(e.Routes()))
 }
@@ -62,10 +60,10 @@ func RecordRouteToFile(routes []*echo.Route) {
 
 	data, err := json.Marshal(recordRoute)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("RecordRouteToFile|JSON Marshal Error|%v", err)
+		logx.GetLogger("study").Errorf("RecordRouteToFile|JSON Marshal Error|%v", err)
 	}
 	err = os.WriteFile("router.json", data, 0644)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("RecordRouteToFile|WriteFile Error|%v", err)
+		logx.GetLogger("study").Errorf("RecordRouteToFile|WriteFile Error|%v", err)
 	}
 }

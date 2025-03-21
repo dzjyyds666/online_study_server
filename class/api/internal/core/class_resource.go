@@ -42,26 +42,26 @@ func (r *ClassResource) WithUploadTs(ts int64) *ClassResource {
 
 func (cr *ClassResource) CreateResource(ctx context.Context, chid string, ds *redis.Client) error {
 	// 添加资源的索引
-	resourceKey := BuildChapterResourceIndexKey(*cr.Fid)
+	resourceKey := BuildResourceInfo(*cr.Fid)
 	_, err := ds.Set(ctx, resourceKey, cr, 0).Result()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("CreateResource|Set Resource Error|%v", err)
+		logx.GetLogger("study").Errorf("CreateResource|Set Resource Error|%v", err)
 		return err
 	}
 
 	// 把资源添加到章节下面
-	chapterKey := BuildChapterResourceKey(chid)
+	chapterKey := BuildChapterResourceList(chid)
 	_, err = ds.ZAdd(ctx, chapterKey, redis.Z{
 		Member: cr.Fid,
 		Score:  float64(time.Now().Unix()),
 	}).Result()
 
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("CreateResource|Add Resource Error|%v", err)
+		logx.GetLogger("study").Errorf("CreateResource|Add Resource Error|%v", err)
 		return err
 	}
 
-	logx.GetLogger("OS_Server").Infof("CreateResource|Create Resource Success|%v", cr)
+	logx.GetLogger("study").Infof("CreateResource|Create Resource Success|%v", cr)
 	return nil
 }
 

@@ -95,12 +95,12 @@ func QueryIndexToInit(ctx echo.Context, rs *redis.Client, fid string) (*InitMult
 	key := fmt.Sprintf(RedisPrepareIndexKey, fid)
 	result, err := rs.Get(ctx.Request().Context(), key).Result()
 	if err != nil && !errors.Is(err, redis.Nil) {
-		logx.GetLogger("OS_Server").Errorf("QueryPrepareIndex|Get Error|%v", err)
+		logx.GetLogger("study").Errorf("QueryPrepareIndex|Get Error|%v", err)
 		return nil, err
 	}
 
 	if errors.Is(err, redis.Nil) {
-		logx.GetLogger("OS_Server").Infof("QueryPrepareIndex|Prepare Index Not Exits|%v", err)
+		logx.GetLogger("study").Infof("QueryPrepareIndex|Prepare Index Not Exits|%v", err)
 		return nil, err
 	}
 

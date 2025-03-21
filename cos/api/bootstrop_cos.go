@@ -10,11 +10,11 @@ import (
 )
 
 func main() {
-	//var configPath = flag.String("c", "E:\\code\\Go\\online_study_server01\\cos\\api\\config\\config.json", "config file path")
-	var configPath = flag.String("c", "/Users/zhijundu/GolandProjects/online_study_server/cos/api/config/config.json", "config file path")
+	//var configPath = flag.String("c", "E:\\code\\Go\\online_study_server01\\cos\\api\\config.json\\config.json.json", "config.json file path")
+	var configPath = flag.String("c", "/Users/zhijundu/GolandProjects/online_study_server/cos/api/config/config.json", "config.json file path")
 	err := config.RefreshEtcdConfig(*configPath)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("main|RefreshEtcdConfig|err:%v", err)
+		logx.GetLogger("study").Errorf("main|RefreshEtcdConfig|err:%v", err)
 		return
 	}
 

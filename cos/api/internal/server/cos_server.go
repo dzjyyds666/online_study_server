@@ -37,7 +37,7 @@ func NewCosServer() (*CosServer, error) {
 		S3config.WithBaseEndpoint(*config.GloableConfig.S3.Endpoint),
 		S3config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(*config.GloableConfig.S3.AccessKey, *config.GloableConfig.S3.SecretKey, "")))
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("NewCosServer|S3config.LoadDefaultConfig err:%v", err)
+		logx.GetLogger("study").Errorf("NewCosServer|S3config.LoadDefaultConfig err:%v", err)
 		return nil, err
 	}
 
@@ -64,7 +64,7 @@ func NewCosServer() (*CosServer, error) {
 
 	err = cosServer.checkAndCreateBucket()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("NewCosServer|CheckAndCreateBucket|err:%v", err)
+		logx.GetLogger("study").Errorf("NewCosServer|CheckAndCreateBucket|err:%v", err)
 		return nil, err
 	}
 
@@ -78,7 +78,7 @@ func (cs *CosServer) HandlerApplyUpload(ctx echo.Context) error {
 	var cosFile core.CosFile
 	err := decoder.Decode(&cosFile)
 	if err != nil {
-		logx.GetLogger("OS_Server").Infof("HandlerApplyUpload|Params bind Error|%v", err)
+		logx.GetLogger("study").Infof("HandlerApplyUpload|Params bind Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
@@ -86,22 +86,22 @@ func (cs *CosServer) HandlerApplyUpload(ctx echo.Context) error {
 
 	// uuid生成fid
 	fid := core.GenerateFid()
-	cosFile.WithFid(fid)
+	cosFile.WithFid("fi_" + fid)
 
 	err = cosFile.CraetePrepareIndex(ctx, cs.redis)
 	if err != nil && !errors.Is(err, core.ErrPrepareIndexExits) {
-		logx.GetLogger("OS_Server").Errorf("HandlerApplyUpload|CraetePrepareIndex err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerApplyUpload|CraetePrepareIndex err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, "System Error")
 	} else if errors.Is(err, core.ErrPrepareIndexExits) {
 		// 获取redis中的数据
 		if err != nil {
-			logx.GetLogger("OS_Server").Errorf("HandlerApplyUpload|Get err:%v", err)
+			logx.GetLogger("study").Errorf("HandlerApplyUpload|Get err:%v", err)
 			return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 				"msg": err.Error(),
 			})
 		}
 	}
-	logx.GetLogger("OS_Server").Infof("HandlerApplyUpload|CraetePrepareIndex|Succ|%s", common.ToStringWithoutError(cosFile))
+	logx.GetLogger("study").Infof("HandlerApplyUpload|CraetePrepareIndex|Succ|%s", common.ToStringWithoutError(cosFile))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, cosFile)
 }
 
@@ -111,35 +111,35 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 	dirId := ctx.QueryParam("dirid")
 	file, err := ctx.FormFile("file")
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|FormFile err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerSingleUpload|FormFile err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
 	}
 
-	logx.GetLogger("OS_Server").Infof("HandlerSingleUpload|UploadSingleFile|%s", fid)
+	logx.GetLogger("study").Infof("HandlerSingleUpload|UploadSingleFile|%s", fid)
 
-	// 查询redis中有没有预备的信息
-	//cosFile, err := core.QueryPrepareIndex(ctx, cs.redis, fid)
-	//if err != nil {
-	//	logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|QueryPrepareIndex err:%v", err)
-	//	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-	//		"msg": "QueryPrepareIndex Error",
-	//	})
-	//}
-	//
-	//if cosFile == nil {
-	//	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
-	//		"msg": "Prepare Index Not Exist",
-	//	})
-	//}
+	//查询redis中有没有预备的信息
+	cosFile, err := core.QueryPrepareIndex(ctx, cs.redis, fid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandlerSingleUpload|QueryPrepareIndex err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "QueryPrepareIndex Error",
+		})
+	}
+
+	if cosFile == nil {
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
+			"msg": "Prepare Index Not Exist",
+		})
+	}
 
 	filename := file.Filename
 	fileSize := file.Size
 
 	open, err := file.Open()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|Open err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerSingleUpload|Open err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Open File Error",
 		})
@@ -149,7 +149,7 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 	// 计算文件的md5值
 	md5, err := core.CalculateMD5(open)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|CalculateMD5 err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerSingleUpload|CalculateMD5 err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "CalculateMD5 Error",
 		})
@@ -159,7 +159,7 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 	// 计算文件的type
 	fileType, err := core.GetFileType(open)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|GetFileType err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerSingleUpload|GetFileType err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "GetFileType Error",
 		})
@@ -176,17 +176,17 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 		WithFileMD5(md5).
 		WithFileType(fileType)
 
-	logx.GetLogger("OS_Server").Infof("HandlerSingleUpload|UploadSingleFile|Info|%s", common.ToStringWithoutError(uploadFile))
+	logx.GetLogger("study").Infof("HandlerSingleUpload|UploadSingleFile|Info|%s", common.ToStringWithoutError(uploadFile))
 
 	err = uploadFile.UploadSingleFile(ctx, cs.s3Client, aws.String(cs.bucket), cs.redis)
 	if nil != err {
-		logx.GetLogger("OS_Server").Errorf("HandlerSingleUpload|PutObject err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerSingleUpload|PutObject err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
 			"msg": "PutObject Error",
 		})
 	}
 
-	logx.GetLogger("OS_Server").Infof("HandlerSingleUpload|UploadSingleFile|Succ|%s", fid)
+	logx.GetLogger("study").Infof("HandlerSingleUpload|UploadSingleFile|Succ|%s", fid)
 
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, uploadFile)
 }
@@ -197,7 +197,7 @@ func (cs *CosServer) HandlerGetFile(ctx echo.Context) error {
 	fid := ctx.Param("fid")
 	index, err := core.QueryIndex(ctx, cs.redis, fid)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerGetFile|QueryIndex err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerGetFile|QueryIndex err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
 			"msg": "Index File Not Exist",
 		})
@@ -209,7 +209,7 @@ func (cs *CosServer) HandlerGetFile(ctx echo.Context) error {
 
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerGetFile|NewRequest err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerGetFile|NewRequest err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "NewRequest err",
 		})
@@ -217,7 +217,7 @@ func (cs *CosServer) HandlerGetFile(ctx echo.Context) error {
 
 	resp, err := cs.hcli.Do(request)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerGetFile|Do err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerGetFile|Do err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Get File Error",
 		})
@@ -231,7 +231,7 @@ func (cs *CosServer) HandlerInitMultipartUpload(ctx echo.Context) error {
 	var initupload core.InitMultipartUpload
 	err := ctx.Bind(&initupload)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerInitMultipartUpload|Bind err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerInitMultipartUpload|Bind err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
@@ -242,7 +242,7 @@ func (cs *CosServer) HandlerInitMultipartUpload(ctx echo.Context) error {
 	// 初始化上传文件
 	uploadid, err := initupload.InitUpload(ctx, cs.s3Client)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerInitMultipartUpload|InitUpload err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerInitMultipartUpload|InitUpload err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "InitUpload Error",
 		})
@@ -251,7 +251,7 @@ func (cs *CosServer) HandlerInitMultipartUpload(ctx echo.Context) error {
 	initupload.WithUploadId(uploadid)
 	marshal, err := json.Marshal(&initupload)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerInitMultipartUpload|Marshal err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerInitMultipartUpload|Marshal err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Marshal Error",
 		})
@@ -260,7 +260,7 @@ func (cs *CosServer) HandlerInitMultipartUpload(ctx echo.Context) error {
 	// 添加redis中的init文件
 	_, err = cs.redis.Set(ctx.Request().Context(), fmt.Sprintf(core.RedisInitIndexKey, initupload.Fid), string(marshal), 0).Result()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerInitMultipartUpload|Set err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerInitMultipartUpload|Set err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Redis Set Error",
 		})
@@ -272,7 +272,7 @@ func (cs *CosServer) HandlerInitMultipartUpload(ctx echo.Context) error {
 func (cs *CosServer) HandlerMultiUpload(ctx echo.Context) error {
 	fid := ctx.Param("fid")
 	if len(fid) <= 0 {
-		logx.GetLogger("OS_Server").Errorf("HandlerMultiUpload|fid is empty")
+		logx.GetLogger("study").Errorf("HandlerMultiUpload|fid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
@@ -280,7 +280,7 @@ func (cs *CosServer) HandlerMultiUpload(ctx echo.Context) error {
 
 	partidStr := ctx.QueryParam("partid")
 	if len(partidStr) <= 0 {
-		logx.GetLogger("OS_Server").Errorf("HandlerMultiUpload|partid is empty")
+		logx.GetLogger("study").Errorf("HandlerMultiUpload|partid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
@@ -290,7 +290,7 @@ func (cs *CosServer) HandlerMultiUpload(ctx echo.Context) error {
 
 	init, err := core.QueryIndexToInit(ctx, cs.redis, fid)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerMultiUpload|QueryIndexToInit err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerMultiUpload|QueryIndexToInit err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "QueryIndexToInit Error",
 		})
@@ -298,7 +298,7 @@ func (cs *CosServer) HandlerMultiUpload(ctx echo.Context) error {
 
 	ETag, err := init.MultipartUpload(ctx, int(partid), cs.s3Client)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerMultiUpload|MultipartUpload err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerMultiUpload|MultipartUpload err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "MultipartUpload Error",
 		})
@@ -319,7 +319,7 @@ func (cs *CosServer) CompleteUpload(ctx echo.Context) error {
 
 	fid := ctx.Param("fid")
 	if len(fid) <= 0 {
-		logx.GetLogger("OS_Server").Errorf("CompleteUpload|fid is empty")
+		logx.GetLogger("study").Errorf("CompleteUpload|fid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
@@ -328,7 +328,7 @@ func (cs *CosServer) CompleteUpload(ctx echo.Context) error {
 	var endparts []EndPart
 	err := ctx.Bind(&endparts)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("CompleteUpload|Bind err:%v", err)
+		logx.GetLogger("study").Errorf("CompleteUpload|Bind err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
@@ -337,7 +337,7 @@ func (cs *CosServer) CompleteUpload(ctx echo.Context) error {
 	// redis中获取上传文件信息
 	result, err := cs.redis.Get(ctx.Request().Context(), fmt.Sprintf(core.RedisInitIndexKey, fid)).Result()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("CompleteUpload|Get err:%v", err)
+		logx.GetLogger("study").Errorf("CompleteUpload|Get err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Redis Get Error",
 		})
@@ -346,7 +346,7 @@ func (cs *CosServer) CompleteUpload(ctx echo.Context) error {
 	var init core.InitMultipartUpload
 	err = json.Unmarshal([]byte(result), &init)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("CompleteUpload|Unmarshal err:%v", err)
+		logx.GetLogger("study").Errorf("CompleteUpload|Unmarshal err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "json Unmarshal Error",
 		})
@@ -369,7 +369,7 @@ func (cs *CosServer) CompleteUpload(ctx echo.Context) error {
 		},
 	})
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("CompleteUpload|CompleteMultipartUpload err:%v", err)
+		logx.GetLogger("study").Errorf("CompleteUpload|CompleteMultipartUpload err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "CompleteMult Error",
 		})
@@ -379,7 +379,7 @@ func (cs *CosServer) CompleteUpload(ctx echo.Context) error {
 	index := fmt.Sprintf(core.RedisIndexKey, init.Fid)
 	err = cs.redis.RenameNX(ctx.Request().Context(), prepareKey, index).Err()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("CompleteUpload|RenameNX err:%v", err)
+		logx.GetLogger("study").Errorf("CompleteUpload|RenameNX err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "RenameNX Error",
 		})
@@ -392,7 +392,7 @@ func (cs *CosServer) CompleteUpload(ctx echo.Context) error {
 func (cs *CosServer) HandlerAbortUpload(ctx echo.Context) error {
 	fid := ctx.Param("fid")
 	if len(fid) == 0 {
-		logx.GetLogger("OS_Server").Errorf("HandlerAbortUpload|fid is empty")
+		logx.GetLogger("study").Errorf("HandlerAbortUpload|fid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
@@ -401,7 +401,7 @@ func (cs *CosServer) HandlerAbortUpload(ctx echo.Context) error {
 	// 查询init文件
 	init, err := core.QueryIndexToInit(ctx, cs.redis, fid)
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerAbortUpload|QueryIndexToInit err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerAbortUpload|QueryIndexToInit err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "QueryIndexToInit Error",
 		})
@@ -413,7 +413,7 @@ func (cs *CosServer) HandlerAbortUpload(ctx echo.Context) error {
 		UploadId: aws.String(init.UploadId),
 	})
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerAbortUpload|AbortMultipartUpload err:%v", err)
+		logx.GetLogger("study").Errorf("HandlerAbortUpload|AbortMultipartUpload err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "AbortMultipartUpload Error",
 		})
@@ -424,7 +424,7 @@ func (cs *CosServer) HandlerAbortUpload(ctx echo.Context) error {
 	initKey := fmt.Sprintf(core.RedisInitIndexKey, fid)
 	err = cs.redis.Del(ctx.Request().Context(), prepareKey, initKey).Err()
 	if err != nil {
-		logx.GetLogger("OS_Server").Errorf("HandlerAbortUpload|Del err|%s|%s|%v", prepareKey, initKey, err)
+		logx.GetLogger("study").Errorf("HandlerAbortUpload|Del err|%s|%s|%v", prepareKey, initKey, err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Redis Del Error",
 		})
@@ -441,14 +441,14 @@ func (cs *CosServer) checkAndCreateBucket() error {
 			Bucket: bucket,
 		})
 		if err != nil {
-			logx.GetLogger("OS_Server").Errorf("CheckAndCreateBucket|HeadBucket err:%v", err)
+			logx.GetLogger("study").Errorf("CheckAndCreateBucket|HeadBucket err:%v", err)
 
 			// 创建bucket
 			_, err = cs.s3Client.CreateBucket(context.TODO(), &s3.CreateBucketInput{
 				Bucket: bucket,
 			})
 			if err != nil {
-				logx.GetLogger("OS_Server").Errorf("CheckAndCreateBucket|CreateBucket err:%v", err)
+				logx.GetLogger("study").Errorf("CheckAndCreateBucket|CreateBucket err:%v", err)
 				return err
 			}
 
@@ -472,7 +472,7 @@ func (cs *CosServer) checkAndCreateBucket() error {
 				Policy: &policy,
 			})
 			if err != nil {
-				logx.GetLogger("OS_Server").Errorf("CheckAndCreateBucket|PutBucketPolicy err:%v", err)
+				logx.GetLogger("study").Errorf("CheckAndCreateBucket|PutBucketPolicy err:%v", err)
 				return err
 			}
 		}

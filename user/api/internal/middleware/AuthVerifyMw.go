@@ -27,7 +27,7 @@ func AuthVerifyMw(next echo.HandlerFunc, permission int) echo.HandlerFunc {
 
 		jwtToken, err := sdk.ParseJwtToken(*config.GloableConfig.Jwt.Secretkey, auth)
 		if err != nil {
-			logx.GetLogger("OS_Server").Errorf("AuthVerifyMw|ParseJwtToken err:%v", err)
+			logx.GetLogger("study").Errorf("AuthVerifyMw|ParseJwtToken err:%v", err)
 			return httpx.JsonResponse(c, httpx.HttpStatusCode.HttpUnauthorized, echo.Map{
 				"msg": "invalid_token",
 			})
@@ -36,15 +36,15 @@ func AuthVerifyMw(next echo.HandlerFunc, permission int) echo.HandlerFunc {
 			s := (*jwtToken)["data"].(string)
 			err = json.Unmarshal([]byte(s), &token)
 			if err != nil {
-				logx.GetLogger("OS_Server").Errorf("AuthVerifyMw|Token err:%v", err)
+				logx.GetLogger("study").Errorf("AuthVerifyMw|Token err:%v", err)
 				return httpx.JsonResponse(c, httpx.HttpStatusCode.HttpUnauthorized, echo.Map{
 					"msg": "invalid_token",
 				})
 			} else {
 
-				logx.GetLogger("OS_Server").Infof("AuthVerifyMw|Token Verify Success|%v", common.ToStringWithoutError(token))
+				logx.GetLogger("study").Infof("AuthVerifyMw|Token Verify Success|%v", common.ToStringWithoutError(token))
 				if token.Role < permission {
-					logx.GetLogger("OS_Server").Errorf("AuthVerifyMw|permission denied")
+					logx.GetLogger("study").Errorf("AuthVerifyMw|permission denied")
 					return httpx.JsonResponse(c, httpx.HttpStatusCode.HttpUnauthorized, echo.Map{
 						"msg": "permission denied",
 					})
