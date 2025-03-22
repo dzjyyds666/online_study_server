@@ -11,11 +11,11 @@ import (
 )
 
 type StudyClass struct {
-	SCid          string `json:"sc_id"`
-	ClassName     string `json:"class_name"`
-	StudentNumber int64  `json:"student_number"`
-	Cid           string `json:"cid"`
-	Tid           string `json:"tid"`
+	SCid          string `json:"sc_id,omitempty"`
+	ClassName     string `json:"class_name,omitempty"`
+	StudentNumber int64  `json:"student_number,omitempty"`
+	Cid           string `json:"cid,omitempty"`
+	Tid           string `json:"tid,omitempty"`
 }
 
 func (s *StudyClass) WithSCid(id string) *StudyClass {
@@ -59,6 +59,13 @@ func (sc *StudyClass) CreateStudyClass(ctx context.Context, ds *redis.Client) er
 		logx.GetLogger("study").Errorf("CreateStudyClass|Add SCid To Class List Error|%v", err)
 		return err
 	}
+
+	// 添加到教师的教学班列表
+	teacherKey := BuildTeacherClassList(sc.Tid)
+	err = ds.ZAdd(ctx, teacherKey, redis.Z{
+		Member: sc.SCid,
+		Score:  float64(time.Now().Unix()),
+	}).Err()
 
 	return nil
 }

@@ -5,8 +5,9 @@ import "fmt"
 const (
 	RedisAllClassList = "class:lists" // 所有课程列表
 
-	RedisTeacherClassListKey   = "class:teacher:%s:class:list" // 教师对应课程列表
-	RedisTeacherClassDeleteKey = "class:teacher:%s:class:deleted:list"
+	RedisTeacherClassListKey      = "class:teacher:%s:class:list" // 教师对应课程列表
+	RedisTeacherClassDeleteKey    = "class:teacher:%s:class:deleted:list"
+	RedisTeacherStudyClassListKey = "class:%s:study_class:list"
 
 	RedisClassInfoKey       = "class:%s:info"             // 课程信息key
 	RedsiSourceChaptersKey  = "class:%s:chapters:list"    // 课程对应章节列表
@@ -64,4 +65,8 @@ func BuildStudyClassInfo(scid string) string {
 
 func BuildClassStudyClassList(cid string) string {
 	return fmt.Sprintf(RedisClassStudyClassKey, cid)
+}
+
+func BuildTeacherStudyClassList(uid string) string {
+	return fmt.Sprintf(RedisTeacherStudyClassListKey, uid)
 }

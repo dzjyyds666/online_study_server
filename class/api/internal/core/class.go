@@ -8,16 +8,16 @@ import (
 )
 
 type Class struct {
-	Cid          *string      `json:"cid"`
-	ClassName    *string      `json:"class_name"`
-	ClassDesc    *string      `json:"class_desc"`
-	ClassType    *string      `json:"class_type"`
-	CreateTs     *int64       `json:"create_ts"`
-	Teacher      *string      `json:"teacher"`
-	Archive      *bool        `json:"archive"`
-	Deleted      *bool        `json:"deleted"`
-	ChapterLists []Chapter    `json:"chapter_lists"` // 章节
-	StudyClass   []StudyClass `json:"study_class"`   // 教学班
+	Cid            *string      `json:"cid,omitempty"`
+	ClassName      *string      `json:"class_name,omitempty"`
+	ClassDesc      *string      `json:"class_desc,omitempty"`
+	ClassType      *string      `json:"class_type,omitempty"`
+	CreateTs       *int64       `json:"create_ts,omitempty"`
+	Teacher        *string      `json:"teacher,omitempty"`
+	Archive        *bool        `json:"archive,omitempty"`
+	Deleted        *bool        `json:"deleted,omitempty"`
+	StudyClassList []StudyClass `json:"study_class_list,omitempty"`
+	ChapterList    []Chapter    `json:"chapter_list,omitempty"`
 }
 
 func (ci *Class) WithCid(id string) *Class {

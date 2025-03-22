@@ -12,11 +12,11 @@ import (
 
 // 章节
 type Chapter struct {
-	Chid        *string    `json:"chid,omitempty"`
-	ChapterName *string    `json:"chapter_name,omitempty"`
-	CreateTs    *int64     `json:"create_ts,omitempty"`
-	Resource    []Resource `json:"resource,omitempty"`
-	SourceId    *string    `json:"source_id,omitempty"`
+	Chid         *string    `json:"chid,omitempty"`
+	ChapterName  *string    `json:"chapter_name,omitempty"`
+	CreateTs     *int64     `json:"create_ts,omitempty"`
+	SourceId     *string    `json:"source_id,omitempty"`
+	ResourceList []Resource `json:"resource_list,omitempty"`
 }
 
 func (ch *Chapter) WithChid(id string) *Chapter {

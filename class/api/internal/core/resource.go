@@ -18,12 +18,12 @@ func BuildResourceKey(fid string) string {
 }
 
 type Resource struct {
-	Fid          string `json:"fid"`
-	FileName     string `json:"file_name"`
-	FileSize     int64  `json:"file_size"`
-	FileType     string `json:"file_type"`
-	Published    bool   `json:"published"`
-	Downloadable bool   `json:"downloadable"` // 是否可以下载
+	Fid          string `json:"fid,omitempty"`
+	FileName     string `json:"file_name,omitempty"`
+	FileSize     int64  `json:"file_size,omitempty"`
+	FileType     string `json:"file_type,omitempty"`
+	Published    bool   `json:"published,omitempty"`
+	Downloadable bool   `json:"downloadable,omitempty"` // 是否可以下载
 }
 
 func (r *Resource) WithFid(fid string) *Resource {
@@ -105,6 +105,25 @@ func (r *Resource) CreateUploadResource(ctx context.Context, ds *redis.Client) e
 		logx.GetLogger("study").Errorf("CreateUploadResource|Set Resource Error|%v", err)
 		return err
 	}
+
+	// 添加到文件的md5列表下面
+	if err := ds.ZAdd(ctx, BuildMd5FileList(r.FileType), redis.Z{
+		Score:  float64(r.FileSize),
+		Member: r.Fid,
+	}).Err(); err != nil {
+		logx.GetLogger("study").Errorf("CreateUploadResource|Add Md5 File List Error|%v", err)
+		return err
+	}
+
+	// 添加到章节的resource列表
+	if err := ds.ZAdd(ctx, BuildChapterResourceList(r.Fid), redis.Z{
+		Score:  float64(r.FileSize),
+		Member: r.Fid,
+	}).Err(); err != nil {
+		logx.GetLogger("study").Errorf("CreateUploadResource|Add Chapter Resource List Error|%v", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -115,6 +134,13 @@ func (r *Resource) DeleteResource(ctx context.Context, ds *redis.Client) error {
 		return err
 	}
 	if err := ds.Del(ctx, key).Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Resource) DeleteFormChapterList(ctx context.Context, ds *redis.Client) error {
+	if err := ds.ZRem(ctx, BuildChapterResourceList(r.Fid), r.Fid).Err(); err != nil {
 		return err
 	}
 	return nil
@@ -131,6 +157,5 @@ func (r *Resource) QueryResourceInfo(ctx context.Context, ds *redis.Client) (*Re
 	if nil != err {
 		return nil, err
 	}
-
 	return r, nil
 }

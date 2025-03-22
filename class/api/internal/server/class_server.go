@@ -468,26 +468,6 @@ func (cls *ClassServer) HandleDeleteChapter(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, chapter)
 }
 
-func (cls *ClassServer) HandleCreateResource(ctx echo.Context) error {
-	var resource core.ClassResource
-	chid := ctx.Param("chid")
-	if err := ctx.Bind(&resource); err != nil || len(chid) <= 0 {
-		logx.GetLogger("study").Errorf("HandleUploadResuorce|ctx.Bind err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
-			"msg": "Params Invalid",
-		})
-	}
-
-	err := resource.CreateResource(ctx.Request().Context(), chid, cls.redis)
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleUploadResuorce|Create Resource Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "upload Resource Error",
-		})
-	}
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, resource)
-}
-
 func (cls *ClassServer) HandleUploadResource(ctx echo.Context) error {
 	var resource core.Resource
 	decoder := json.NewDecoder(ctx.Request().Body)
@@ -525,13 +505,46 @@ func (cls *ClassServer) HandleUpdatePublish(ctx echo.Context) error {
 			"msg": "UpdatePublishResource Error",
 		})
 	}
-
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, resource)
 }
 
 func (cls *ClassServer) HandleDeleteResource(ctx echo.Context) error {
-	// todo 删除资源
-	return nil
+	fid := ctx.Param("fid")
+	if len(fid) < 0 {
+		logx.GetLogger("study").Errorf("HandleDeleteResource|fid is empty")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	resource := core.Resource{Fid: fid}
+	info, err := resource.QueryResourceInfo(ctx.Request().Context(), cls.redis)
+	if nil != err {
+		logx.GetLogger("study").Infof("HandleDeleteResource|QueryResourceInfo Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "QueryResourceInfo Error",
+		})
+	}
+
+	// 删除章节资源列表中的fid
+	err = info.DeleteFormChapterList(ctx.Request().Context(), cls.redis)
+	if nil != err {
+		logx.GetLogger("study").Errorf("HandleDeleteResource|DeleteFormChapterList Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "DeleteFormChapterList Error",
+		})
+	}
+
+	// 删除资源的信息
+	err = info.DeleteResource(ctx.Request().Context(), cls.redis)
+	if nil != err {
+		logx.GetLogger("study").Errorf("HandleDeleteResource|DeleteResource Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "DeleteResource Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, resource)
 }
 
 func GenerateRandomString(length int) string {
