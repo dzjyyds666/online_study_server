@@ -108,11 +108,29 @@ func (r *Resource) CreateUploadResource(ctx context.Context, ds *redis.Client) e
 	return nil
 }
 
-func (r *Resource) DeleteUploadResource(ctx context.Context, ds *redis.Client) error {
-	err := ds.Del(ctx, BuildResourceKey(r.Fid)).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("DeleteUploadResource|Delete Resource Error|%v", err)
+func (r *Resource) DeleteResource(ctx context.Context, ds *redis.Client) error {
+	key := BuildResourceInfo(r.Fid)
+	// 删除md5下面的fid
+	if err := ds.ZRem(ctx, BuildMd5FileList(r.FileType), r.Fid).Err(); err != nil {
+		return err
+	}
+	if err := ds.Del(ctx, key).Err(); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (r *Resource) QueryResourceInfo(ctx context.Context, ds *redis.Client) (*Resource, error) {
+	info := BuildResourceInfo(r.Fid)
+	result, err := ds.Get(ctx, info).Result()
+	if nil != err {
+		return nil, err
+	}
+
+	err = json.Unmarshal([]byte(result), r)
+	if nil != err {
+		return nil, err
+	}
+
+	return r, nil
 }

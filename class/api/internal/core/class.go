@@ -71,7 +71,7 @@ type UpdateStudyClass struct {
 }
 
 // todo 如何更加优雅的实现
-func (ci *Class) QueryClassInfo(ctx context.Context, ds *redis.Client, updateChapter *UpdateChapters, updateStudyClass *UpdateStudyClass) error {
+func (ci *Class) UpdateClasInfo(ctx context.Context, ds *redis.Client) error {
 	// 先去redis中获取原始的课程信息
 	infoKey := BuildClassInfo(*ci.Cid)
 	result, err := ds.Get(ctx, infoKey).Result()
@@ -107,35 +107,6 @@ func (ci *Class) QueryClassInfo(ctx context.Context, ds *redis.Client, updateCha
 		originInfo.Deleted = ci.Deleted
 	}
 
-	if updateChapter != nil {
-		// 删除章节
-		if updateChapter.Delete {
-			for _, item := range updateChapter.Chapters {
-				for i, chapter := range originInfo.ChapterLists {
-					if chapter.Chid == item.Chid {
-						originInfo.ChapterLists = append(originInfo.ChapterLists[:i], originInfo.ChapterLists[i+1:]...)
-					}
-				}
-			}
-		} else {
-			originInfo.ChapterLists = append(originInfo.ChapterLists, updateChapter.Chapters...)
-		}
-	}
-
-	if updateStudyClass != nil {
-		if updateStudyClass.Delete {
-			for _, item := range updateStudyClass.StudyClass {
-				for i, studyClass := range originInfo.StudyClass {
-					if studyClass.SCid == item.SCid {
-						originInfo.StudyClass = append(originInfo.StudyClass[:i], originInfo.StudyClass[i+1:]...)
-					}
-				}
-			}
-		} else {
-			originInfo.StudyClass = append(originInfo.StudyClass, updateStudyClass.StudyClass...)
-		}
-	}
-
 	// 重新写入reids
 	classInfoStr, err := json.Marshal(originInfo)
 	if err != nil {
@@ -148,6 +119,23 @@ func (ci *Class) QueryClassInfo(ctx context.Context, ds *redis.Client, updateCha
 		logx.GetLogger("study").Errorf("QueryCLassInfo|Set Class Info Error|%v", err)
 		return err
 	}
-
 	return nil
+}
+
+func (cl *Class) QueryClassInfo(ctx context.Context, ds *redis.Client) (*Class, error) {
+	classInfoKey := BuildClassInfo(*cl.Cid)
+
+	result, err := ds.Get(ctx, classInfoKey).Result()
+	if nil != err {
+		logx.GetLogger("study").Errorf("QueryClassInfo|Get Class Info Error|%v", err)
+		return nil, err
+	}
+
+	err = json.Unmarshal([]byte(result), cl)
+	if err != nil {
+		logx.GetLogger("study").Errorf("QueryClassInfo|Unmarshal Class Info Error|%v", err)
+		return nil, err
+	}
+
+	return cl, nil
 }

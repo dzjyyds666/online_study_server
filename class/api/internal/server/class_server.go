@@ -387,36 +387,17 @@ func (cls *ClassServer) HandleDeleteClass(ctx echo.Context) error {
 
 func (cls *ClassServer) HandleQueryClassInfo(ctx echo.Context) error {
 	cid := ctx.Param("cid")
-	if len(cid) <= 0 {
-		logx.GetLogger("study").Errorf("HandleDeleteClass|cid is empty")
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
-			"msg": "cid is empty",
-		})
+
+	class := core.Class{}
+	class.WithCid(cid)
+
+	info, err := class.QueryClassInfo(ctx.Request().Context(), cls.redis)
+	if nil != err {
+		logx.GetLogger("study").Errorf("HandleQueryClassInfo|Query Class Info Error|%v", err)
+		return err
 	}
 
-	var class core.Class
-	classInfo, err := cls.redis.Get(ctx.Request().Context(), core.BuildClassInfo(cid)).Result()
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleDeleteClass|Query Class Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Query Class Error",
-		})
-	}
-
-	err = json.Unmarshal([]byte(classInfo), &class)
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleDeleteClass|Query Class Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Query Class Error",
-		})
-	}
-
-	// todo rpc调用用户信息查询教师信息
-
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
-		"class": class,
-		//"teacher":teacher,
-	})
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
 
 func (cls *ClassServer) HandleCreateChapter(ctx echo.Context) error {
@@ -460,6 +441,27 @@ func (cls *ClassServer) HandleRenameChapter(ctx echo.Context) error {
 		logx.GetLogger("study").Errorf("HandleRenameChapter|Rename Chapter Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Rename Chapter Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, chapter)
+}
+
+func (cls *ClassServer) HandleDeleteChapter(ctx echo.Context) error {
+	var chapter core.Chapter
+	decoder := json.NewDecoder(ctx.Request().Body)
+	if err := decoder.Decode(&chapter); err != nil {
+		logx.GetLogger("study").Errorf("HandleDeleteChapter|ctx.Bind err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	err := chapter.DeleteChapter(ctx.Request().Context(), cls.redis)
+	if nil != err {
+		logx.GetLogger("study").Errorf("HandleDeleteChapter|Delete Chapter Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Delete Chapter Error",
 		})
 	}
 
