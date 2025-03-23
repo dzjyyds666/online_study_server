@@ -133,6 +133,14 @@ func (sc *StudyClass) DeleteStudyClass(ctx context.Context, ds *redis.Client) er
 		return err
 	}
 
+	// 删除教师教学班
+	teacherKey := BuildTeacherClassList(sc.Tid)
+	err = ds.Del(ctx, teacherKey).Err()
+	if nil != err {
+		logx.GetLogger("study").Errorf("DeleteStudyClass|Delete Teacher SCid Error|%v", err)
+		return err
+	}
+
 	// 删除教学班的信息
 	infoKey := BuildStudyClassInfo(sc.SCid)
 	err = ds.Del(ctx, infoKey).Err()

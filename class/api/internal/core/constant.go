@@ -3,7 +3,8 @@ package core
 import "fmt"
 
 const (
-	RedisAllClassList = "class:lists" // 所有课程列表
+	RedisAllClassList     = "class:lists" // 所有课程列表
+	RedisDeletedClassList = "class:lists:deleted"
 
 	RedisTeacherClassListKey      = "class:teacher:%s:class:list" // 教师对应课程列表
 	RedisTeacherClassDeleteKey    = "class:teacher:%s:class:deleted:list"
@@ -69,4 +70,8 @@ func BuildClassStudyClassList(cid string) string {
 
 func BuildTeacherStudyClassList(uid string) string {
 	return fmt.Sprintf(RedisTeacherStudyClassListKey, uid)
+}
+
+func BuildClassDeletedList() string {
+	return RedisDeletedClassList
 }

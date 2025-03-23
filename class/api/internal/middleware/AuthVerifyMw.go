@@ -3,7 +3,6 @@ package middleware
 import (
 	"class/api/config"
 	"encoding/json"
-	"github.com/dzjyyds666/opensource/common"
 	"github.com/dzjyyds666/opensource/httpx"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/dzjyyds666/opensource/sdk"
@@ -40,8 +39,6 @@ func AuthVerifyMw(next echo.HandlerFunc, permission int) echo.HandlerFunc {
 					"msg": "invalid_token",
 				})
 			} else {
-
-				logx.GetLogger("study").Infof("AuthVerifyMw|Token Verify Success|%v", common.ToStringWithoutError(token))
 				if token.Role < permission {
 					logx.GetLogger("study").Errorf("AuthVerifyMw|permission denied")
 					return httpx.JsonResponse(c, httpx.HttpStatusCode.HttpUnauthorized, echo.Map{
