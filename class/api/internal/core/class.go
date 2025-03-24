@@ -231,6 +231,13 @@ func (cl *Class) CopyClass(ctx context.Context, ds *redis.Client) (*Class, error
 			return nil, err
 		}
 
+		// 查询章节下的所有资源
+		fids, err := chapterInfo.QueryResourcList(ctx, ds, "", -1)
+		if err != nil {
+			logx.GetLogger("study").Errorf("CopyClass|Query Resource List Error|%v", err)
+			return nil, err
+		}
+
 		newChapterId := NewChapterId(8)
 		chapter.WithChid(newChapterId).WithSourceId(newCid)
 		// 写入章节信息
@@ -240,12 +247,6 @@ func (cl *Class) CopyClass(ctx context.Context, ds *redis.Client) (*Class, error
 			return nil, err
 		}
 
-		// 查询章节下的所有资源
-		fids, err := chapterInfo.QueryResourcList(ctx, ds, "", -1)
-		if err != nil {
-			logx.GetLogger("study").Errorf("CopyClass|Query Resource List Error|%v", err)
-			return nil, err
-		}
 		for _, fid := range fids {
 			// todo 复制文件的时候，有一点问题
 			resource := Resource{Fid: fid}

@@ -186,6 +186,8 @@ func (cls *ClassServer) HandleQueryDeletedClassList(ctx echo.Context) error {
 		})
 	}
 
+	logx.GetLogger("study").Infof("HandleListClass|QueryClassList Success|%s", common.ToStringWithoutError(classLists))
+
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, classLists)
 }
 
