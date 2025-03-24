@@ -1,0 +1,96 @@
+version: '3.7'
+
+services:
+  minio1:
+    image: minio/minio
+    container_name: minio1
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin@123
+    volumes:
+      - minio_data1:/data
+    networks:
+      - minio_network
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server http://minio{1...4}/data --console-address ":9001"
+    restart: always
+
+  minio2:
+    image: minio/minio
+    container_name: minio2
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin@123
+    volumes:
+      - minio_data2:/data
+    networks:
+      - minio_network
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    command: server http://minio{1...4}/data --console-address ":9001"
+    restart: always
+
+  minio3:
+    image: minio/minio
+    container_name: minio3
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin@123
+    volumes:
+      - minio_data3:/data
+    networks:
+      - minio_network
+    ports:
+      - "9004:9000"
+      - "9005:9001"
+    command: server http://minio{1...4}/data --console-address ":9001"
+    restart: always
+
+  minio4:
+    image: minio/minio
+    container_name: minio4
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin@123
+    volumes:
+      - minio_data4:/data
+    networks:
+      - minio_network
+    ports:
+      - "9006:9000"
+      - "9007:9001"
+    command: server http://minio{1...4}/data --console-address ":9001"
+    restart: always
+
+volumes:
+  minio_data1:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: E:\docker\LocalSpace\minio\data1
+  minio_data2:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: E:\docker\LocalSpace\minio\data2
+  minio_data3:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: E:\docker\LocalSpace\minio\data3
+  minio_data4:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: E:\docker\LocalSpace\minio\data4
+
+networks:
+  minio_network:
+    driver: bridge

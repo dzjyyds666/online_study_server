@@ -1,0 +1,12 @@
+{
+  "name": "class_rpc",
+  "port": 29001,
+  "host": "127.0.0.1",
+  "redis": {
+    "host": "127.0.0.1",
+    "port": 6379,
+    "username": "root",
+    "password": "",
+    "db": 3
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "name": "user",
+  "port": 19001,
+  "rpc_port": 29001,
+  "host": "127.0.0.1",
+  "mysql": {
+    "host": "127.0.0.1",
+    "port": 3306,
+    "username": "root",
+    "password": "rootroot",
+    "database": "learnX"
+  },
+  "redis": {
+    "host": "127.0.0.1",
+    "port": 6379,
+    "username": "root",
+    "password": "",
+    "db": 1
+  },
+  "jwt": {
+    "secret_key": "aaron519",
+    "expire": 2592000
+  },
+  "email": {
+    "host": "smtp.163.com",
+    "port": 465,
+    "user": "15664621607@163.com",
+    "password": "KTfcXrQuAcKjRAKz",
+    "sender": "15664621607@163.com",
+    "alias": "LearnX"
+  }
+}
