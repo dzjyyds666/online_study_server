@@ -2,7 +2,7 @@ package main
 
 import (
 	"class/api/config"
-	"class/api/internal/server"
+	"class/api/http/internal/service"
 	"flag"
 	"fmt"
 	"github.com/dzjyyds666/opensource/logx"
@@ -23,12 +23,14 @@ func main() {
 		panic(err)
 	}
 	e := echo.New()
-	userServer, err := server.NewClassServer()
+	userServer, err := service.NewClassServer()
 	if err != nil {
 		logx.GetLogger("study").Errorf("UserServer|StartError|NewUserServer|err:%v", err)
 		return
 	}
-	server.RegisterRouter(e, userServer)
+
+	service.RegisterRouter(e, userServer)
 
 	e.Logger.Fatal(e.Start(fmt.Sprint(":", *config.GloableConfig.Port)))
+
 }

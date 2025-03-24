@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = ".;proto";
+
+service Cos{
+  rpc DeleteObject(DeleteObjectRequest) returns (DeleteObjectResponse);
+}
+
+message DeleteObjectRequest {
+  repeated string fids = 1;
+}
+
+message DeleteObjectResponse {
+  bool success = 1;
+}

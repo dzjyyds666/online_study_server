@@ -14,7 +14,7 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
-    command: server http://minio{1...4}/data --console-address ":9001"
+    command: service http://minio{1...4}/data --console-address ":9001"
     restart: always
 
   minio2:
@@ -30,7 +30,7 @@ services:
     ports:
       - "9002:9000"
       - "9003:9001"
-    command: server http://minio{1...4}/data --console-address ":9001"
+    command: service http://minio{1...4}/data --console-address ":9001"
     restart: always
 
   minio3:
@@ -46,7 +46,7 @@ services:
     ports:
       - "9004:9000"
       - "9005:9001"
-    command: server http://minio{1...4}/data --console-address ":9001"
+    command: service http://minio{1...4}/data --console-address ":9001"
     restart: always
 
   minio4:
@@ -62,7 +62,7 @@ services:
     ports:
       - "9006:9000"
       - "9007:9001"
-    command: server http://minio{1...4}/data --console-address ":9001"
+    command: service http://minio{1...4}/data --console-address ":9001"
     restart: always
 
 volumes:

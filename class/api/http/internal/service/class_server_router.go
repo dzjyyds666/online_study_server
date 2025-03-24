@@ -1,7 +1,7 @@
-package server
+package service
 
 import (
-	mymiddleware "class/api/internal/middleware"
+	mymiddleware "class/api/http/internal/middleware"
 	"encoding/json"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"

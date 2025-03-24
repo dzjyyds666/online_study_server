@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"cos/api/config"
-	"cos/api/internal/core"
+	core2 "cos/api/http/internal/core"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -75,7 +75,7 @@ func NewCosServer() (*CosServer, error) {
 func (cs *CosServer) HandlerApplyUpload(ctx echo.Context) error {
 
 	decoder := json.NewDecoder(ctx.Request().Body)
-	var cosFile core.CosFile
+	var cosFile core2.CosFile
 	err := decoder.Decode(&cosFile)
 	if err != nil {
 		logx.GetLogger("study").Infof("HandlerApplyUpload|Params bind Error|%v", err)
@@ -85,14 +85,14 @@ func (cs *CosServer) HandlerApplyUpload(ctx echo.Context) error {
 	}
 
 	// uuid生成fid
-	fid := core.GenerateFid()
+	fid := core2.GenerateFid()
 	cosFile.WithFid("fi_" + fid)
 
 	err = cosFile.CraetePrepareIndex(ctx, cs.redis)
-	if err != nil && !errors.Is(err, core.ErrPrepareIndexExits) {
+	if err != nil && !errors.Is(err, core2.ErrPrepareIndexExits) {
 		logx.GetLogger("study").Errorf("HandlerApplyUpload|CraetePrepareIndex err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, "System Error")
-	} else if errors.Is(err, core.ErrPrepareIndexExits) {
+	} else if errors.Is(err, core2.ErrPrepareIndexExits) {
 		// 获取redis中的数据
 		if err != nil {
 			logx.GetLogger("study").Errorf("HandlerApplyUpload|Get err:%v", err)
@@ -120,7 +120,7 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 	logx.GetLogger("study").Infof("HandlerSingleUpload|UploadSingleFile|%s", fid)
 
 	//查询redis中有没有预备的信息
-	cosFile, err := core.QueryPrepareIndex(ctx, cs.redis, fid)
+	cosFile, err := core2.QueryPrepareIndex(ctx, cs.redis, fid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandlerSingleUpload|QueryPrepareIndex err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -147,7 +147,7 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 	defer open.Close()
 
 	// 计算文件的md5值
-	md5, err := core.CalculateMD5(open)
+	md5, err := core2.CalculateMD5(open)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandlerSingleUpload|CalculateMD5 err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -157,7 +157,7 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 	open.Seek(0, 0)
 
 	// 计算文件的type
-	fileType, err := core.GetFileType(open)
+	fileType, err := core2.GetFileType(open)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandlerSingleUpload|GetFileType err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -166,7 +166,7 @@ func (cs *CosServer) HandlerSingleUpload(ctx echo.Context) error {
 	}
 	open.Seek(0, 0)
 
-	var uploadFile core.CosFile
+	var uploadFile core2.CosFile
 
 	uploadFile.WithFid(fid).
 		WithDirectoryId(dirId).
@@ -195,7 +195,7 @@ func (cs *CosServer) HandlerGetFile(ctx echo.Context) error {
 	// 获取文件,直接拼接url访问minio
 
 	fid := ctx.Param("fid")
-	index, err := core.QueryIndex(ctx, cs.redis, fid)
+	index, err := core2.QueryIndex(ctx, cs.redis, fid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandlerGetFile|QueryIndex err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpBadRequest, echo.Map{
@@ -228,7 +228,7 @@ func (cs *CosServer) HandlerGetFile(ctx echo.Context) error {
 }
 
 func (cs *CosServer) HandlerInitMultipartUpload(ctx echo.Context) error {
-	var initupload core.InitMultipartUpload
+	var initupload core2.InitMultipartUpload
 	err := ctx.Bind(&initupload)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandlerInitMultipartUpload|Bind err:%v", err)
@@ -258,7 +258,7 @@ func (cs *CosServer) HandlerInitMultipartUpload(ctx echo.Context) error {
 	}
 
 	// 添加redis中的init文件
-	_, err = cs.redis.Set(ctx.Request().Context(), fmt.Sprintf(core.RedisInitIndexKey, initupload.Fid), string(marshal), 0).Result()
+	_, err = cs.redis.Set(ctx.Request().Context(), fmt.Sprintf(core2.RedisInitIndexKey, initupload.Fid), string(marshal), 0).Result()
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandlerInitMultipartUpload|Set err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -288,7 +288,7 @@ func (cs *CosServer) HandlerMultiUpload(ctx echo.Context) error {
 
 	partid, _ := strconv.ParseInt(partidStr, 10, 64)
 
-	init, err := core.QueryIndexToInit(ctx, cs.redis, fid)
+	init, err := core2.QueryIndexToInit(ctx, cs.redis, fid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandlerMultiUpload|QueryIndexToInit err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -335,7 +335,7 @@ func (cs *CosServer) CompleteUpload(ctx echo.Context) error {
 	}
 
 	// redis中获取上传文件信息
-	result, err := cs.redis.Get(ctx.Request().Context(), fmt.Sprintf(core.RedisInitIndexKey, fid)).Result()
+	result, err := cs.redis.Get(ctx.Request().Context(), fmt.Sprintf(core2.RedisInitIndexKey, fid)).Result()
 	if err != nil {
 		logx.GetLogger("study").Errorf("CompleteUpload|Get err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -343,7 +343,7 @@ func (cs *CosServer) CompleteUpload(ctx echo.Context) error {
 		})
 	}
 
-	var init core.InitMultipartUpload
+	var init core2.InitMultipartUpload
 	err = json.Unmarshal([]byte(result), &init)
 	if err != nil {
 		logx.GetLogger("study").Errorf("CompleteUpload|Unmarshal err:%v", err)
@@ -375,8 +375,8 @@ func (cs *CosServer) CompleteUpload(ctx echo.Context) error {
 		})
 	}
 	// 修改prepare文件为index
-	prepareKey := fmt.Sprintf(core.RedisPrepareIndexKey, init.Fid)
-	index := fmt.Sprintf(core.RedisIndexKey, init.Fid)
+	prepareKey := fmt.Sprintf(core2.RedisPrepareIndexKey, init.Fid)
+	index := fmt.Sprintf(core2.RedisIndexKey, init.Fid)
 	err = cs.redis.RenameNX(ctx.Request().Context(), prepareKey, index).Err()
 	if err != nil {
 		logx.GetLogger("study").Errorf("CompleteUpload|RenameNX err:%v", err)
@@ -399,7 +399,7 @@ func (cs *CosServer) HandlerAbortUpload(ctx echo.Context) error {
 	}
 
 	// 查询init文件
-	init, err := core.QueryIndexToInit(ctx, cs.redis, fid)
+	init, err := core2.QueryIndexToInit(ctx, cs.redis, fid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandlerAbortUpload|QueryIndexToInit err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -420,8 +420,8 @@ func (cs *CosServer) HandlerAbortUpload(ctx echo.Context) error {
 	}
 
 	// 删除redis中的prepare文件和init文件
-	prepareKey := fmt.Sprintf(core.RedisPrepareIndexKey, fid)
-	initKey := fmt.Sprintf(core.RedisInitIndexKey, fid)
+	prepareKey := fmt.Sprintf(core2.RedisPrepareIndexKey, fid)
+	initKey := fmt.Sprintf(core2.RedisInitIndexKey, fid)
 	err = cs.redis.Del(ctx.Request().Context(), prepareKey, initKey).Err()
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandlerAbortUpload|Del err|%s|%s|%v", prepareKey, initKey, err)

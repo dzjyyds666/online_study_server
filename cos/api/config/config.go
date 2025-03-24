@@ -56,6 +56,7 @@ func LoadConfigFromEtcd() error {
 		logx.GetLogger("study").Errorf("LoadConfigFromEtcd|client.Get err:%v", err)
 		return err
 	}
+
 	err = json.Unmarshal(cfg.Kvs[0].Value, &GloableConfig)
 	if nil != err {
 		logx.GetLogger("study").Errorf("LoadConfigFromEtcd|json.Unmarshal err:%v", err)
@@ -97,6 +98,5 @@ func RefreshEtcdConfig(path string) error {
 		return err
 	}
 
-	//logx.GetLogger("study").Infof("RefreshEtcdConfig|SUCC|GloableConfig|%v", console.ToStringWithoutError(GloableConfig))
 	return nil
 }

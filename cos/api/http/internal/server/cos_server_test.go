@@ -2,7 +2,7 @@ package server
 
 import (
 	"bytes"
-	"cos/api/internal/core"
+	"cos/api/http/internal/core"
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -86,5 +86,5 @@ func TestUploadFile(t *testing.T) {
 }
 
 func TestGetFile(t *testing.T) {
-	
+
 }
