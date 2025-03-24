@@ -19,15 +19,15 @@ func GenerateRandomString(length int) string {
 }
 
 func NewClassId(length int) string {
-	return "ci_" + GenerateRandomString(8)
+	return "ci_" + GenerateRandomString(length)
 }
 
 func NewChapterId(length int) string {
-	return "ch_" + GenerateRandomString(8)
+	return "ch_" + GenerateRandomString(length)
 }
 
-func NewStudyClass(length int) string {
-	return "sc_" + GenerateRandomString(8)
+func NewStudyClassId(length int) string {
+	return "sc_" + GenerateRandomString(length)
 }
 
 func NewFid() string {

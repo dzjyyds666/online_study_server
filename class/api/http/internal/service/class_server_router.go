@@ -37,6 +37,7 @@ func RegisterRouter(e *echo.Echo, cls *ClassServer) {
 	teacher.Add("POST", "/study/class/create", cls.HandleCreateStudyClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
 	teacher.Add("POST", "/study/class/delete", cls.HandleDeleteStudyClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
 	teacher.Add("POST", "/study/class/query", cls.HandleQueryStudyClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
+	teacher.Add("POST", "/study/class/import/:cid", cls.HandleImportStudyClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
 
 	student := globApiPrefix.Group("/stu")
 	student.Add("POST", "/query/:cid", cls.HandleQueryClassInfo, mymiddleware.AuthMw(mymiddleware.UserRole.Student))

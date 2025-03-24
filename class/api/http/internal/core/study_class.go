@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
+	"io"
 	"math"
 	"strconv"
 	"time"
@@ -15,7 +16,6 @@ type StudyClass struct {
 	ClassName     string `json:"class_name,omitempty"`
 	StudentNumber int64  `json:"student_number,omitempty"`
 	Cid           string `json:"cid,omitempty"`
-	Tid           string `json:"tid,omitempty"`
 }
 
 func (s *StudyClass) WithSCid(id string) *StudyClass {
@@ -30,6 +30,11 @@ func (s *StudyClass) WithClassName(name string) *StudyClass {
 
 func (s *StudyClass) WithStudentNumber(number int64) *StudyClass {
 	s.StudentNumber = number
+	return s
+}
+
+func (s *StudyClass) WithCid(cid string) *StudyClass {
+	s.Cid = cid
 	return s
 }
 
@@ -60,13 +65,6 @@ func (sc *StudyClass) CreateStudyClass(ctx context.Context, ds *redis.Client) er
 		return err
 	}
 
-	// 添加到教师的教学班列表
-	teacherKey := BuildTeacherClassList(sc.Tid)
-	err = ds.ZAdd(ctx, teacherKey, redis.Z{
-		Member: sc.SCid,
-		Score:  float64(time.Now().Unix()),
-	}).Err()
-
 	return nil
 }
 
@@ -96,7 +94,7 @@ func (scl *StudyClassList) QueryStudyClassList(ctx context.Context, ds *redis.Cl
 		zrangeBy.Min = "(" + strconv.FormatInt(int64(score), 10)
 	}
 
-	scids, err := ds.ZRangeByScore(ctx, BuildClassStudyClassList(scl.Tid), zrangeBy).Result()
+	scids, err := ds.ZRangeByScore(ctx, BuildClassStudyClassList(scl.Cid), zrangeBy).Result()
 	if err != nil {
 		logx.GetLogger("study").Errorf("QueryStudyClassList|Get SCid List Error|%v", err)
 		return nil, err
@@ -133,14 +131,6 @@ func (sc *StudyClass) DeleteStudyClass(ctx context.Context, ds *redis.Client) er
 		return err
 	}
 
-	// 删除教师教学班
-	teacherKey := BuildTeacherClassList(sc.Tid)
-	err = ds.Del(ctx, teacherKey).Err()
-	if nil != err {
-		logx.GetLogger("study").Errorf("DeleteStudyClass|Delete Teacher SCid Error|%v", err)
-		return err
-	}
-
 	// 删除教学班的信息
 	infoKey := BuildStudyClassInfo(sc.SCid)
 	err = ds.Del(ctx, infoKey).Err()
@@ -148,5 +138,10 @@ func (sc *StudyClass) DeleteStudyClass(ctx context.Context, ds *redis.Client) er
 		logx.GetLogger("study").Errorf("DeleteStudyClass|Delete SCid Info Error|%v", err)
 		return err
 	}
+	return nil
+}
+
+func (sc *StudyClass) ImportStudyClass(ctx context.Context, ds *redis.Client, r io.Reader) error {
+	// todo 处理excl格式的表格
 	return nil
 }
