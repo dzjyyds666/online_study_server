@@ -1,4 +1,4 @@
-package service
+package classHttpService
 
 type ClassType struct {
 	CTid     string `json:"ct_id" gorm:"ct_id;primaryKey"`

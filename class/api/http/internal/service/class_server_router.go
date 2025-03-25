@@ -1,4 +1,4 @@
-package service
+package classHttpService
 
 import (
 	mymiddleware "class/api/http/internal/middleware"

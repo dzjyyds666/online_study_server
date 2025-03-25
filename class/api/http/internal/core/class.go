@@ -21,6 +21,12 @@ type Class struct {
 	Deleted        *bool        `json:"deleted,omitempty"`
 	StudyClassList []StudyClass `json:"study_class_list,omitempty"`
 	ChapterList    []Chapter    `json:"chapter_list,omitempty"`
+
+	ClassScore      *string `json:"class_score,omitempty"`
+	ClassTime       *string `json:"class_time,omitempty"`
+	ClassCollege    *string `json:"class_college,omitempty"`
+	ClassSchoolTerm *string `json:"class_school_term,omitempty"`
+	SubjectCategory *string `json:"subject_category,omitempty"`
 }
 
 func (ci *Class) WithCid(id string) *Class {

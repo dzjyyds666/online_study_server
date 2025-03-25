@@ -26,7 +26,7 @@ func NewChapterId(length int) string {
 	return "ch_" + GenerateRandomString(length)
 }
 
-func NewStudyClassId(length int) string {
+func NewStudyClass(length int) string {
 	return "sc_" + GenerateRandomString(length)
 }
 

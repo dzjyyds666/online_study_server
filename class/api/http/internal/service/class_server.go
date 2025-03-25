@@ -1,8 +1,8 @@
-package service
+package classHttpService
 
 import (
-	"class/api/config"
 	"class/api/http/internal/core"
+	"context"
 	"encoding/json"
 	"github.com/dzjyyds666/opensource/common"
 	"github.com/dzjyyds666/opensource/httpx"
@@ -10,7 +10,6 @@ import (
 	"github.com/labstack/echo"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/mongo"
-	"strconv"
 	"time"
 )
 
@@ -19,32 +18,7 @@ type ClassServer struct {
 	mongo *mongo.Database
 }
 
-func NewClassServer() (*ClassServer, error) {
-
-	// 连接redis
-	dsClient := redis.NewClient(&redis.Options{
-		Addr:     *config.GloableConfig.Redis.Host + ":" + strconv.Itoa(*config.GloableConfig.Redis.Port),
-		Username: *config.GloableConfig.Redis.Username,
-		Password: *config.GloableConfig.Redis.Password,
-		DB:       *config.GloableConfig.Redis.DB,
-	})
-
-	//// 连接mysql
-	//dsn := *config.json.GloableConfig.Mysql.Username + ":" + *config.json.GloableConfig.Mysql.Password + "@tcp(" + *config.json.GloableConfig.Mysql.Host + ":" + strconv.Itoa(*config.json.GloableConfig.Mysql.Port) + ")/" + *config.json.GloableConfig.Mysql.Database + "?charset=utf8mb4&parseTime=True&loc=Local"
-	//msClient, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	//if err != nil {
-	//	logx.GetLogger("study").Errorf("NewClassServer|gorm.Open err:%v", err)
-	//	return nil, err
-	//}
-
-	//mongodsn := "mongodb://" + *config.json.GloableConfig.Mongo.Username + ":" + *config.json.GloableConfig.Mongo.Password + "@ip:" + *config.json.GloableConfig.Mongo.Host + "/" + strconv.Itoa(*config.json.GloableConfig.Mongo.Port)
-	//// 连接mongo
-	//mgClient, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(mongodsn))
-	//if err != nil {
-	//	logx.GetLogger("study").Errorf("NewClassServer|mongo.Connect err:%v", err)
-	//	return nil, err
-	//}
-	//database := mgClient.Database(*config.json.GloableConfig.Mongo.DB)
+func NewClassServer(ctx context.Context, dsClient *redis.Client) (*ClassServer, error) {
 
 	return &ClassServer{
 		redis: dsClient,
@@ -132,7 +106,8 @@ func (cls *ClassServer) HandleListClass(ctx echo.Context) error {
 
 func (cls *ClassServer) HandleUpdateClass(ctx echo.Context) error {
 	var class core.Class
-	err := ctx.Bind(&class)
+	decoder := json.NewDecoder(ctx.Request().Body)
+	err := decoder.Decode(&class)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleUpdateClass|ctx.Bind err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
@@ -146,6 +121,9 @@ func (cls *ClassServer) HandleUpdateClass(ctx echo.Context) error {
 			"msg": "classid can not be null",
 		})
 	}
+
+	class.StudyClassList = nil
+	class.ChapterList = nil
 
 	marshal, err := json.Marshal(&class)
 	if err != nil {
@@ -600,7 +578,7 @@ func (cls *ClassServer) HandleCreateStudyClass(ctx echo.Context) error {
 		})
 	}
 
-	studyClass.SCid = core.NewStudyClassId(8)
+	studyClass.SCid = core.NewStudyClass(8)
 
 	err := studyClass.CreateStudyClass(ctx.Request().Context(), cls.redis)
 	if err != nil {
@@ -692,9 +670,9 @@ func (cls *ClassServer) HandleImportStudyClass(ctx echo.Context) error {
 		})
 	}
 
-	scid := core.NewStudyClassId(8)
+	scid := core.NewStudyClass(8)
 	studyClass := core.StudyClass{SCid: scid, Cid: cid}
-	err := studyClass.ImportStudyClass(ctx.Request().Context(), cls.redis, open)
+	err = studyClass.ImportStudyClass(ctx.Request().Context(), cls.redis, open)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleImportStudyClass|Import StudyClass Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{

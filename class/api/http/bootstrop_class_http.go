@@ -3,33 +3,23 @@ package http
 import (
 	"class/api/config"
 	"class/api/http/internal/service"
-	"flag"
+	"context"
 	"fmt"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
+	"github.com/redis/go-redis/v9"
 )
 
-func StartClassHttpServer() error {
-	var configPath = flag.String("c", "/Users/zhijundu/GolandProjects/online_study_server/class/api/config/config.json", "config.json file path")
+func StartClassHttpServer(ctx context.Context, ds *redis.Client) error {
 
-	err := config.RefreshEtcdConfig(*configPath)
-	if err != nil {
-		logx.GetLogger("study").Errorf("main|RefreshEtcdConfig|err:%v", err)
-		return err
-	}
-
-	err = config.LoadConfigFromEtcd()
-	if err != nil {
-		panic(err)
-	}
 	e := echo.New()
-	userServer, err := service.NewClassServer()
+	userServer, err := classHttpService.NewClassServer(ctx, ds)
 	if err != nil {
 		logx.GetLogger("study").Errorf("UserServer|StartError|NewUserServer|err:%v", err)
 		return err
 	}
 
-	service.RegisterRouter(e, userServer)
+	classHttpService.RegisterRouter(e, userServer)
 
 	e.Logger.Fatal(e.Start(fmt.Sprint(":", *config.GloableConfig.Port)))
 
