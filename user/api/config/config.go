@@ -49,7 +49,7 @@ type Jwt struct {
 type Email struct {
 	Host     *string `mapstructure:"host"`
 	Port     *int    `mapstructure:"port"`
-	User     *string `mapstructure:"user"`
+	User     *string `mapstructure:"user.proto"`
 	Password *string `mapstructure:"password"`
 	Sender   *string `mapstructure:"sender"`
 	Alias    *string `mapstructure:"alias"`
@@ -66,7 +66,7 @@ func LoadConfigFromEtcd() error {
 
 	// 使用ctx控制超时
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	cfg, err := client.Get(ctx, "user:config.json")
+	cfg, err := client.Get(ctx, "user.proto:config.json")
 	cancel()
 	if nil != err {
 		logx.GetLogger("study").Errorf("LoadConfigFromEtcd|client.Get err:%v", err)
@@ -106,7 +106,7 @@ func RefreshEtcdConfig(path string) error {
 	defer client.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	_, err = client.Put(ctx, "user:config.json", jsonConfig)
+	_, err = client.Put(ctx, "user.proto:config.json", jsonConfig)
 	cancel()
 	if err != nil {
 		logx.GetLogger("study").Errorf("RefreshEtcdConfig|client.Put err:%v", err)

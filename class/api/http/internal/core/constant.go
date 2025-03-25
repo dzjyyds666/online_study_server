@@ -6,15 +6,15 @@ const (
 	RedisAllClassList     = "class:lists" // 所有课程列表
 	RedisDeletedClassList = "class:lists:deleted"
 
-	RedisTeacherClassListKey      = "class:teacher:%s:class:list" // 教师对应课程列表
-	RedisTeacherClassDeleteKey    = "class:teacher:%s:class:deleted:list"
-	RedisTeacherStudyClassListKey = "class:%s:study_class:list"
+	RedisTeacherClassListKey   = "class:teacher:%s:class:list" // 教师对应课程列表
+	RedisTeacherClassDeleteKey = "class:teacher:%s:class:deleted:list"
 
 	RedisClassInfoKey       = "class:%s:info"             // 课程信息key
 	RedsiSourceChaptersKey  = "class:%s:chapters:list"    // 课程对应章节列表
 	RedisClassStudyClassKey = "class:%s:study_class:list" // 课程对应教学班列表
 
-	RedisStudyClassInfoKey = "class:study_class:%s:info" // 教学班信息key
+	RedisStudyClassInfoKey        = "class:study_class:%s:info" // 教学班信息key
+	RedisStudyClassStudentListKey = "class:study_class:%s:student:list"
 
 	RedisChapterInfoKey      = "class:chapter:%s:info"          // 课程对应章节信息
 	RedisChapterResourceList = "class:chapter:%s:resource:list" // 课程对应章节资源列表
@@ -68,10 +68,10 @@ func BuildClassStudyClassList(cid string) string {
 	return fmt.Sprintf(RedisClassStudyClassKey, cid)
 }
 
-func BuildTeacherStudyClassList(uid string) string {
-	return fmt.Sprintf(RedisTeacherStudyClassListKey, uid)
-}
-
 func BuildClassDeletedList() string {
 	return RedisDeletedClassList
+}
+
+func BUildStudyClassStudentList(scid string) string {
+	return fmt.Sprintf(RedisStudyClassStudentListKey, scid)
 }

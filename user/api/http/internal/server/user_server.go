@@ -1,6 +1,7 @@
-package server
+package userHttpService
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
@@ -12,13 +13,11 @@ import (
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/gomail.v2"
-	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"strconv"
 	"time"
 	"user/api/config"
-	"user/api/internal/core"
-	mymiddleware "user/api/internal/middleware"
+	"user/api/http/internal/core"
+	mymiddleware "user/api/http/internal/middleware"
 )
 
 type UserServer struct {
@@ -27,31 +26,11 @@ type UserServer struct {
 	email *gomail.Dialer // 邮件
 }
 
-func NewUserServer() (*UserServer, error) {
-	// 初始化redis和mysql
-	client := redis.NewClient(&redis.Options{
-		Addr:     *config.GloableConfig.Redis.Host + ":" + strconv.Itoa(*config.GloableConfig.Redis.Port),
-		Username: *config.GloableConfig.Redis.Username,
-		Password: *config.GloableConfig.Redis.Password,
-		DB:       *config.GloableConfig.Redis.DB,
-	})
+func NewUserServer(ctx context.Context, client *redis.Client, mysql *gorm.DB, dialer *gomail.Dialer) (*UserServer, error) {
 
-	dialer := gomail.NewDialer(
-		*config.GloableConfig.Email.Host,
-		*config.GloableConfig.Email.Port,
-		*config.GloableConfig.Email.User,
-		*config.GloableConfig.Email.Password)
-
-	// gorm连接mysql
-	dsn := *config.GloableConfig.Mysql.Username + ":" + *config.GloableConfig.Mysql.Password + "@tcp(" + *config.GloableConfig.Mysql.Host + ":" + strconv.Itoa(*config.GloableConfig.Mysql.Port) + ")/" + *config.GloableConfig.Mysql.Database + "?charset=utf8mb4&parseTime=True&loc=Local"
-	mysql, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	if nil != err {
-		logx.GetLogger("study").Errorf("NewUserServer|gorm.Open err:%v", err)
-		return nil, err
-	}
-
-	err = mysql.AutoMigrate(&UserInfo{})
+	err := mysql.AutoMigrate(&UserInfo{})
 	if err != nil {
+		logx.GetLogger("study").Errorf("UserServer|StartError|AutoMigrate|err:%v", err)
 		return nil, err
 	}
 

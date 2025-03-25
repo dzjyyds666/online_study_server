@@ -35,9 +35,9 @@ func main() {
 	e := echo.New()
 
 	// 代理不同的微服务
-	userGroup := e.Group("/v1/user")
+	userGroup := e.Group("/v1/user.proto")
 	userGroup.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return reverseProxy("http://127.0.0.1:19001", "/v1/user")
+		return reverseProxy("http://127.0.0.1:19001", "/v1/user.proto")
 	})
 
 	cosGroup := e.Group("/v1/cos")

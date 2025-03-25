@@ -9,7 +9,7 @@ import (
 	"github.com/labstack/echo"
 )
 
-func StartApiService(ctx context.Context) error {
+func StartCosHttpServer(ctx context.Context) error {
 	//var configPath = flag.String("c", "E:\\code\\Go\\online_study_server01\\cos\\api\\config.json\\config.json.json", "config.json file path")
 
 	cosServer, err := server2.NewCosServer()

@@ -1,4 +1,4 @@
-package server
+package userHttpService
 
 type UserInfo struct {
 	Uid      string `gorm:"uid;primaryKey" json:"uid"`

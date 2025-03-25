@@ -1,4 +1,4 @@
-package server
+package userHttpService
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 	"time"
-	mymiddleware "user/api/internal/middleware"
+	mymiddleware "user/api/http/internal/middleware"
 )
 
 func RegisterRouter(e *echo.Echo, us *UserServer) {
@@ -24,15 +24,15 @@ func RegisterRouter(e *echo.Echo, us *UserServer) {
 	e.Use(middleware.Recover())
 
 	globApiPrefix := e.Group("/v1")
-	globApiPrefix.Add("POST", "/user/signin", us.HandlerLogin)
-	globApiPrefix.Add("POST", "/user/signup", us.HandleSignUp)
+	globApiPrefix.Add("POST", "/user.proto/signin", us.HandlerLogin)
+	globApiPrefix.Add("POST", "/user.proto/signup", us.HandleSignUp)
 
-	adminGroup := globApiPrefix.Group("/user/admin")
+	adminGroup := globApiPrefix.Group("/user.proto/admin")
 	// token验证中间件
 	adminGroup.Add("GET", "/list", us.HandlerListUsers, mymiddleware.AuthMw(UserRole.Admin))
 	adminGroup.Add("GET", "/delete", us.HandlerDeleteUser)
 
-	userGroup := globApiPrefix.Group("/user")
+	userGroup := globApiPrefix.Group("/user.proto")
 	userGroup.Add("POST", "/update/:uid", us.UpdateUserInfo)
 	userGroup.Add("GET", "/info/:uid", us.HandlerQueryUserInfo, mymiddleware.AuthMw(UserRole.Student))
 

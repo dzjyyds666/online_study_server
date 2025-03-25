@@ -1,4 +1,4 @@
-package main
+package http
 
 import (
 	"class/api/config"
@@ -9,13 +9,13 @@ import (
 	"github.com/labstack/echo"
 )
 
-func main() {
+func StartClassHttpServer() error {
 	var configPath = flag.String("c", "/Users/zhijundu/GolandProjects/online_study_server/class/api/config/config.json", "config.json file path")
 
 	err := config.RefreshEtcdConfig(*configPath)
 	if err != nil {
 		logx.GetLogger("study").Errorf("main|RefreshEtcdConfig|err:%v", err)
-		return
+		return err
 	}
 
 	err = config.LoadConfigFromEtcd()
@@ -26,11 +26,13 @@ func main() {
 	userServer, err := service.NewClassServer()
 	if err != nil {
 		logx.GetLogger("study").Errorf("UserServer|StartError|NewUserServer|err:%v", err)
-		return
+		return err
 	}
 
 	service.RegisterRouter(e, userServer)
 
 	e.Logger.Fatal(e.Start(fmt.Sprint(":", *config.GloableConfig.Port)))
+
+	return nil
 
 }

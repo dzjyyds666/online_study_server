@@ -31,7 +31,7 @@ func main() {
 	var g errgroup.Group
 
 	g.Go(func() error {
-		err := http.StartApiService(ctx)
+		err := http.StartCosHttpServer(ctx)
 		if err != nil {
 			logx.GetLogger("study").Errorf("main|StartApiServer|err:%v", err)
 			cancel()
@@ -41,7 +41,7 @@ func main() {
 	})
 
 	g.Go(func() error {
-		err := grpc.StartRpcService(ctx)
+		err := grpc.StartCosRpcServer(ctx)
 		if err != nil {
 			logx.GetLogger("study").Errorf("main|StartRpcServer|err:%v", err)
 			cancel()

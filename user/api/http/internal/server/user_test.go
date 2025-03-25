@@ -1,4 +1,4 @@
-package server
+package userHttpService
 
 import (
 	"github.com/dzjyyds666/opensource/sdk"

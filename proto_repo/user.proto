@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = ".;proto";
+
+service user{
+  rpc AddStudentToClass(AddStudentToClassRequest) returns (AddStudentToClassResponse);
+}
+
+message AddStudentToClassRequest{
+  string cid = 1;
+  repeated string uids = 2;
+}
+
+message AddStudentToClassResponse{
+  bool success = 1;
+}

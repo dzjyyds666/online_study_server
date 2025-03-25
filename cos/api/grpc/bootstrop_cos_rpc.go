@@ -12,10 +12,10 @@ import (
 	"net"
 )
 
-func StartRpcService(ctx context.Context) error {
+func StartCosRpcServer(ctx context.Context) error {
 	listen, err := net.Listen("tcp", fmt.Sprintf("%s:%d", *config.GloableConfig.Host, *config.GloableConfig.RpcPort))
 	if err != nil {
-		logx.GetLogger("study").Errorf("StartRpcService|Listen Error|%v", err)
+		logx.GetLogger("study").Errorf("StartCosRpcServer|Listen Error|%v", err)
 		return err
 	}
 
@@ -23,7 +23,7 @@ func StartRpcService(ctx context.Context) error {
 	pb.RegisterCosServer(cosServer, &server.CosServer{})
 	logx.GetLogger("study").Infof("gRPC Server is running on port %s", *config.GloableConfig.RpcPort)
 	if err := cosServer.Serve(listen); err != nil {
-		logx.GetLogger("study").Errorf("StartRpcService|Serve Error|%v", err)
+		logx.GetLogger("study").Errorf("StartCosRpcServer|Serve Error|%v", err)
 		return err
 	}
 	return errors.New("grpc service stop")

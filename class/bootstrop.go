@@ -10,7 +10,7 @@ import (
 func main() {
 	var g errgroup.Group
 	g.Go(func() error {
-		err := http.StartApiService()
+		err := http.StartClassHttpServer()
 		if nil != err {
 			logx.GetLogger("study").Errorf("main|StartApiServer|err:%v", err)
 			return err

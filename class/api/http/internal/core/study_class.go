@@ -77,7 +77,6 @@ type StudyClassList struct {
 }
 
 func (scl *StudyClassList) QueryStudyClassList(ctx context.Context, ds *redis.Client) (*StudyClassList, error) {
-
 	zrangeBy := &redis.ZRangeBy{
 		Min:    "0",
 		Max:    strconv.FormatInt(math.MaxInt64, 10),
@@ -119,6 +118,21 @@ func (scl *StudyClassList) QueryStudyClassList(ctx context.Context, ds *redis.Cl
 	}
 
 	return scl, nil
+}
+
+func (sc *StudyClass) AppendStudent(ctx context.Context, ds *redis.Client, uid string) error {
+	err := ds.ZAdd(ctx, BUildStudyClassStudentList(sc.SCid), redis.Z{
+		Member: uid,
+		Score:  float64(time.Now().Unix()),
+	}).Err()
+	if nil != err {
+		logx.GetLogger("study").Errorf("AppendStudent|Add Student To SCid Error|%v", err)
+		return err
+	}
+
+	// todo 调用rpc代码添加学生的课程列表
+
+	return nil
 }
 
 func (sc *StudyClass) DeleteStudyClass(ctx context.Context, ds *redis.Client) error {
