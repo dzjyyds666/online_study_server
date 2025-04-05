@@ -44,3 +44,37 @@ const MoveClassToTrash = `
 
 	return redis.status_reply("OK")
 `
+
+const RecoverClass = `
+	local teacherClassListKey = KEYS[1]
+	local teacherDeleteClassListKey = KEYS[2]
+
+	local classListKey = KEYS[3]
+	local classDeleteListKey = KEYS[4]
+
+	local cid = ARGV[1]
+
+	local ts = ARGV[2]
+
+	redis.call("ZRem",teacherDeleteClassListKey,cid)
+	
+	redis.call("ZAdd",teacherClassListKey,ts,cid)
+
+	redis.call("ZRem",classDeleteListKey,cid)
+	redis.call("ZAdd",classListKey,ts,cid)
+
+	return redis.status_reply("OK")
+`
+
+const DeleteClass = `
+	local teacherDeleteClassListKey = KEYS[1]
+	local classDeleteListKey = KEYS[2]
+	local classInfoKey = KEYS[3]
+
+	redis.call("ZRem",teacherDeleteClassListKey,cid)
+	redis.call("ZRem",classDeleteListKey,cid)
+	redis.call("DEL",classInfoKey)
+
+	 return redis.status_reply("OK")
+
+`

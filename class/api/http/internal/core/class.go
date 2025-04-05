@@ -99,6 +99,10 @@ func (ci *Class) Marshal() string {
 	return string(marshal)
 }
 
+func (ci *Class) IsDeleted() bool {
+	return *ci.Deleted == true
+}
+
 func ClassUnmarshal(data []byte) (*Class, error) {
 	var ci *Class
 	err := json.Unmarshal(data, ci)
@@ -116,58 +120,6 @@ type UpdateChapters struct {
 type UpdateStudyClass struct {
 	Delete     bool
 	StudyClass []StudyClass
-}
-
-// todo 如何更加优雅的实现
-func (ci *Class) UpdateClasInfo(ctx context.Context, ds *redis.Client) error {
-	// 先去redis中获取原始的课程信息
-	infoKey := BuildClassInfo(*ci.Cid)
-	result, err := ds.Get(ctx, infoKey).Result()
-	if err != nil {
-		logx.GetLogger("study").Errorf("QueryCLassInfo|Get Class Info Error|%v", err)
-		return err
-	}
-
-	var originInfo Class
-	if err := json.Unmarshal([]byte(result), &originInfo); err != nil {
-		logx.GetLogger("study").Errorf("QueryCLassInfo|Unmarshal Class Info Error|%v", err)
-		return err
-	}
-
-	// 先替换所有的字段
-	if ci.ClassName != nil {
-		originInfo.ClassName = ci.ClassName
-	}
-
-	if ci.ClassDesc != nil {
-		originInfo.ClassDesc = ci.ClassDesc
-	}
-
-	if ci.ClassType != nil {
-		originInfo.ClassType = ci.ClassType
-	}
-
-	if ci.Archive == nil {
-		originInfo.Archive = ci.Archive
-	}
-
-	if ci.Deleted == nil {
-		originInfo.Deleted = ci.Deleted
-	}
-
-	// 重新写入reids
-	classInfoStr, err := json.Marshal(originInfo)
-	if err != nil {
-		logx.GetLogger("study").Errorf("QueryCLassInfo|Marshal Class Info Error|%v", err)
-		return err
-	}
-
-	err = ds.Set(ctx, infoKey, string(classInfoStr), 0).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("QueryCLassInfo|Set Class Info Error|%v", err)
-		return err
-	}
-	return nil
 }
 
 func (cl *Class) QueryClassInfo(ctx context.Context, ds *redis.Client) (*Class, error) {

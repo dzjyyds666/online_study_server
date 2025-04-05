@@ -83,19 +83,11 @@ func (cls *ClassService) HandleCopyClass(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
 
-func (cls *ClassService) HandleListClass(ctx echo.Context) error {
-	var classLists core.ClassList
-	decoder := json.NewDecoder(ctx.Request().Body)
-	if err := decoder.Decode(&classLists); err != nil {
-		logx.GetLogger("study").Errorf("HandleListClass|ctx.Bind err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
-			"msg": "Param Invalid",
-		})
-	}
+func (cls *ClassService) HandleListTeacherClass(ctx echo.Context) error {
 	uid := ctx.Get("uid")
-	list, err := classLists.QueryClassList(ctx.Request().Context(), uid.(string), cls.redis)
+	list, err := cls.classServ.QueryClassList(ctx.Request().Context(), uid.(string))
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleListClass|QueryClassList Error|%v", err)
+		logx.GetLogger("study").Errorf("HandleListTeacherClass|QueryClassList Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Query Class List Error",
 		})
@@ -104,7 +96,7 @@ func (cls *ClassService) HandleListClass(ctx echo.Context) error {
 }
 
 func (cls *ClassService) HandleUpdateClass(ctx echo.Context) error {
-	var class core.Class
+	var class *core.Class
 	decoder := json.NewDecoder(ctx.Request().Body)
 	err := decoder.Decode(&class)
 	if err != nil {
@@ -121,220 +113,77 @@ func (cls *ClassService) HandleUpdateClass(ctx echo.Context) error {
 		})
 	}
 
-	class.StudyClassList = nil
-	class.ChapterList = nil
-
-	marshal, err := json.Marshal(&class)
+	err = cls.classServ.UpdateClass(ctx.Request().Context(), class)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleUpdateClass|Marshal Class Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "system internal",
-		})
+		logx.GetLogger("study").Errorf("HandleUpdateClass|UpdateClass Error|%v", err)
+		return err
 	}
-
-	err = cls.redis.Set(ctx.Request().Context(), core.BuildClassInfo(*class.Cid), marshal, 0).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleUpdateClass|Marshal Class Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "system internal",
-		})
-	}
+	logx.GetLogger("study").Infof("HandleUpdateClass|UpdateClass Success|%s", common.ToStringWithoutError(class))
 
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, class)
 }
 
-func (cls *ClassService) HandleQueryDeletedClassList(ctx echo.Context) error {
-	decoder := json.NewDecoder(ctx.Request().Body)
-	var classLists core.ClassList
-	if err := decoder.Decode(&classLists); err != nil {
-		logx.GetLogger("study").Errorf("HandleListClass|ctx.Bind err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
-			"msg": "Param Invalid",
-		})
-	}
-
+func (cls *ClassService) HandleQueryTeacherDeletedClassList(ctx echo.Context) error {
 	uid := ctx.Get("uid").(string)
 
-	err := classLists.QueryDeletedClassList(ctx.Request().Context(), cls.redis, uid)
+	list, err := cls.classServ.QueryTeacherDeletedClassList(ctx.Request().Context(), uid)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleListClass|QueryClassList Error|%v", err)
+		logx.GetLogger("study").Errorf("HandleListTeacherClass|QueryClassList Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Query Class List Error",
 		})
 	}
 
-	logx.GetLogger("study").Infof("HandleListClass|QueryClassList Success|%s", common.ToStringWithoutError(classLists))
+	logx.GetLogger("study").Infof("HandleListTeacherClass|QueryClassList Success|%s", common.ToStringWithoutError(list))
 
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, classLists)
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
 
-// 上传完课程信息之后
-// 把课程移入垃圾箱
 func (cls *ClassService) HandlePutClassInTrash(ctx echo.Context) error {
 	cid := ctx.Param("cid")
 	if len(cid) <= 0 {
+		logx.GetLogger("study").Errorf("HandlePutClassInTrash|cid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Param Invalid",
 		})
 	}
 
-	var class core.Class
-	// 把课程的删除为修改为delete
-	result, err := cls.redis.Get(ctx.Request().Context(), core.BuildClassInfo(cid)).Result()
+	err := cls.classServ.MoveClassToTrash(ctx.Request().Context(), cid)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleDeleteClass|Get Class Info Error|%v", err)
+		logx.GetLogger("study").Errorf("HandlePutClassInTrash|PutClassInTrash Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Get Class Info Error",
-		})
-	}
-	err = json.Unmarshal([]byte(result), &class)
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleDeleteClass|Unmarshal Class Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Unmarshal Class Error",
+			"msg": "Put Class In Trash Error",
 		})
 	}
 
-	class.WithDeleted(true)
-	marshal, _ := json.Marshal(&class)
-	err = cls.redis.Set(ctx.Request().Context(), core.BuildClassInfo(*class.Cid), marshal, 0).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleDeleteClass|Update Class Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Update Class Error",
-		})
-	}
-
-	// 从classlist中移除
-	err = cls.redis.ZRem(ctx.Request().Context(), core.RedisAllClassList, class.Cid).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleDeleteClass|Remove Class From ClassList Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Remove Class From ClassList Error",
-		})
-	}
-
-	// 添加到课程删除列表
-	err = cls.redis.ZAdd(ctx.Request().Context(), core.BuildClassDeletedList(), redis.Z{
-		Member: class.Cid,
-		Score:  float64(time.Now().Unix()),
-	}).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleDeleteClass|Add Class To Teacher Deleted List Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Add Class To Teacher Deleted List Error",
-		})
-	}
-
-	// 从老师的正常课程列表清除
-	teacherKey := core.BuildTeacherClassList(*class.Teacher)
-	err = cls.redis.ZRem(ctx.Request().Context(), teacherKey, class.Cid).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleDeleteClass|Remove Class From Teacher List Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Remove Class From Teacher List Error",
-		})
-	}
-
-	// 从加入老师的删除列表中
-	teacherKey = core.BuildTeacherClassDeletedList(*class.Teacher)
-	err = cls.redis.ZAdd(ctx.Request().Context(), teacherKey, redis.Z{
-		Member: class.Cid,
-		Score:  float64(time.Now().Unix()),
-	}).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleDeleteClass|Add Class To Teacher Deleted List Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Add Class To Teacher Deleted List Error",
-		})
-	}
-
-	logx.GetLogger("study").Infof("HandleDeleteClass|HandleDeleteClass Success|%s", common.ToStringWithoutError(class))
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, class)
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"msg": "Put Class In Trash Success",
+		"cid": cid,
+	})
 }
 
-// 恢复课程
 func (cls *ClassService) HandleRecoverClass(ctx echo.Context) error {
 	cid := ctx.Param("cid")
 	if len(cid) <= 0 {
 		logx.GetLogger("study").Errorf("HandleRecoverClass|cid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
-			"msg": "cid is empty",
+			"msg": "Param Invalid",
 		})
 	}
 
-	var class core.Class
-	result, err := cls.redis.Get(ctx.Request().Context(), core.BuildClassInfo(cid)).Result()
+	err := cls.classServ.RecoverClass(ctx.Request().Context(), cid)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleRecoverClass|Get Class Info Error|%v", err)
+		logx.GetLogger("study").Errorf("HandleRecoverClass|RecoverClass Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Get Class Info Error",
+			"msg": "Recover Class Error",
 		})
 	}
 
-	err = json.Unmarshal([]byte(result), &class)
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleRecoverClass|Unmarshal Class Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Unmarshal Class Error",
-		})
-	}
-
-	class.WithDeleted(false)
-
-	marshal, _ := json.Marshal(&class)
-	err = cls.redis.Set(ctx.Request().Context(), core.BuildClassInfo(cid), marshal, 0).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleRecoverClass|Update Class Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Update Class Error",
-		})
-	}
-
-	// 把课程添加到classlist中
-	err = cls.redis.ZAdd(ctx.Request().Context(), core.BuildAllClassList(), redis.Z{
-		Score:  float64(*class.CreateTs),
-		Member: cid,
-	}).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleRecoverClass|Add Class To ClassList Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Add Class To ClassList Error",
-		})
-	}
-
-	// 从老师的删除列表中移除，添加到正常列表中
-	teacherKey := core.BuildTeacherClassDeletedList(*class.Teacher)
-	err = cls.redis.ZRem(ctx.Request().Context(), teacherKey, cid).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleRecoverClass|Remove Class From Teacher Deleted List Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Remove Class From Teacher Deleted List Error",
-		})
-	}
-
-	// 从课程的删除列表中移除
-	err = cls.redis.ZRem(ctx.Request().Context(), core.BuildClassDeletedList(), cid).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleRecoverClass|Remove Class From Class Deleted List Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Remove Class From Class Deleted List Error",
-		})
-	}
-
-	teacherKey = core.BuildTeacherClassList(*class.Teacher)
-	err = cls.redis.ZAdd(ctx.Request().Context(), teacherKey, redis.Z{
-		Score:  float64(*class.CreateTs),
-		Member: cid,
-	}).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleRecoverClass|Add Class To Teacher List Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Add Class To Teacher List Error",
-		})
-	}
-
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, class)
+	logx.GetLogger("study").Infof("HandleRecoverClass|RecoverClass Success|%s", cid)
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"msg": "Recover Class Success",
+		"cid": cid,
+	})
 }
 
 func (cls *ClassService) HandleDeleteClass(ctx echo.Context) error {
@@ -371,7 +220,6 @@ func (cls *ClassService) HandleQueryClassInfo(ctx echo.Context) error {
 		logx.GetLogger("study").Errorf("HandleQueryClassInfo|Query Class Info Error|%v", err)
 		return err
 	}
-
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
 
