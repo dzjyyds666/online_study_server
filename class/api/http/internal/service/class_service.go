@@ -9,19 +9,20 @@ import (
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
 	"github.com/redis/go-redis/v9"
-	"go.mongodb.org/mongo-driver/mongo"
 	"time"
 )
 
-type ClassServer struct {
-	redis *redis.Client
-	mongo *mongo.Database
+type ClassService struct {
+	redis     *redis.Client
+	classServ *core.ClassServer
+	ctx       context.Context
 }
 
-func NewClassServer(ctx context.Context, dsClient *redis.Client) (*ClassServer, error) {
-
-	return &ClassServer{
-		redis: dsClient,
+func NewClassServer(ctx context.Context, dsClient *redis.Client) (*ClassService, error) {
+	return &ClassService{
+		classServ: core.NewClassServer(ctx, dsClient),
+		ctx:       ctx,
+		redis:     dsClient,
 	}, nil
 }
 
@@ -32,8 +33,8 @@ func NewClassServer(ctx context.Context, dsClient *redis.Client) (*ClassServer, 
 		ClassType  string `json:"class_type" gorm:"class_type"`
 		ClassDesc  string `json:"class_desc" gorm:"class_desc"`
 */
-func (cls *ClassServer) HandleCreateClass(ctx echo.Context) error {
-	var class core.Class
+func (cls *ClassService) HandleCreateClass(ctx echo.Context) error {
+	var class *core.Class
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&class); err != nil {
 		logx.GetLogger("study").Errorf("HandleCreateClass|ctx.Bind err:%v", err)
@@ -43,7 +44,6 @@ func (cls *ClassServer) HandleCreateClass(ctx echo.Context) error {
 	}
 
 	tuid := ctx.Get("uid")
-
 	//生成随机的classId
 	cid := core.NewClassId(8)
 	class.WithCid(cid).
@@ -52,7 +52,7 @@ func (cls *ClassServer) HandleCreateClass(ctx echo.Context) error {
 		WithArchive(false).
 		WithTeacher(tuid.(string))
 
-	err := class.CreateClass(ctx.Request().Context(), cls.redis)
+	err := cls.classServ.CreateClass(ctx.Request().Context(), class)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleCreateClass|CreateClass Error|%v", err)
 		return err
@@ -61,7 +61,7 @@ func (cls *ClassServer) HandleCreateClass(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, class)
 }
 
-func (cls *ClassServer) HandleCopyClass(ctx echo.Context) error {
+func (cls *ClassService) HandleCopyClass(ctx echo.Context) error {
 	var class core.Class
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&class); err != nil {
@@ -83,7 +83,7 @@ func (cls *ClassServer) HandleCopyClass(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
 
-func (cls *ClassServer) HandleListClass(ctx echo.Context) error {
+func (cls *ClassService) HandleListClass(ctx echo.Context) error {
 	var classLists core.ClassList
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&classLists); err != nil {
@@ -103,7 +103,7 @@ func (cls *ClassServer) HandleListClass(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
 
-func (cls *ClassServer) HandleUpdateClass(ctx echo.Context) error {
+func (cls *ClassService) HandleUpdateClass(ctx echo.Context) error {
 	var class core.Class
 	decoder := json.NewDecoder(ctx.Request().Body)
 	err := decoder.Decode(&class)
@@ -143,7 +143,7 @@ func (cls *ClassServer) HandleUpdateClass(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, class)
 }
 
-func (cls *ClassServer) HandleQueryDeletedClassList(ctx echo.Context) error {
+func (cls *ClassService) HandleQueryDeletedClassList(ctx echo.Context) error {
 	decoder := json.NewDecoder(ctx.Request().Body)
 	var classLists core.ClassList
 	if err := decoder.Decode(&classLists); err != nil {
@@ -170,7 +170,7 @@ func (cls *ClassServer) HandleQueryDeletedClassList(ctx echo.Context) error {
 
 // 上传完课程信息之后
 // 把课程移入垃圾箱
-func (cls *ClassServer) HandlePutClassInTrash(ctx echo.Context) error {
+func (cls *ClassService) HandlePutClassInTrash(ctx echo.Context) error {
 	cid := ctx.Param("cid")
 	if len(cid) <= 0 {
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
@@ -254,7 +254,7 @@ func (cls *ClassServer) HandlePutClassInTrash(ctx echo.Context) error {
 }
 
 // 恢复课程
-func (cls *ClassServer) HandleRecoverClass(ctx echo.Context) error {
+func (cls *ClassService) HandleRecoverClass(ctx echo.Context) error {
 	cid := ctx.Param("cid")
 	if len(cid) <= 0 {
 		logx.GetLogger("study").Errorf("HandleRecoverClass|cid is empty")
@@ -337,7 +337,7 @@ func (cls *ClassServer) HandleRecoverClass(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, class)
 }
 
-func (cls *ClassServer) HandleDeleteClass(ctx echo.Context) error {
+func (cls *ClassService) HandleDeleteClass(ctx echo.Context) error {
 	cid := ctx.Param("cid")
 	if len(cid) <= 0 {
 		logx.GetLogger("study").Errorf("HandleDeleteClass|cid is empty")
@@ -360,7 +360,7 @@ func (cls *ClassServer) HandleDeleteClass(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
 
-func (cls *ClassServer) HandleQueryClassInfo(ctx echo.Context) error {
+func (cls *ClassService) HandleQueryClassInfo(ctx echo.Context) error {
 	cid := ctx.Param("cid")
 
 	class := core.Class{}
@@ -375,8 +375,8 @@ func (cls *ClassServer) HandleQueryClassInfo(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
 
-func (cls *ClassServer) HandleCreateChapter(ctx echo.Context) error {
-	var chapter core.Chapter
+func (cls *ClassService) HandleCreateChapter(ctx echo.Context) error {
+	var chapter *core.Chapter
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&chapter); err != nil {
 		logx.GetLogger("study").Errorf("HandleListUsers|ctx.Bind err:%v", err)
@@ -389,7 +389,7 @@ func (cls *ClassServer) HandleCreateChapter(ctx echo.Context) error {
 	chid := core.NewChapterId(8)
 	chapter.Chid = &chid
 
-	err := chapter.CreateChapter(ctx.Request().Context(), *chapter.SourceId, cls.redis)
+	err := cls.classServ.CreateChapter(ctx.Request().Context(), chapter)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleCreateChapter|Create Chapter Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -400,17 +400,17 @@ func (cls *ClassServer) HandleCreateChapter(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, chapter)
 }
 
-func (cls *ClassServer) HandleRenameChapter(ctx echo.Context) error {
-	var chapter core.Chapter
+func (cls *ClassService) HandleRenameChapter(ctx echo.Context) error {
+	var chapter *core.Chapter
 	decoder := json.NewDecoder(ctx.Request().Body)
-	if err := decoder.Decode(&chapter); err != nil {
+	if err := decoder.Decode(&chapter); err != nil || chapter.ChapterName == nil {
 		logx.GetLogger("study").Errorf("HandleRenameChapter|ctx.Bind err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
 	}
 
-	info, err := chapter.RanameChapter(ctx.Request().Context(), cls.redis)
+	err := cls.classServ.UpdateChapter(ctx.Request().Context(), chapter)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleRenameChapter|Rename Chapter Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -418,41 +418,40 @@ func (cls *ClassServer) HandleRenameChapter(ctx echo.Context) error {
 		})
 	}
 
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, nil)
 }
 
-func (cls *ClassServer) HandleDeleteChapter(ctx echo.Context) error {
-	chid := ctx.Param("chid")
-	if len(chid) <= 0 {
-		logx.GetLogger("study").Errorf("HandleDeleteChapter|chid is empty")
+func (cls *ClassService) HandleDeleteChapter(ctx echo.Context) error {
+	var chapter *core.Chapter
+	decoder := json.NewDecoder(ctx.Request().Body)
+	if err := decoder.Decode(&chapter); err != nil {
+		logx.GetLogger("study").Errorf("HandleDeleteChapter|ctx.Bind err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
 	}
 
-	chapter := core.Chapter{Chid: &chid}
-	err := chapter.DeleteChapter(ctx.Request().Context(), cls.redis)
+	err := cls.classServ.DeleteChapter(ctx.Request().Context(), chapter)
 	if nil != err {
 		logx.GetLogger("study").Errorf("HandleDeleteChapter|Delete Chapter Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Delete Chapter Error",
 		})
 	}
-	logx.GetLogger("study").Infof("HandleDeleteChapter|Delete Chapter Success|%s", common.ToStringWithoutError(chapter))
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, chapter)
+	logx.GetLogger("study").Infof("HandleDeleteChapter|Delete Chapter Success|%s", *chapter.Chid)
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, nil)
 }
 
-func (cls *ClassServer) HandleQueryClassChapterlist(ctx echo.Context) error {
-	decoder := json.NewDecoder(ctx.Request().Body)
-	var chapterList core.ChapterList
-	if err := decoder.Decode(&chapterList); err != nil {
-		logx.GetLogger("study").Errorf("HandlerQueryClassChapterlist|Decode err:%v", err)
+func (cls *ClassService) HandleQueryClassChapterlist(ctx echo.Context) error {
+	cid := ctx.Param("cid")
+	if len(cid) <= 0 {
+		logx.GetLogger("study").Errorf("HandlerQueryClassChapterlist|cid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
-			"msg": "Params Invalid",
+			"msg": "cid is empty",
 		})
 	}
 
-	list, err := chapterList.QueryChapterList(ctx.Request().Context(), cls.redis)
+	list, err := cls.classServ.QueryChapterList(ctx.Request().Context(), cid)
 	if nil != err {
 		logx.GetLogger("study").Errorf("HandlerQueryClassChapterlist|QueryChapterList|Err|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -463,9 +462,9 @@ func (cls *ClassServer) HandleQueryClassChapterlist(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
 
-func (cls *ClassServer) HandleUploadResource(ctx echo.Context) error {
+func (cls *ClassService) HandleUploadResource(ctx echo.Context) error {
 
-	var resource core.Resource
+	var resource *core.Resource
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&resource); err != nil {
 		logx.GetLogger("study").Errorf("HandleUploadResource|Decode err:%v", err)
@@ -476,7 +475,7 @@ func (cls *ClassServer) HandleUploadResource(ctx echo.Context) error {
 
 	resource.WithPublished(false).WithDownloadable(false)
 
-	err := resource.CreateUploadResource(ctx.Request().Context(), cls.redis)
+	err := cls.classServ.CreateResource(ctx.Request().Context(), resource)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleUploadResource|CreateUploadResource Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -489,8 +488,8 @@ func (cls *ClassServer) HandleUploadResource(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, resource)
 }
 
-func (cls *ClassServer) HandleUpdatePublish(ctx echo.Context) error {
-	var resource core.Resource
+func (cls *ClassService) HandleUpdateResource(ctx echo.Context) error {
+	var resource *core.Resource
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&resource); err != nil {
 		logx.GetLogger("study").Errorf("HandleUploadResource|Decode err:%v", err)
@@ -498,77 +497,41 @@ func (cls *ClassServer) HandleUpdatePublish(ctx echo.Context) error {
 			"msg": "Params Invalid",
 		})
 	}
-	info, err := resource.UpdatePublishResource(ctx.Request().Context(), cls.redis)
+	err := cls.classServ.UpdateResource(ctx.Request().Context(), resource)
 	if err != nil {
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "UpdatePublishResource Error",
 		})
 	}
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
+
+	logx.GetLogger("study").Infof("HandleUpdateResource|UpdateResource|Succ|%s", common.ToStringWithoutError(resource))
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, nil)
 }
 
-func (cls *ClassServer) HandleUpdateDownloadable(ctx echo.Context) error {
-	var resource core.Resource
+func (cls *ClassService) HandleDeleteResource(ctx echo.Context) error {
+	var resource *core.Resource
 	decoder := json.NewDecoder(ctx.Request().Body)
-	if err := decoder.Decode(&resource); nil != err {
-		logx.GetLogger("study").Errorf("HandleUploadResource|Decode err:%v", err)
+	if err := decoder.Decode(resource); err != nil {
+		logx.GetLogger("study").Errorf("HandleDeleteResource|Decode err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
 	}
 
-	info, err := resource.UpdateDownloadableResource(ctx.Request().Context(), cls.redis)
-	if nil != err {
-		logx.GetLogger("study").Errorf("HandleUploadResource|Decode err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "update downloadable status error",
-		})
-	}
-
-	logx.GetLogger("study").Infof("HandleUploadResource|UpdateDownloadableResource|Succ|%s", common.ToStringWithoutError(resource))
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
-}
-
-func (cls *ClassServer) HandleDeleteResource(ctx echo.Context) error {
-	fid := ctx.Param("fid")
-	if len(fid) < 0 {
-		logx.GetLogger("study").Errorf("HandleDeleteResource|fid is empty")
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
-			"msg": "Params Invalid",
-		})
-	}
-
-	resource := core.Resource{Fid: fid}
-	info, err := resource.QueryResourceInfo(ctx.Request().Context(), cls.redis)
-	if nil != err {
-		logx.GetLogger("study").Infof("HandleDeleteResource|QueryResourceInfo Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "QueryResourceInfo Error",
-		})
-	}
-
-	// 删除章节资源列表中的fid
-	err = info.DeleteFormChapterList(ctx.Request().Context(), cls.redis)
-	if nil != err {
-		logx.GetLogger("study").Errorf("HandleDeleteResource|DeleteFormChapterList Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "DeleteFormChapterList Error",
-		})
-	}
-
-	// 删除资源的信息
-	err = info.DeleteResource(ctx.Request().Context(), cls.redis)
-	if nil != err {
+	err := cls.classServ.DeleteResource(ctx.Request().Context(), *resource.Fid, *resource.Chid)
+	if err != nil {
 		logx.GetLogger("study").Errorf("HandleDeleteResource|DeleteResource Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "DeleteResource Error",
 		})
 	}
 
+	logx.GetLogger("study").Infof("HandleDeleteResource|DeleteResource|Succ|%s", *resource.Fid)
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, resource)
 }
 
-func (cls *ClassServer) HandleCreateStudyClass(ctx echo.Context) error {
+func (cls *ClassService) HandleCreateStudyClass(ctx echo.Context) error {
 	var studyClass core.StudyClass
 	if err := ctx.Bind(&studyClass); err != nil {
 		logx.GetLogger("study").Errorf("HandleCreateStudyClass|ctx.Bind err:%v", err)
@@ -590,7 +553,7 @@ func (cls *ClassServer) HandleCreateStudyClass(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, studyClass)
 }
 
-func (cls *ClassServer) HandleQueryStudyClass(ctx echo.Context) error {
+func (cls *ClassService) HandleQueryStudyClass(ctx echo.Context) error {
 	var studyClassList core.StudyClassList
 	if err := ctx.Bind(&studyClassList); err != nil {
 		logx.GetLogger("study").Errorf("HandleQueryStudyClass|ctx.Bind err:%v", err)
@@ -610,7 +573,7 @@ func (cls *ClassServer) HandleQueryStudyClass(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
 
-func (cls *ClassServer) HandleDeleteStudyClass(ctx echo.Context) error {
+func (cls *ClassService) HandleDeleteStudyClass(ctx echo.Context) error {
 	var studyClass core.StudyClass
 	if err := ctx.Bind(&studyClass); err != nil {
 		logx.GetLogger("study").Errorf("HandleDeleteStudyClass|ctx.Bind err:%v", err)
@@ -629,7 +592,7 @@ func (cls *ClassServer) HandleDeleteStudyClass(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, studyClass)
 }
 
-func (cls *ClassServer) HandleQueryResourceInfo(ctx echo.Context) error {
+func (cls *ClassService) HandleQueryResourceInfo(ctx echo.Context) error {
 	var resourceList core.ResourceList
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&resourceList); nil != err {
@@ -650,7 +613,7 @@ func (cls *ClassServer) HandleQueryResourceInfo(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
 
-func (cls *ClassServer) HandleImportStudyClass(ctx echo.Context) error {
+func (cls *ClassService) HandleImportStudyClass(ctx echo.Context) error {
 
 	cid := ctx.Param("cid")
 	file, err := ctx.FormFile("file")

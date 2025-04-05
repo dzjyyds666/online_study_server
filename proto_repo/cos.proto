@@ -15,3 +15,12 @@ message DeleteObjectRequest {
 message DeleteObjectResponse {
   bool success = 1;
 }
+
+
+message ResourceInfo{
+  string fid = 1;
+  string fileName = 2;
+  string fileType = 3;
+  string fileSize = 4;
+  string md5 = 5;
+}

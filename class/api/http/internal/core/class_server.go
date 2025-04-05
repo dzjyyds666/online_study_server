@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
+	"time"
 )
 
 type ClassServer struct {
@@ -116,6 +117,81 @@ func (cls *ClassServer) QueryClassInfo(ctx context.Context, cid string) (*Class,
 	}
 
 	return class, nil
+}
+
+func (cls *ClassServer) CreateChapter(ctx context.Context, info *Chapter) error {
+
+	// 把章节信息保存到课程章节下面
+	err := cls.classDB.ZAdd(ctx, BuildClassChapterList(*info.SourceId), redis.Z{
+		Member: info.Chid,
+		Score:  float64(time.Now().Unix()),
+	}).Err()
+
+	if err != nil {
+		logx.GetLogger("study").Errorf("ChapterServer|CreateChapter|AddChapterToClassError|%v", err)
+		return err
+	}
+
+	// 创建章节
+	err = cls.chapterServer.CreateChapter(ctx, info)
+	if err != nil {
+		logx.GetLogger("study").Errorf("CreateChapter|Create Chapter Error|%v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (cls *ClassServer) UpdateChapter(ctx context.Context, info *Chapter) error {
+	return cls.chapterServer.UpdateChapter(ctx, info)
+}
+
+func (cls *ClassServer) DeleteChapter(ctx context.Context, chapter *Chapter) error {
+	// 先从课程章节列表中删除
+	err := cls.classDB.ZRem(ctx, BuildClassChapterList(*chapter.SourceId), chapter.Chid).Err()
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|DeleteChapter|DeleteChapterFromClassError|%v", err)
+		return err
+	}
+
+	err = cls.chapterServer.DeleteChapter(ctx, *chapter.Chid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|DeleteChapter|DeleteChapterError|%v", err)
+		return err
+	}
+	return nil
+}
+
+func (cls *ClassServer) QueryChapterList(ctx context.Context, cid string) ([]*Chapter, error) {
+	chids, err := cls.classDB.ZRange(ctx, BuildClassChapterList(cid), 0, -1).Result()
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|QueryChapterList|QueryChapterListError|%v", err)
+		return nil, err
+	}
+
+	list := make([]*Chapter, len(chids)-1)
+
+	for _, chid := range chids {
+		info, err := cls.chapterServer.QueryChapterInfo(ctx, chid)
+		if err != nil {
+			logx.GetLogger("study").Errorf("ClassServer|QueryChapterList|QueryChapterInfoError|%v", err)
+			return nil, err
+		}
+		list = append(list, info)
+	}
+	return list, nil
+}
+
+func (cls *ClassServer) CreateResource(ctx context.Context, resource *Resource) error {
+	return cls.chapterServer.CreateResource(ctx, resource)
+}
+
+func (cls *ClassServer) UpdateResource(ctx context.Context, resource *Resource) error {
+	return cls.chapterServer.UpdateResource(ctx, resource)
+}
+
+func (cls *ClassServer) DeleteResource(ctx context.Context, fid string, chid string) error {
+	return cls.chapterServer.DeleteResource(ctx, fid, chid)
 }
 
 func (cls *ClassServer) updateClassInfo(oldClass, newClass *Class) *Class {

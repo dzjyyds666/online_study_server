@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func RegisterRouter(e *echo.Echo, cls *ClassServer) {
+func RegisterRouter(e *echo.Echo, cls *ClassService) {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
 
