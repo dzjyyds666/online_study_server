@@ -2,6 +2,8 @@ package core
 
 import (
 	"class/api/lua"
+	"class/api/rpc/client"
+	"common/proto"
 	"context"
 	"encoding/json"
 	"errors"
@@ -394,7 +396,6 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 			logx.GetLogger("study").Errorf("ClassServer|CopyClass|AddChapterToClassError|%v", err)
 			break
 		}
-
 		// 复制资源
 		for _, resource := range chapter.ResourceList {
 			rid := NewFid()
@@ -408,6 +409,15 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 				logx.GetLogger("study").Errorf("ClassServer|CopyClass|CreateResourceError|%v", err)
 				break
 			}
+			cos := client.GetCosRpcClient(ctx)
+			_, err = cos.CopyObject(ctx, &proto.CopyObjectRequest{
+				SrcFid: *resource.Fid,
+				DstFid: rid,
+			})
+			if err != nil {
+				logx.GetLogger("study").Errorf("ClassServer|CopyClass|CopyObjectError|%v", err)
+				return nil, err
+			}
 
 			// 把资源添加到章节列表下
 			err = cls.classDB.ZAdd(ctx, BuildChapterResourceList(newchid), redis.Z{
@@ -419,8 +429,6 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 				logx.GetLogger("study").Errorf("ClassServer|CopyClass|AddResourceToChapterError|%v", err)
 				break
 			}
-
-			// TODO rpc 调用cos复制文件信息
 		}
 	}
 }

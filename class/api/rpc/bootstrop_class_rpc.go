@@ -1,15 +1,16 @@
 package rpc
 
 import (
+	"class/api/rpc/client"
 	"context"
 	"github.com/redis/go-redis/v9"
 )
 
-func StratClassGprcService(ctx context.Context, ds *redis.Client) error {
+func StratClassRpcService(ctx context.Context, ds *redis.Client) error {
 	//
 	//listen, err := net.Listen("tcp", fmt.Sprintf("%s:%d", *config.GloableConfig.Host, *config.GloableConfig.RpcPort))
 	//if err!=nil{
-	//	logx.GetLogger("study").Errorf("StratClassGprcService|Listen Error|%v", err)
+	//	logx.GetLogger("study").Errorf("StratClassRpcService|Listen Error|%v", err)
 	//	return err
 	//}
 	//
@@ -18,4 +19,8 @@ func StratClassGprcService(ctx context.Context, ds *redis.Client) error {
 	//return errors.New("class rpc service stop")
 
 	return nil
+}
+
+func StopClassRpcService() {
+	client.CloseCosRpcClient()
 }

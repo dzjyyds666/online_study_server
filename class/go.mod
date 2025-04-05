@@ -3,6 +3,7 @@ module class
 go 1.23.3
 
 require (
+	common v0.0.0
 	github.com/dzjyyds666/opensource/common v0.0.0-20250310151156-54599e325e0a
 	github.com/dzjyyds666/opensource/httpx v0.0.0-20250310151156-54599e325e0a
 	github.com/dzjyyds666/opensource/logx v0.0.0-20250305150926-66661c9f8725
@@ -13,12 +14,13 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.19
 	golang.org/x/net v0.37.0
 	golang.org/x/sync v0.12.0
-	google.golang.org/grpc v1.64.0
-	google.golang.org/protobuf v1.33.0
+	google.golang.org/grpc v1.71.1
 )
 
+replace common => ../common
+
 require (
-	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
@@ -41,6 +43,7 @@ require (
 	golang.org/x/image v0.23.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240318140521-94a12d6c2237 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250106144421-5f5ef82da422 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
+	google.golang.org/protobuf v1.36.6 // indirect
 )

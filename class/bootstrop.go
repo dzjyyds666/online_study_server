@@ -48,9 +48,10 @@ func main() {
 		return nil
 	})
 	g.Go(func() error {
-		err := rpc.StratClassGprcService(ctx, dsClient)
+		err := rpc.StratClassRpcService(ctx, dsClient)
 		if nil != err {
 			logx.GetLogger("study").Errorf("main|StartRpcServer|err:%v", err)
+			rpc.StopClassRpcService()
 			cancel()
 			return err
 		}

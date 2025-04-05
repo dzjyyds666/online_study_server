@@ -13,7 +13,6 @@ import (
 )
 
 type ClassService struct {
-	redis     *redis.Client
 	classServ *core2.ClassServer
 	ctx       context.Context
 }
@@ -22,7 +21,6 @@ func NewClassServer(ctx context.Context, dsClient *redis.Client) (*ClassService,
 	return &ClassService{
 		classServ: core2.NewClassServer(ctx, dsClient),
 		ctx:       ctx,
-		redis:     dsClient,
 	}, nil
 }
 
@@ -363,25 +361,4 @@ func (cls *ClassService) HandleDeleteResource(ctx echo.Context) error {
 	}
 	logx.GetLogger("study").Infof("HandleDeleteResource|DeleteResource|Succ|%s", *resource.Fid)
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, resource)
-}
-
-func (cls *ClassService) HandleQueryResourceInfo(ctx echo.Context) error {
-	var resourceList core2.ResourceList
-	decoder := json.NewDecoder(ctx.Request().Body)
-	if err := decoder.Decode(&resourceList); nil != err {
-		logx.GetLogger("study").Errorf("HandleQueryResourceInfo|Decode err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
-			"msg": "Params Invalid",
-		})
-	}
-
-	list, err := resourceList.QueryResourceList(ctx.Request().Context(), cls.redis)
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleQueryResourceInfo|Query ResourceList Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Query ResourceList Error",
-		})
-	}
-
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
