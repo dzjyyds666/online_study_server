@@ -16,3 +16,12 @@ message AddStudentToClassRequest{
 message AddStudentToClassResponse{
   bool success = 1;
 }
+
+message Student{
+  string sid = 1;
+  string name = 2;
+  string college = 3;
+  string major = 4;
+  string avatar = 5;
+  bool deleted = 6;
+}

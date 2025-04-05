@@ -2,8 +2,8 @@ package main
 
 import (
 	"class/api/config"
-	"class/api/grpc"
 	"class/api/http"
+	"class/api/rpc"
 	"context"
 	"flag"
 	"github.com/dzjyyds666/opensource/logx"
@@ -48,7 +48,7 @@ func main() {
 		return nil
 	})
 	g.Go(func() error {
-		err := grpc.StratClassGprcService(ctx, dsClient)
+		err := rpc.StratClassGprcService(ctx, dsClient)
 		if nil != err {
 			logx.GetLogger("study").Errorf("main|StartRpcServer|err:%v", err)
 			cancel()

@@ -2,7 +2,7 @@ package http
 
 import (
 	"class/api/config"
-	"class/api/http/internal/service"
+	"class/api/http/service"
 	"context"
 	"fmt"
 	"github.com/dzjyyds666/opensource/logx"

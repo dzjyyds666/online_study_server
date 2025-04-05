@@ -3,7 +3,7 @@ package http
 import (
 	"context"
 	"cos/api/config"
-	server2 "cos/api/http/internal/server"
+	"cos/api/http/service"
 	"errors"
 	"fmt"
 	"github.com/labstack/echo"
@@ -12,13 +12,13 @@ import (
 func StartCosHttpServer(ctx context.Context) error {
 	//var configPath = flag.String("c", "E:\\code\\Go\\online_study_server01\\cos\\gateway\\config.json\\config.json.json", "config.json file path")
 
-	cosServer, err := server2.NewCosServer()
+	cosServer, err := service.NewCosServer()
 	if err != nil {
 		panic(err)
 	}
 	e := echo.New()
 
-	server2.RegisterRouter(e, cosServer)
+	service.RegisterRouter(e, cosServer)
 
 	e.Logger.Fatal(e.Start(fmt.Sprint(":", *config.GloableConfig.Port)))
 

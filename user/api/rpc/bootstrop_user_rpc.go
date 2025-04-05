@@ -10,8 +10,8 @@ import (
 	"gorm.io/gorm"
 	"net"
 	"user/api/config"
-	"user/api/rpc/internal/server"
-	pb "user/api/rpc/proto"
+	pb "user/api/proto"
+	"user/api/rpc/service"
 )
 
 func StratUserRpcServer(ctx context.Context, redis *redis.Client, mysql *gorm.DB) error {
@@ -23,7 +23,7 @@ func StratUserRpcServer(ctx context.Context, redis *redis.Client, mysql *gorm.DB
 
 	userServer := grpc.NewServer()
 
-	pb.RegisterUserServer(userServer, &userRpcService.UserServer{
+	pb.RegisterUserServer(userServer, &userRpcService.userRpcService{
 		Ds: redis,
 		Ms: mysql,
 	})
@@ -33,5 +33,5 @@ func StratUserRpcServer(ctx context.Context, redis *redis.Client, mysql *gorm.DB
 		return err
 	}
 
-	return errors.New("grpc service stop")
+	return errors.New("rpc service stop")
 }

@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"cos/api/config"
-	"cos/api/grpc"
 	"cos/api/http"
+	"cos/api/rpc"
 	"flag"
 	"github.com/dzjyyds666/opensource/logx"
 	"golang.org/x/sync/errgroup"
@@ -41,7 +41,7 @@ func main() {
 	})
 
 	g.Go(func() error {
-		err := grpc.StartCosRpcServer(ctx)
+		err := rpc.StartCosRpcServer(ctx)
 		if err != nil {
 			logx.GetLogger("study").Errorf("main|StartRpcServer|err:%v", err)
 			cancel()
