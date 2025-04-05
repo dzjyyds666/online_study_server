@@ -10,7 +10,7 @@ const (
 	RedisTeacherClassDeleteKey = "class:teacher:%s:class:deleted:list"
 
 	RedisClassInfoKey       = "class:%s:info"             // 课程信息key
-	RedsiSourceChaptersKey  = "class:%s:chapters:list"    // 课程对应章节列表
+	RedisSourceChaptersKey  = "class:%s:chapters:list"    // 课程对应章节列表
 	RedisClassStudyClassKey = "class:%s:study_class:list" // 课程对应教学班列表
 
 	RedisStudyClassInfoKey        = "class:study_class:%s:info" // 教学班信息key
@@ -40,8 +40,8 @@ func BuildClassInfo(cid string) string {
 	return fmt.Sprintf(RedisClassInfoKey, cid)
 }
 
-func BuildSourceChapterList(cid string) string {
-	return fmt.Sprintf(RedsiSourceChaptersKey, cid)
+func BuildClassChapterList(cid string) string {
+	return fmt.Sprintf(RedisSourceChaptersKey, cid)
 }
 
 func BuildChapterInfo(chid string) string {

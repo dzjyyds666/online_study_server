@@ -41,6 +41,11 @@ func (ch *Chapter) WithSourceId(id string) *Chapter {
 	return ch
 }
 
+func (ch *Chapter) Marshal() string {
+	marshal, _ := json.Marshal(ch)
+	return string(marshal)
+}
+
 func (ch *Chapter) RanameChapter(ctx context.Context, ds *redis.Client) (*Chapter, error) {
 	chapterKey := BuildChapterInfo(*ch.Chid)
 	result, err := ds.Get(ctx, chapterKey).Result()
@@ -76,7 +81,7 @@ func (ci *Chapter) CreateChapter(ctx context.Context, cid string, ds *redis.Clie
 	// 从reids中获取到class的indexinfo
 	chapterStr, _ := json.Marshal(ci)
 
-	classKey := BuildSourceChapterList(cid)
+	classKey := BuildClassChapterList(cid)
 	_, err := ds.ZAdd(ctx, classKey, redis.Z{
 		Member: ci.Chid,
 		Score:  float64(time.Now().Unix()),
@@ -113,7 +118,7 @@ func (ci *Chapter) DeleteChapter(ctx context.Context, ds *redis.Client) error {
 	}
 
 	// 从source的列表中删除
-	sourceKey := BuildSourceChapterList(*ci.SourceId)
+	sourceKey := BuildClassChapterList(*ci.SourceId)
 	err = ds.ZRem(ctx, sourceKey, ci.Chid).Err()
 	if nil != err {
 		logx.GetLogger("study").Errorf("DeleteChapter|Delete Source Chapter Error|%v", err)
@@ -206,7 +211,7 @@ func (ci *Chapter) QueryResourcList(ctx context.Context, ds *redis.Client, refer
 
 func (cl *ChapterList) QueryChapterList(ctx context.Context, ds *redis.Client) (*ChapterList, error) {
 
-	key := BuildSourceChapterList(cl.SourceId)
+	key := BuildClassChapterList(cl.SourceId)
 
 	zrangeBy := redis.ZRangeBy{
 		Min:    "0",

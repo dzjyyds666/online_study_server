@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
@@ -14,19 +15,17 @@ import (
 	"github.com/labstack/echo"
 	"github.com/redis/go-redis/v9"
 	"io"
+	"os"
 	"path"
 )
 
 type CosFile struct {
-	FileName    *string      `json:"file_name,omitempty"`
-	Fid         *string      `json:"fid,omitempty"`
-	FileMD5     *string      `json:"file_md5,omitempty"`
-	FileSize    *int64       `json:"file_size,omitempty"`
-	FileType    *string      `json:"file_type,omitempty"`
-	DirectoryId *string      `json:"directory_id,omitempty"`
-	IsMultiPart *bool        `json:"is_multi_part,omitempty"`
-	SourceFile  *string      `json:"source_file_file,omitempty"`
-	Attachment  []Attachment `json:"attachment,omitempty"`
+	FileName    *string `json:"file_name,omitempty"`
+	Fid         *string `json:"fid,omitempty"`
+	FileMD5     *string `json:"file_md5,omitempty"`
+	FileSize    *int64  `json:"file_size,omitempty"`
+	FileType    *string `json:"file_type,omitempty"`
+	DirectoryId *string `json:"directory_id,omitempty"`
 
 	r io.Reader
 }
@@ -36,6 +35,10 @@ type Attachment struct {
 	FileName *string `json:"file_name,omitempty"`
 	FileSize *int64  `json:"file_size,omitempty"`
 	FileType *string `json:"file_type,omitempty"`
+}
+
+func (cf *CosFile) MergeFilePath() string {
+	return fmt.Sprintf("/%s/%s/%s%s", *cf.DirectoryId, *cf.Fid, *cf.Fid, path.Ext(*cf.FileName))
 }
 
 func (cf *CosFile) WithFileName(fileName string) *CosFile {
@@ -73,50 +76,46 @@ func (cf *CosFile) WithReader(r io.Reader) *CosFile {
 	return cf
 }
 
-func (cf *CosFile) IsAttachment() bool {
-	return len(aws.ToString(cf.SourceFile)) > 0
-}
+var ErrPrepareIndexExits = fmt.Errorf("CreatePrepareIndex Exits")
 
-var ErrPrepareIndexExits = fmt.Errorf("CraetePrepareIndex Exits")
-
-func (cf *CosFile) CraetePrepareIndex(ctx echo.Context, redis *redis.Client) error {
+func (cf *CosFile) CreatePrepareIndex(ctx echo.Context, redis *redis.Client) error {
 	marshal, err := json.Marshal(cf)
 	if err != nil {
-		logx.GetLogger("study").Infof("CraetePrepareIndex|Marshal Error|%v", err)
+		logx.GetLogger("study").Infof("CreatePrepareIndex|Marshal Error|%v", err)
 		return err
 	}
 
 	exists, err := redis.SetNX(ctx.Request().Context(), fmt.Sprintf(RedisPrepareIndexKey, *cf.Fid), marshal, 0).Result()
 	if err != nil {
-		logx.GetLogger("study").Infof("CraetePrepareIndex|SetNX Error|%v", err)
+		logx.GetLogger("study").Infof("CreatePrepareIndex|SetNX Error|%v", err)
 		return err
 	}
 	if !exists {
-		logx.GetLogger("study").Errorf("CraetePrepareIndex|CraetePrepareIndex Exits")
+		logx.GetLogger("study").Errorf("CreatePrepareIndex|CreatePrepareIndex Exits")
 		return ErrPrepareIndexExits
 	}
 
 	return nil
 }
 
-func (cf *CosFile) CraeteIndex(ctx echo.Context, redis *redis.Client) error {
+func (cf *CosFile) CreateIndex(ctx echo.Context, redis *redis.Client) error {
 	marshal, err := json.Marshal(cf)
 	if err != nil {
-		logx.GetLogger("study").Infof("CraeteIndex|Marshal Error|%v", err)
+		logx.GetLogger("study").Infof("CreateIndex|Marshal Error|%v", err)
 		return err
 	}
 
 	// 从redis中删除prepare文件
 	_, err = redis.Del(ctx.Request().Context(), fmt.Sprintf(RedisPrepareIndexKey, *cf.Fid)).Result()
 	if err != nil {
-		logx.GetLogger("study").Errorf("CraeteIndex|Del Error|%v", err)
+		logx.GetLogger("study").Errorf("CreateIndex|Del Error|%v", err)
 		return err
 	}
 
 	// 插入index文件到redis中
 	_, err = redis.Set(ctx.Request().Context(), fmt.Sprintf(RedisIndexKey, *cf.Fid), marshal, 0).Result()
 	if err != nil {
-		logx.GetLogger("study").Errorf("CraeteIndex|Set Error|%v", err)
+		logx.GetLogger("study").Errorf("CreateIndex|Set Error|%v", err)
 		return err
 	}
 	return nil
@@ -124,15 +123,6 @@ func (cf *CosFile) CraeteIndex(ctx echo.Context, redis *redis.Client) error {
 
 func (cf *CosFile) IsMatch(cos *CosFile) bool {
 	return *cf.FileName == *cos.FileName && *cf.FileMD5 == *cos.FileMD5 && *cf.FileSize == *cos.FileSize
-}
-
-func (cf *CosFile) GetFilePath() string {
-
-	if cf.IsAttachment() {
-		return fmt.Sprintf("/%s/%s/attachment/%s%s", *cf.DirectoryId, *cf.SourceFile, *cf.Fid, path.Ext(*cf.FileName))
-	}
-
-	return fmt.Sprintf("/%s/%s/%s%s", *cf.DirectoryId, *cf.Fid, *cf.Fid, path.Ext(*cf.FileName))
 }
 
 func (cf *CosFile) UploadSingleFile(ctx echo.Context, client *s3.Client, bucket *string, ds *redis.Client) error {
@@ -143,42 +133,10 @@ func (cf *CosFile) UploadSingleFile(ctx echo.Context, client *s3.Client, bucket 
 		return err
 	}
 
-	// 判断文件是不是附件，如果是的话，就修改源文件的indexinfo
-	if cf.IsAttachment() {
-		sourfileKey := buildFileIndexKey(*cf.SourceFile)
-		result, err := ds.Get(ctx.Request().Context(), sourfileKey).Result()
-		if err != nil {
-			logx.GetLogger("study").Errorf("UploadSingleFile|Get SourceFile Error|%v", err)
-		}
-		var sourceFile CosFile
-		err = json.Unmarshal([]byte(result), &sourceFile)
-		if err != nil {
-			return err
-		}
-		attachment := Attachment{
-			Fid:      cf.Fid,
-			FileName: cf.FileName,
-			FileSize: cf.FileSize,
-			FileType: cf.FileType,
-		}
-		sourceFile.Attachment = append(sourceFile.Attachment, attachment)
-
-		marshal, err := json.Marshal(&sourceFile)
-		if err != nil {
-			return err
-		}
-
-		_, err = ds.Set(ctx.Request().Context(), sourfileKey, marshal, 0).Result()
-		if err != nil {
-			logx.GetLogger("study").Errorf("UploadSingleFile|Set SourceFile Error|%v", err)
-			return err
-		}
-	}
-
 	// 插入源文件的indexInfo
-	err = cf.CraeteIndex(ctx, ds)
+	err = cf.CreateIndex(ctx, ds)
 	if err != nil {
-		logx.GetLogger("study").Errorf("UploadSingleFile|CraeteIndex Error|%v", err)
+		logx.GetLogger("study").Errorf("UploadSingleFile|CreateIndex Error|%v", err)
 		return err
 	}
 	logx.GetLogger("study").Infof("UploadSingleFile|UploadSingleFile Success")
@@ -186,7 +144,7 @@ func (cf *CosFile) UploadSingleFile(ctx echo.Context, client *s3.Client, bucket 
 }
 
 func (cf *CosFile) PutObject(ctx echo.Context, client *s3.Client, bucket *string) error {
-	key := cf.GetFilePath()
+	key := cf.MergeFilePath()
 
 	logx.GetLogger("study").Infof("PutObject|%v", *cf.FileType)
 
@@ -296,4 +254,93 @@ func QueryIndex(ctx echo.Context, rs *redis.Client, fid string) (*CosFile, error
 	}
 
 	return &indexFile, nil
+}
+
+func (cs *CosFile) WriteFileToFolder(ctx context.Context, r io.Reader, path, filename string) error {
+	filePath := fmt.Sprintf("%s/%s", path, filename)
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		logx.GetLogger("study").Errorf("WriteFileToFolder|OpenFile err:%v", err)
+		return err
+	}
+	defer file.Close()
+	_, err = io.Copy(file, r)
+	if err != nil {
+		logx.GetLogger("study").Errorf("WriteFileToFolder|io.Copy err:%v", err)
+		return err
+	}
+	return nil
+}
+
+func (cs *CosFile) MergeFile(ctx context.Context, tmpPath, fid string, ds *redis.Client) error {
+	key := buildFileIndexKey(fid)
+	result, err := ds.Get(ctx, key).Result()
+	if err != nil {
+		logx.GetLogger("study").Errorf("MergeFile|Get Error|%v", err)
+		return err
+	}
+
+	var indexFile CosFile
+	err = json.Unmarshal([]byte(result), &indexFile)
+	if err != nil {
+		logx.GetLogger("study").Errorf("MergeFile|Unmarshal Error|%v", err)
+		return err
+	}
+
+	filePath := fmt.Sprintf("%s/%s", tmpPath, fid+path.Ext(*indexFile.FileName))
+	logx.GetLogger("study").Infof("MergeFile|filePath:%s", filePath)
+
+	// 查询初始化信息
+	init := InitMultipartUpload{
+		Fid: fid,
+	}
+
+	initInfo, err := init.QueryIndexToInit(ctx, ds)
+	if nil != err {
+		logx.GetLogger("study").Errorf("MergeFile|QueryIndexToInit Error|%v", err)
+		return err
+	}
+
+	targetFile, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		logx.GetLogger("study").Errorf("MergeFile|OpenFile Error|%v", err)
+		return err
+	}
+	defer targetFile.Close()
+
+	for i := int64(0); i < initInfo.TotalParts; i++ {
+		// 拼接文件路径
+		partPath := fmt.Sprintf("%s/%s_%d", tmpPath, fid, i+1)
+		partFile, err := os.OpenFile(partPath, os.O_RDONLY, 0666)
+		if err != nil {
+			logx.GetLogger("study").Errorf("MergeFile|OpenFile Error|%v", err)
+			return err
+		}
+		_, err = io.Copy(targetFile, partFile)
+		if err != nil {
+			logx.GetLogger("study").Errorf("MergeFile|io.Copy Error|%v", err)
+			return err
+		}
+
+		partFile.Close()
+		os.Remove(partPath)
+	}
+	return nil
+}
+
+func (cs *CosFile) QueryPrepareInfo(ctx context.Context, ds *redis.Client) (*CosFile, error) {
+	key := buildPrepareFileIndexKey(*cs.Fid)
+	result, err := ds.Get(ctx, key).Result()
+	if err != nil {
+		logx.GetLogger("study").Errorf("QueryPrepareInfo|Get Error|%v", err)
+		return nil, err
+	}
+
+	err = json.Unmarshal([]byte(result), cs)
+	if err != nil {
+		logx.GetLogger("study").Errorf("QueryPrepareInfo|Unmarshal Error|%v", err)
+		return nil, err
+	}
+
+	return cs, nil
 }

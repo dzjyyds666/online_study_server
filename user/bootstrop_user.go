@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	var configPath = flag.String("c", "/Users/zhijundu/GolandProjects/online_study_server/user/api/config/config.json", "config.json file path")
+	var configPath = flag.String("c", "/Users/zhijundu/code/GolandProjects/online_study_server/user/api/config/config.json", "config.json file path")
 	err := config.RefreshEtcdConfig(*configPath)
 	if err != nil {
 		logx.GetLogger("study").Errorf("main|RefreshEtcdConfig|err:%v", err)

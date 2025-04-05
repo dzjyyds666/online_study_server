@@ -12,7 +12,7 @@ import (
 
 func main() {
 
-	var configPath = flag.String("c", "/Users/zhijundu/GolandProjects/online_study_server/cos/api/config/config.json", "config.json file path")
+	var configPath = flag.String("c", "/Users/zhijundu/code/GolandProjects/online_study_server/cos/api/config/config.json", "config.json file path")
 	err := config.RefreshEtcdConfig(*configPath)
 	if err != nil {
 		logx.GetLogger("study").Errorf("apiService|RefreshEtcdConfig|err:%v", err)

@@ -14,7 +14,7 @@ import (
 func RegisterRouter(e *echo.Echo, us *UserServer) {
 
 	// 跨域
-	e.Use(middleware.CORS())
+	//e.Use(middleware.CORS())
 
 	// 输出当前路由的信息
 	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{

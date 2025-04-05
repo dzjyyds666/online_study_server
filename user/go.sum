@@ -19,6 +19,8 @@ github.com/dzjyyds666/opensource/common v0.0.0-20250310141902-23b0b438f230 h1:JB
 github.com/dzjyyds666/opensource/common v0.0.0-20250310141902-23b0b438f230/go.mod h1:36Y5X6mk3u1GcVDJCbSAfDGFWcwr9RNqefDoBGwUqfE=
 github.com/dzjyyds666/opensource/httpx v0.0.0-20250310141902-23b0b438f230 h1:2LOFOsZwLeJuQiUvFxoLiEsT+0w7Ly/lZH48qOF7hp8=
 github.com/dzjyyds666/opensource/httpx v0.0.0-20250310141902-23b0b438f230/go.mod h1:peuPScjLUkWC4BHCtri5jEYWEib8vVI97AlwKAK6w4Y=
+github.com/dzjyyds666/opensource/httpx v0.0.0-20250329121256-8ac52f6728de h1:7+Eocnv2WGe5JUKR/mfsbdGtYONJYKTEnWMRPL84BuY=
+github.com/dzjyyds666/opensource/httpx v0.0.0-20250329121256-8ac52f6728de/go.mod h1:peuPScjLUkWC4BHCtri5jEYWEib8vVI97AlwKAK6w4Y=
 github.com/dzjyyds666/opensource/logx v0.0.0-20250305150926-66661c9f8725 h1:dK1AS4L6Msghr/45GTHThfmduxvNJNZetRJb8CcH5Cw=
 github.com/dzjyyds666/opensource/logx v0.0.0-20250305150926-66661c9f8725/go.mod h1:aToy2QiT9rSCVOtDeyiH9BUL35fHqeF84yFXz2auzOM=
 github.com/dzjyyds666/opensource/sdk v0.0.0-20250310151156-54599e325e0a h1:5vzKQrsnngo3trjghAVwn1IgzOYcfmypw9217iP78Zs=

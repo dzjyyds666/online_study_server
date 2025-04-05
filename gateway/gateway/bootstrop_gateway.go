@@ -2,12 +2,14 @@ package main
 
 import (
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/gommon/log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 )
 
-func reverseProxy(target string, prefix string) echo.HandlerFunc {
+func reverseProxy(target string) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		targetURL, err := url.Parse(target)
 		if err != nil {
@@ -25,6 +27,8 @@ func reverseProxy(target string, prefix string) echo.HandlerFunc {
 			c.Request().Header.Set("Content-Type", c.Request().Header.Get("Content-Type"))
 		}
 
+		//打印日志信息
+		log.Debugf("请求信息：%s", c.Request().URL.String())
 		// 代理请求
 		proxy.ServeHTTP(c.Response(), c.Request())
 		return nil
@@ -34,17 +38,24 @@ func reverseProxy(target string, prefix string) echo.HandlerFunc {
 func main() {
 	e := echo.New()
 
+	e.Use(middleware.CORSWithConfig(middleware.DefaultCORSConfig))
+
 	// 代理不同的微服务
-	userGroup := e.Group("/v1/user.proto")
+	userGroup := e.Group("/v1/user")
 	userGroup.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return reverseProxy("http://127.0.0.1:19001", "/v1/user.proto")
+		return reverseProxy("http://127.0.0.1:19001")
 	})
 
 	cosGroup := e.Group("/v1/cos")
 	cosGroup.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return reverseProxy("http://127.0.0.1:19002", "/v1/cos")
+		return reverseProxy("http://127.0.0.1:19002")
+	})
+
+	classGroup := e.Group("/v1/class")
+	classGroup.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return reverseProxy("http://127.0.0.1:19003")
 	})
 
 	// 监听端口
-	e.Logger.Fatal(e.Start(":19000"))
+	e.Logger.Fatal(e.Start(":29000"))
 }

@@ -54,6 +54,8 @@ func (us *UserServer) HandlerLogin(ctx echo.Context) error {
 		return err
 	}
 
+	logx.GetLogger("study").Infof("HandlerLogin|Login Success|%s", common.ToStringWithoutError(loginInfo))
+
 	// 从数据库中查询用户信息
 	var userInfo UserInfo
 	err := us.mysql.Model(&UserInfo{}).Where("account = ?", loginInfo.Account).First(&userInfo).Error
@@ -85,14 +87,6 @@ func (us *UserServer) HandlerLogin(ctx echo.Context) error {
 		logx.GetLogger("study").Errorf("HandlerLogin|CreateJwtToken Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "login Error",
-		})
-	}
-
-	err = us.redis.Set(ctx.Request().Context(), fmt.Sprintf(core.RedisTokenKey, tokenInfo.Uid), token, time.Duration(*config.GloableConfig.Jwt.Expire)*time.Second).Err()
-	if nil != err {
-		logx.GetLogger("study").Errorf("HandlerLogin|Token Set To Redis Error|%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Token Set To Redis Error",
 		})
 	}
 

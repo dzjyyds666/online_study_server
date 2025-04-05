@@ -10,7 +10,7 @@ import (
 )
 
 func StartCosHttpServer(ctx context.Context) error {
-	//var configPath = flag.String("c", "E:\\code\\Go\\online_study_server01\\cos\\api\\config.json\\config.json.json", "config.json file path")
+	//var configPath = flag.String("c", "E:\\code\\Go\\online_study_server01\\cos\\gateway\\config.json\\config.json.json", "config.json file path")
 
 	cosServer, err := server2.NewCosServer()
 	if err != nil {

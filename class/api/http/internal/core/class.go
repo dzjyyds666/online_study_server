@@ -22,11 +22,11 @@ type Class struct {
 	StudyClassList []StudyClass `json:"study_class_list,omitempty"`
 	ChapterList    []Chapter    `json:"chapter_list,omitempty"`
 
-	ClassScore      *string `json:"class_score,omitempty"`
-	ClassTime       *string `json:"class_time,omitempty"`
-	ClassCollege    *string `json:"class_college,omitempty"`
-	ClassSchoolTerm *string `json:"class_school_term,omitempty"`
-	SubjectCategory *string `json:"subject_category,omitempty"`
+	ClassScore      *string `json:"class_score,omitempty"`       // 学分
+	ClassTime       *string `json:"class_time,omitempty"`        // 学时
+	ClassCollege    *string `json:"class_college,omitempty"`     // 学院
+	ClassSchoolTerm *string `json:"class_school_term,omitempty"` // 学期
+	ClassOutline    *string `json:"class_outline,omitempty"`     // 课程大纲
 }
 
 func (ci *Class) WithCid(id string) *Class {
@@ -67,6 +67,45 @@ func (ci *Class) WithArchive(archive bool) *Class {
 func (ci *Class) WithDeleted(deleted bool) *Class {
 	ci.Deleted = &deleted
 	return ci
+}
+
+func (ci *Class) WithClassScore(score string) *Class {
+	ci.ClassScore = &score
+	return ci
+}
+
+func (ci *Class) WithClassTime(time string) *Class {
+	ci.ClassTime = &time
+	return ci
+}
+
+func (ci *Class) WithClassCollege(college string) *Class {
+	ci.ClassCollege = &college
+	return ci
+}
+
+func (ci *Class) WithClassSchoolTerm(term string) *Class {
+	ci.ClassSchoolTerm = &term
+	return ci
+}
+
+func (ci *Class) WithClassOutline(outline string) *Class {
+	ci.ClassOutline = &outline
+	return ci
+}
+
+func (ci *Class) Marshal() string {
+	marshal, _ := json.Marshal(ci)
+	return string(marshal)
+}
+
+func ClassUnmarshal(data []byte) (*Class, error) {
+	var ci *Class
+	err := json.Unmarshal(data, ci)
+	if err != nil {
+		return nil, err
+	}
+	return ci, nil
 }
 
 type UpdateChapters struct {
@@ -167,7 +206,7 @@ func (cl *Class) DeleteFromTrash(ctx context.Context, ds *redis.Client) (*Class,
 	}
 
 	// 遍历删除课程下面的章节
-	chids, err := ds.ZRange(ctx, BuildSourceChapterList(*cl.Cid), 0, -1).Result()
+	chids, err := ds.ZRange(ctx, BuildClassChapterList(*cl.Cid), 0, -1).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +264,7 @@ func (cl *Class) CopyClass(ctx context.Context, ds *redis.Client) (*Class, error
 	}
 
 	// 查询旧课程下的所有章节
-	chids, err := ds.ZRange(ctx, BuildSourceChapterList(*cl.Cid), 0, -1).Result()
+	chids, err := ds.ZRange(ctx, BuildClassChapterList(*cl.Cid), 0, -1).Result()
 	if err != nil {
 		return nil, err
 	}

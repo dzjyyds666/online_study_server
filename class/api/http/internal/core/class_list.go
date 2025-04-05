@@ -70,7 +70,7 @@ func (cl *ClassList) QueryClassList(ctx context.Context, uid string, ds *redis.C
 		}
 
 		// 查询当前课程下方的章节信息
-		sourceKey := BuildSourceChapterList(class)
+		sourceKey := BuildClassChapterList(class)
 		chids, err := ds.ZRange(ctx, sourceKey, 0, -1).Result()
 		for _, chid := range chids {
 			var chapter Chapter

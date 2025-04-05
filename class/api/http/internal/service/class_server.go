@@ -22,7 +22,6 @@ func NewClassServer(ctx context.Context, dsClient *redis.Client) (*ClassServer, 
 
 	return &ClassServer{
 		redis: dsClient,
-		//mongo: database,
 	}, nil
 }
 
