@@ -60,16 +60,15 @@ func (cls *ClassService) HandleCreateClass(ctx echo.Context) error {
 }
 
 func (cls *ClassService) HandleCopyClass(ctx echo.Context) error {
-	var class core2.Class
-	decoder := json.NewDecoder(ctx.Request().Body)
-	if err := decoder.Decode(&class); err != nil {
-		logx.GetLogger("study").Errorf("HandleCopyClass|ctx.Bind err:%v", err)
+	cid := ctx.Param("cid")
+	if len(cid) <= 0 {
+		logx.GetLogger("study").Errorf("HandleCopyClass|cid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Param Invalid",
 		})
 	}
 
-	info, err := class.CopyClass(ctx.Request().Context(), cls.redis)
+	info, err := cls.classServ.CopyClass(ctx.Request().Context(), cid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleCopyClass|CopyClass Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -77,7 +76,7 @@ func (cls *ClassService) HandleCopyClass(ctx echo.Context) error {
 		})
 	}
 
-	logx.GetLogger("study").Infof("HandleCopyClass|CopyClass Success|%s", common.ToStringWithoutError(class))
+	logx.GetLogger("study").Infof("HandleCopyClass|CopyClass Success|%s", common.ToStringWithoutError(info))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
 

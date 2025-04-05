@@ -1,7 +1,7 @@
 package rpc
 
 import (
-	"class/api/rpc/client"
+	"common/rpc/client"
 	"context"
 	"github.com/redis/go-redis/v9"
 )

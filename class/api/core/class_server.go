@@ -2,8 +2,8 @@ package core
 
 import (
 	"class/api/lua"
-	"class/api/rpc/client"
 	"common/proto"
+	"common/rpc/client"
 	"context"
 	"encoding/json"
 	"errors"
@@ -429,6 +429,9 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 				logx.GetLogger("study").Errorf("ClassServer|CopyClass|AddResourceToChapterError|%v", err)
 				break
 			}
+			chInfo.ResourceList = append(chInfo.ResourceList, reInfo)
 		}
+		class.ChapterList = append(class.ChapterList, chInfo)
 	}
+	return class, nil
 }

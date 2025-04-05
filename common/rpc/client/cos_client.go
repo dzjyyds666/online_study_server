@@ -9,12 +9,12 @@ import (
 )
 
 var (
-	cosRpcClient  *proto.CosClient
+	cosRpcClient  proto.CosClient
 	once          sync.Once
 	cosClientConn *grpc.ClientConn
 )
 
-func GetCosRpcClient(ctx context.Context) *proto.CosClient {
+func GetCosRpcClient(ctx context.Context) proto.CosClient {
 	once.Do(func() {
 		var err error
 		// todo 修改rpc启动从配置文件中读取
@@ -23,8 +23,7 @@ func GetCosRpcClient(ctx context.Context) *proto.CosClient {
 			logx.GetLogger("study").Errorf("UserServer|StartError|NewUserServer|err:%v", err)
 			panic(err)
 		}
-		client := proto.NewCosClient(cosClientConn)
-		cosRpcClient = &client
+		cosRpcClient = proto.NewCosClient(cosClientConn)
 	})
 	return cosRpcClient
 }
