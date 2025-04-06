@@ -27,8 +27,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CosClient interface {
-	DeleteObject(ctx context.Context, in *DeleteObjectRequest, opts ...grpc.CallOption) (*CommonResponse, error)
-	CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CommonResponse, error)
+	DeleteObject(ctx context.Context, in *DeleteObjectRequest, opts ...grpc.CallOption) (*CosCommonResponse, error)
+	CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CosCommonResponse, error)
 }
 
 type cosClient struct {
@@ -39,9 +39,9 @@ func NewCosClient(cc grpc.ClientConnInterface) CosClient {
 	return &cosClient{cc}
 }
 
-func (c *cosClient) DeleteObject(ctx context.Context, in *DeleteObjectRequest, opts ...grpc.CallOption) (*CommonResponse, error) {
+func (c *cosClient) DeleteObject(ctx context.Context, in *DeleteObjectRequest, opts ...grpc.CallOption) (*CosCommonResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CommonResponse)
+	out := new(CosCommonResponse)
 	err := c.cc.Invoke(ctx, Cos_DeleteObject_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -49,9 +49,9 @@ func (c *cosClient) DeleteObject(ctx context.Context, in *DeleteObjectRequest, o
 	return out, nil
 }
 
-func (c *cosClient) CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CommonResponse, error) {
+func (c *cosClient) CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CosCommonResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CommonResponse)
+	out := new(CosCommonResponse)
 	err := c.cc.Invoke(ctx, Cos_CopyObject_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -63,8 +63,8 @@ func (c *cosClient) CopyObject(ctx context.Context, in *CopyObjectRequest, opts 
 // All implementations must embed UnimplementedCosServer
 // for forward compatibility.
 type CosServer interface {
-	DeleteObject(context.Context, *DeleteObjectRequest) (*CommonResponse, error)
-	CopyObject(context.Context, *CopyObjectRequest) (*CommonResponse, error)
+	DeleteObject(context.Context, *DeleteObjectRequest) (*CosCommonResponse, error)
+	CopyObject(context.Context, *CopyObjectRequest) (*CosCommonResponse, error)
 	mustEmbedUnimplementedCosServer()
 }
 
@@ -75,10 +75,10 @@ type CosServer interface {
 // pointer dereference when methods are called.
 type UnimplementedCosServer struct{}
 
-func (UnimplementedCosServer) DeleteObject(context.Context, *DeleteObjectRequest) (*CommonResponse, error) {
+func (UnimplementedCosServer) DeleteObject(context.Context, *DeleteObjectRequest) (*CosCommonResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteObject not implemented")
 }
-func (UnimplementedCosServer) CopyObject(context.Context, *CopyObjectRequest) (*CommonResponse, error) {
+func (UnimplementedCosServer) CopyObject(context.Context, *CopyObjectRequest) (*CosCommonResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CopyObject not implemented")
 }
 func (UnimplementedCosServer) mustEmbedUnimplementedCosServer() {}

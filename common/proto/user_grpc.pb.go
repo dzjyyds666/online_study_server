@@ -27,7 +27,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserClient interface {
-	AddStudentToClass(ctx context.Context, in *AddStudentToClassRequest, opts ...grpc.CallOption) (*CommonResponse, error)
+	AddStudentToClass(ctx context.Context, in *AddStudentToClassRequest, opts ...grpc.CallOption) (*UserCommonResponse, error)
 	BatchAddStudentToClass(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[FileChunk, StudentIds], error)
 }
 
@@ -39,9 +39,9 @@ func NewUserClient(cc grpc.ClientConnInterface) UserClient {
 	return &userClient{cc}
 }
 
-func (c *userClient) AddStudentToClass(ctx context.Context, in *AddStudentToClassRequest, opts ...grpc.CallOption) (*CommonResponse, error) {
+func (c *userClient) AddStudentToClass(ctx context.Context, in *AddStudentToClassRequest, opts ...grpc.CallOption) (*UserCommonResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CommonResponse)
+	out := new(UserCommonResponse)
 	err := c.cc.Invoke(ctx, User_AddStudentToClass_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -66,7 +66,7 @@ type User_BatchAddStudentToClassClient = grpc.ClientStreamingClient[FileChunk, S
 // All implementations must embed UnimplementedUserServer
 // for forward compatibility.
 type UserServer interface {
-	AddStudentToClass(context.Context, *AddStudentToClassRequest) (*CommonResponse, error)
+	AddStudentToClass(context.Context, *AddStudentToClassRequest) (*UserCommonResponse, error)
 	BatchAddStudentToClass(grpc.ClientStreamingServer[FileChunk, StudentIds]) error
 	mustEmbedUnimplementedUserServer()
 }
@@ -78,7 +78,7 @@ type UserServer interface {
 // pointer dereference when methods are called.
 type UnimplementedUserServer struct{}
 
-func (UnimplementedUserServer) AddStudentToClass(context.Context, *AddStudentToClassRequest) (*CommonResponse, error) {
+func (UnimplementedUserServer) AddStudentToClass(context.Context, *AddStudentToClassRequest) (*UserCommonResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddStudentToClass not implemented")
 }
 func (UnimplementedUserServer) BatchAddStudentToClass(grpc.ClientStreamingServer[FileChunk, StudentIds]) error {

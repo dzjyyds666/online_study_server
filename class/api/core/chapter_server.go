@@ -15,9 +15,12 @@ type ChapterServer struct {
 }
 
 func NewChapterServer(ctx context.Context, dsClient *redis.Client) *ChapterServer {
+
+	server := NewResourceServer(ctx, dsClient)
 	return &ChapterServer{
-		ctx:       ctx,
-		chapterDB: dsClient,
+		ctx:          ctx,
+		chapterDB:    dsClient,
+		resourceServ: server,
 	}
 }
 

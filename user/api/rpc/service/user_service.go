@@ -14,8 +14,8 @@ type UserServer struct {
 	proto.UnimplementedUserServer
 }
 
-func (us *UserServer) AddStudentToClass(ctx context.Context, req *proto.AddStudentToClassRequest) (*proto.CommonResponse, error) {
-	return &proto.CommonResponse{Success: true}, nil
+func (us *UserServer) AddStudentToClass(ctx context.Context, req *proto.AddStudentToClassRequest) (*proto.UserCommonResponse, error) {
+	return &proto.UserCommonResponse{Success: true}, nil
 }
 
 // 批量注册用户

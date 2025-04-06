@@ -87,6 +87,8 @@ func (cls *ClassService) HandleListTeacherClass(ctx echo.Context) error {
 			"msg": "Query Class List Error",
 		})
 	}
+
+	logx.GetLogger("study").Infof("HandleListTeacherClass|QueryClassList Success|%s", common.ToStringWithoutError(list))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
 func (cls *ClassService) HandleUpdateClass(ctx echo.Context) error {

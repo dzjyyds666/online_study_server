@@ -5,8 +5,8 @@ package proto;
 option go_package = ".;proto";
 
 service Cos{
-  rpc DeleteObject(DeleteObjectRequest) returns (CommonResponse);
-  rpc CopyObject(CopyObjectRequest) returns(CommonResponse);
+  rpc DeleteObject(DeleteObjectRequest) returns (CosCommonResponse);
+  rpc CopyObject(CopyObjectRequest) returns(CosCommonResponse);
 }
 
 message CopyObjectRequest{
@@ -18,7 +18,7 @@ message DeleteObjectRequest {
   repeated string fids = 1;
 }
 
-message CommonResponse {
+message CosCommonResponse {
   bool success = 1;
 }
 

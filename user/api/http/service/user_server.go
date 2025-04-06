@@ -37,7 +37,7 @@ func (us *UserService) HandlerLogin(ctx echo.Context) error {
 		})
 	}
 
-	err := us.userServer.Login(ctx.Request().Context(), user.Uid, user.Password)
+	role, err := us.userServer.Login(ctx.Request().Context(), user.Uid, user.Password)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandlerLogin|Login Error|%v", err)
 		if errors.Is(err, core2.ErrPasswordNotMatch) {
@@ -55,7 +55,7 @@ func (us *UserService) HandlerLogin(ctx echo.Context) error {
 		}
 	}
 
-	token, err := us.userServer.CreateToken(ctx.Request().Context(), user.Uid, user.Role)
+	token, err := us.userServer.CreateToken(ctx.Request().Context(), user.Uid, role)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandlerLogin|CreateToken Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -68,7 +68,7 @@ func (us *UserService) HandlerLogin(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
 		"token": token,
 		"id":    user.Uid,
-		"role":  user.Role,
+		"role":  role,
 	})
 }
 
@@ -89,6 +89,16 @@ func (us *UserService) HandleSignUp(ctx echo.Context) error {
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Password Error",
 		})
+	}
+	if len(userInfo.Name) <= 0 {
+		// 截取uid的后四位
+		userInfo.WithName("用户" + userInfo.Uid[len(userInfo.Uid)-4:])
+	}
+	if len(userInfo.Collage) <= 0 {
+		userInfo.WithCollage("未知")
+	}
+	if len(userInfo.Major) <= 0 {
+		userInfo.WithMajor("未知")
 	}
 	userInfo.Password = string(password)
 	userInfo.CreateTs = time.Now().Unix()

@@ -57,5 +57,5 @@ func main() {
 	})
 
 	// 监听端口
-	e.Logger.Fatal(e.Start(":29000"))
+	e.Logger.Fatal(e.Start(":19000"))
 }

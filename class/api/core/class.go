@@ -16,6 +16,7 @@ type Class struct {
 	StudyClassName *string   `json:"study_class_name,omitempty"`
 	ChapterList    []Chapter `json:"chapter_list,omitempty"`
 
+	Cover           *string `json:"cover,omitempty"`
 	ClassScore      *string `json:"class_score,omitempty"`       // 学分
 	ClassTime       *string `json:"class_time,omitempty"`        // 学时
 	ClassCollege    *string `json:"class_college,omitempty"`     // 学院

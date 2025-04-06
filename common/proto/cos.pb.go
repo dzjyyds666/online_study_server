@@ -117,27 +117,27 @@ func (x *DeleteObjectRequest) GetFids() []string {
 	return nil
 }
 
-type CommonResponse struct {
+type CosCommonResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *CommonResponse) Reset() {
-	*x = CommonResponse{}
+func (x *CosCommonResponse) Reset() {
+	*x = CosCommonResponse{}
 	mi := &file_pb_cos_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CommonResponse) String() string {
+func (x *CosCommonResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CommonResponse) ProtoMessage() {}
+func (*CosCommonResponse) ProtoMessage() {}
 
-func (x *CommonResponse) ProtoReflect() protoreflect.Message {
+func (x *CosCommonResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pb_cos_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -149,12 +149,12 @@ func (x *CommonResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CommonResponse.ProtoReflect.Descriptor instead.
-func (*CommonResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use CosCommonResponse.ProtoReflect.Descriptor instead.
+func (*CosCommonResponse) Descriptor() ([]byte, []int) {
 	return file_pb_cos_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *CommonResponse) GetSuccess() bool {
+func (x *CosCommonResponse) GetSuccess() bool {
 	if x != nil {
 		return x.Success
 	}
@@ -246,19 +246,19 @@ const file_pb_cos_proto_rawDesc = "" +
 	"\x06srcFid\x18\x01 \x01(\tR\x06srcFid\x12\x16\n" +
 	"\x06dstFid\x18\x02 \x01(\tR\x06dstFid\")\n" +
 	"\x13DeleteObjectRequest\x12\x12\n" +
-	"\x04fids\x18\x01 \x03(\tR\x04fids\"*\n" +
-	"\x0eCommonResponse\x12\x18\n" +
+	"\x04fids\x18\x01 \x03(\tR\x04fids\"-\n" +
+	"\x11CosCommonResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\"\x86\x01\n" +
 	"\fResourceInfo\x12\x10\n" +
 	"\x03fid\x18\x01 \x01(\tR\x03fid\x12\x1a\n" +
 	"\bfileName\x18\x02 \x01(\tR\bfileName\x12\x1a\n" +
 	"\bfileType\x18\x03 \x01(\tR\bfileType\x12\x1a\n" +
 	"\bfileSize\x18\x04 \x01(\tR\bfileSize\x12\x10\n" +
-	"\x03md5\x18\x05 \x01(\tR\x03md52\x87\x01\n" +
-	"\x03Cos\x12A\n" +
-	"\fDeleteObject\x12\x1a.proto.DeleteObjectRequest\x1a\x15.proto.CommonResponse\x12=\n" +
+	"\x03md5\x18\x05 \x01(\tR\x03md52\x8d\x01\n" +
+	"\x03Cos\x12D\n" +
+	"\fDeleteObject\x12\x1a.proto.DeleteObjectRequest\x1a\x18.proto.CosCommonResponse\x12@\n" +
 	"\n" +
-	"CopyObject\x12\x18.proto.CopyObjectRequest\x1a\x15.proto.CommonResponseB\tZ\a.;protob\x06proto3"
+	"CopyObject\x12\x18.proto.CopyObjectRequest\x1a\x18.proto.CosCommonResponseB\tZ\a.;protob\x06proto3"
 
 var (
 	file_pb_cos_proto_rawDescOnce sync.Once
@@ -276,14 +276,14 @@ var file_pb_cos_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_pb_cos_proto_goTypes = []any{
 	(*CopyObjectRequest)(nil),   // 0: proto.CopyObjectRequest
 	(*DeleteObjectRequest)(nil), // 1: proto.DeleteObjectRequest
-	(*CommonResponse)(nil),      // 2: proto.CommonResponse
+	(*CosCommonResponse)(nil),   // 2: proto.CosCommonResponse
 	(*ResourceInfo)(nil),        // 3: proto.ResourceInfo
 }
 var file_pb_cos_proto_depIdxs = []int32{
 	1, // 0: proto.Cos.DeleteObject:input_type -> proto.DeleteObjectRequest
 	0, // 1: proto.Cos.CopyObject:input_type -> proto.CopyObjectRequest
-	2, // 2: proto.Cos.DeleteObject:output_type -> proto.CommonResponse
-	2, // 3: proto.Cos.CopyObject:output_type -> proto.CommonResponse
+	2, // 2: proto.Cos.DeleteObject:output_type -> proto.CosCommonResponse
+	2, // 3: proto.Cos.CopyObject:output_type -> proto.CosCommonResponse
 	2, // [2:4] is the sub-list for method output_type
 	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name

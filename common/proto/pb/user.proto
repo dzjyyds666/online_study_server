@@ -5,7 +5,7 @@ package proto;
 option go_package = ".;proto";
 
 service user{
-  rpc AddStudentToClass(AddStudentToClassRequest) returns (CommonResponse);
+  rpc AddStudentToClass(AddStudentToClassRequest) returns (UserCommonResponse);
   rpc BatchAddStudentToClass(stream FileChunk) returns(StudentIds);
 }
 
@@ -15,7 +15,7 @@ message AddStudentToClassRequest{
   string  name = 3;
 }
 
-message CommonResponse{
+message UserCommonResponse{
   bool success = 1;
 }
 

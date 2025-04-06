@@ -19,3 +19,7 @@ func TestParseToken(t *testing.T) {
 
 	t.Log(jwtToken)
 }
+
+func TestNewUser(t *testing.T) {
+
+}

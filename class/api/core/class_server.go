@@ -208,7 +208,7 @@ func (cls *ClassServer) QueryChapterList(ctx context.Context, cid string) ([]*Ch
 		return nil, err
 	}
 
-	list := make([]*Chapter, len(chids)-1)
+	list := make([]*Chapter, len(chids))
 
 	for _, chid := range chids {
 		info, err := cls.chapterServer.QueryChapterInfo(ctx, chid)
@@ -283,8 +283,7 @@ func (cls *ClassServer) QueryClassList(ctx context.Context, uid string) ([]*Clas
 		logx.GetLogger("study").Errorf("ClassServer|QueryClassList|QueryClassListError|%v", err)
 		return nil, err
 	}
-
-	list := make([]*Class, len(cids)-1)
+	list := make([]*Class, len(cids))
 	for _, id := range cids {
 		info, err := cls.QueryClassInfo(ctx, id)
 		if err != nil {
@@ -293,7 +292,6 @@ func (cls *ClassServer) QueryClassList(ctx context.Context, uid string) ([]*Clas
 		}
 		list = append(list, info)
 	}
-
 	return list, nil
 }
 
@@ -304,7 +302,7 @@ func (cls *ClassServer) QueryTeacherDeletedClassList(ctx context.Context, uid st
 		return nil, err
 	}
 
-	list := make([]*Class, len(cids)-1)
+	list := make([]*Class, len(cids))
 
 	for _, cid := range cids {
 		info, err := cls.QueryClassInfo(ctx, cid)

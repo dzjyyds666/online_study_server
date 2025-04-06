@@ -64,24 +64,24 @@ func (us *UserServer) QueryUserInfo(ctx context.Context, uid string) (*UserInfo,
 	return user, nil
 }
 
-func (us *UserServer) Login(ctx context.Context, uid, password string) error {
+func (us *UserServer) Login(ctx context.Context, uid, password string) (int, error) {
 	var user UserInfo
 	err := us.mySql.Where("uid = ?", uid).First(&user).Error
 	if err != nil {
 		logx.GetLogger("study").Errorf("UserServer|Login|Query User Info Error|%v", err)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrUserNotExist
+			return 0, ErrUserNotExist
 		} else {
-			return err
+			return 0, err
 		}
 	}
 
 	if err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		logx.GetLogger("study").Errorf("UserServer|Login|Password Error|%v", err)
-		return ErrPasswordNotMatch
+		return 0, ErrPasswordNotMatch
 	}
 
-	return nil
+	return user.Role, nil
 }
 
 func (us *UserServer) CreateToken(ctx context.Context, uid string, role int) (string, error) {
