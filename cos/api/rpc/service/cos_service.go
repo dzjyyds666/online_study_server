@@ -1,42 +1,60 @@
 package service
 
 import (
+	"bytes"
 	"common/proto"
 	"context"
 	"cos/api/core"
-	"github.com/dzjyyds666/opensource/common"
 	"github.com/dzjyyds666/opensource/logx"
-	"github.com/redis/go-redis/v9"
+	"io"
 )
 
-type CosService struct {
-	cosDB     *redis.Client
+type CosRpcServer struct {
 	cosServer *core.CosFileServer
 	proto.UnimplementedCosServer
 }
 
-func (cs *CosService) DeleteObject(ctx context.Context, req *proto.DeleteObjectRequest) (*proto.CommonResponse, error) {
-	logx.GetLogger("study").Infof("receive delete object request: %v", common.ToStringWithoutError(req))
+func (cs *CosRpcServer) UploadClassFile(stream proto.Cos_UploadClassCoverServer) error {
+	var filename string
+	var dirId string
+	var fileType string
+	var md5 string
+	var fileSize int64
+	var fileData bytes.Buffer
+	for {
+		chunk, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			logx.GetLogger("study").Errorf("UploadClassCover|Recv Error|%v", err)
+			return err
+		}
 
-	return &proto.CommonResponse{
-		Success: true,
-	}, nil
-}
+		if len(filename) <= 0 {
+			filename = chunk.FileName
+		}
+		if len(dirId) <= 0 {
+			dirId = chunk.DirectoryId
+		}
+		if len(fileType) <= 0 {
+			fileType = chunk.FileType
+		}
+		if len(md5) <= 0 {
+			md5 = chunk.Md5
+		}
+		if fileSize <= 0 {
+			fileSize = chunk.FileSize
+		}
 
-func (cs *CosService) CopyObject(ctx context.Context, req *proto.CopyObjectRequest) (*proto.CommonResponse, error) {
-	// 先查询出源文件的信息
-	file, err := cs.cosServer.QueryCosFile(ctx, req.SrcFid)
-	if err != nil {
-		logx.GetLogger("study").Errorf("CosRpcService|CosService|CopyObject|QueryCosFileError|%v", err)
-		return &proto.CommonResponse{Success: false}, nil
+		fileData.Write(chunk.Content)
 	}
-	file.WithFid(req.DstFid)
-	err = cs.cosServer.SaveFileInfo(ctx, file)
+	fid, err := cs.cosServer.UploadClassCover(context.Background(), filename, dirId, fileType, md5, fileSize, &fileData)
 	if err != nil {
-		logx.GetLogger("study").Errorf("CosRpcService|CopyObject|SaveFileInfoError|%v", err)
-		return &proto.CommonResponse{Success: false}, nil
+		logx.GetLogger("study").Errorf("UploadClassCover|UploadClassCover Error|%v", err)
+		return err
 	}
-	return &proto.CommonResponse{
-		Success: true,
-	}, nil
+	return stream.SendAndClose(&proto.UploadClassCoverResp{
+		Fid: fid,
+	})
 }

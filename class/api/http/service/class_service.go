@@ -390,3 +390,37 @@ func (cls *ClassService) HandleImportStudentFromExcel(ctx echo.Context) error {
 
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
+
+func (cls *ClassService) HandleUploadClassCover(ctx echo.Context) error {
+	file, err := ctx.FormFile("file")
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleUploadClassCover|Decode err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	md5 := ctx.QueryParam("md5")
+	fileType := ctx.QueryParam("file_type")
+	dirId := ctx.QueryParam("dir_id")
+
+	open, err := file.Open()
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleUploadClassCover|Open err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Open File Error",
+		})
+	}
+
+	fid, err := cls.classServ.UploadClassCover(ctx.Request().Context(), md5, fileType, dirId, open)
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleUploadClassCover|UploadClassCover err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "UploadClassCover Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"fid": fid,
+	})
+}

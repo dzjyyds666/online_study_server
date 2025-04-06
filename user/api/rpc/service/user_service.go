@@ -9,17 +9,17 @@ import (
 	"user/api/core"
 )
 
-type UserServer struct {
+type UserRpcServer struct {
 	UserServer *core.UserServer
 	proto.UnimplementedUserServer
 }
 
-func (us *UserServer) AddStudentToClass(ctx context.Context, req *proto.AddStudentToClassRequest) (*proto.UserCommonResponse, error) {
+func (us *UserRpcServer) AddStudentToClass(ctx context.Context, req *proto.AddStudentToClassRequest) (*proto.UserCommonResponse, error) {
 	return &proto.UserCommonResponse{Success: true}, nil
 }
 
 // 批量注册用户
-func (us *UserServer) BatchAddStudentToClass(stream proto.User_BatchAddStudentToClassServer) error {
+func (us *UserRpcServer) BatchAddStudentToClass(stream proto.User_BatchAddStudentToClassServer) error {
 	var fileData bytes.Buffer
 	var fileName string
 	var cid string

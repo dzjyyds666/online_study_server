@@ -55,7 +55,7 @@ func (cs *CosService) HandleApplyUpload(ctx echo.Context) error {
 
 	// uuid生成fid
 	fid := core.GenerateFid()
-	cosFile.WithFid("fi_" + fid)
+	cosFile.WithFid(fid)
 
 	err = cs.cosServer.ApplyUpload(ctx.Request().Context(), &cosFile)
 	if err != nil {

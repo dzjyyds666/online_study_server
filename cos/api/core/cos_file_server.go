@@ -22,6 +22,7 @@ type CosFileServer struct {
 	cosDB    *redis.Client
 	s3Client *s3.Client
 	ctx      context.Context
+	bucket   string
 }
 
 func NewCosFileServer(ctx context.Context, cosDB *redis.Client, s3Client *s3.Client) *CosFileServer {
@@ -29,6 +30,7 @@ func NewCosFileServer(ctx context.Context, cosDB *redis.Client, s3Client *s3.Cli
 		cosDB:    cosDB,
 		ctx:      ctx,
 		s3Client: s3Client,
+		bucket:   *config.GloableConfig.S3.Bucket[0],
 	}
 }
 
@@ -467,4 +469,31 @@ func (cfs *CosFileServer) UploadPart(ctx context.Context, bucket, fid, partId st
 	}
 	logx.GetLogger("study").Infof("UploadPart|UploadPart Success")
 	return nil
+}
+
+func (cfs *CosFileServer) UploadClassCover(ctx context.Context, filename, dirId, fileType, md5 string, size int64, reader io.Reader) (string, error) {
+	fid := GenerateFid()
+	var file CosFile
+	file.WithFid(fid).
+		WithFileSize(size).
+		WithFileType(fileType).
+		WithFileName(filename).
+		WithFileMD5(md5).
+		WithDirectoryId(dirId)
+
+	// 先创建文件的prepare信息
+	err := cfs.ApplyUpload(ctx, &file)
+	if err != nil {
+		logx.GetLogger("study").Errorf("UploadClassCover|ApplyUpload Error|%v", err)
+		return "", err
+	}
+
+	// 直传
+	_, err = cfs.SingleUpload(ctx, cfs.bucket, fid, reader)
+	if err != nil {
+		logx.GetLogger("study").Errorf("UploadClassCover|SingleUpload Error|%v", err)
+		return "", err
+	}
+
+	return *file.Fid, nil
 }

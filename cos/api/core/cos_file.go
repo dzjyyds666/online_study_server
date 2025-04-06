@@ -1,21 +1,14 @@
 package core
 
 import (
-	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/dzjyyds666/opensource/logx"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/google/uuid"
-	"github.com/labstack/echo"
-	"github.com/redis/go-redis/v9"
 	"io"
-	"os"
 	"path"
 )
 
@@ -67,94 +60,6 @@ func (cf *CosFile) Marshal() string {
 	return string(marshal)
 }
 
-var ErrPrepareIndexExits = fmt.Errorf("CreatePrepareIndex Exits")
-
-func (cf *CosFile) CreatePrepareIndex(ctx echo.Context, redis *redis.Client) error {
-	marshal, err := json.Marshal(cf)
-	if err != nil {
-		logx.GetLogger("study").Infof("CreatePrepareIndex|Marshal Error|%v", err)
-		return err
-	}
-
-	exists, err := redis.SetNX(ctx.Request().Context(), fmt.Sprintf(RedisPrepareInfoKey, *cf.Fid), marshal, 0).Result()
-	if err != nil {
-		logx.GetLogger("study").Infof("CreatePrepareIndex|SetNX Error|%v", err)
-		return err
-	}
-	if !exists {
-		logx.GetLogger("study").Errorf("CreatePrepareIndex|CreatePrepareIndex Exits")
-		return ErrPrepareIndexExits
-	}
-
-	return nil
-}
-
-func (cf *CosFile) CreateIndex(ctx echo.Context, redis *redis.Client) error {
-	marshal, err := json.Marshal(cf)
-	if err != nil {
-		logx.GetLogger("study").Infof("CreateIndex|Marshal Error|%v", err)
-		return err
-	}
-
-	// 从redis中删除prepare文件
-	_, err = redis.Del(ctx.Request().Context(), fmt.Sprintf(RedisPrepareInfoKey, *cf.Fid)).Result()
-	if err != nil {
-		logx.GetLogger("study").Errorf("CreateIndex|Del Error|%v", err)
-		return err
-	}
-
-	// 插入index文件到redis中
-	_, err = redis.Set(ctx.Request().Context(), fmt.Sprintf(RedisInfoKey, *cf.Fid), marshal, 0).Result()
-	if err != nil {
-		logx.GetLogger("study").Errorf("CreateIndex|Set Error|%v", err)
-		return err
-	}
-	return nil
-}
-
-func (cf *CosFile) IsMatch(cos *CosFile) bool {
-	return *cf.FileName == *cos.FileName && *cf.FileMD5 == *cos.FileMD5 && *cf.FileSize == *cos.FileSize
-}
-
-func (cf *CosFile) UploadSingleFile(ctx echo.Context, client *s3.Client, bucket *string, ds *redis.Client) error {
-	// 先上传文件到minio
-	err := cf.PutObject(ctx, client, bucket)
-	if err != nil {
-		logx.GetLogger("study").Infof("UploadSingleFile|PutObject Error|%v", err)
-		return err
-	}
-
-	// 插入源文件的indexInfo
-	err = cf.CreateIndex(ctx, ds)
-	if err != nil {
-		logx.GetLogger("study").Errorf("UploadSingleFile|CreateIndex Error|%v", err)
-		return err
-	}
-	logx.GetLogger("study").Infof("UploadSingleFile|UploadSingleFile Success")
-	return err
-}
-
-func (cf *CosFile) PutObject(ctx echo.Context, client *s3.Client, bucket *string) error {
-	key := cf.MergeFilePath()
-
-	logx.GetLogger("study").Infof("PutObject|%v", *cf.FileType)
-
-	_, err := client.PutObject(ctx.Request().Context(), &s3.PutObjectInput{
-		Body:   cf.r,
-		Bucket: bucket,
-		Key:    aws.String(key),
-		//ContentMD5:    cf.FileMD5,
-		ContentLength: cf.FileSize,
-		ContentType:   cf.FileType,
-	})
-	if err != nil {
-		logx.GetLogger("study").Errorf("PutObject Error|%v", err)
-		return err
-	}
-
-	return nil
-}
-
 // todo 计算文件的md5
 func CalculateMD5(reader io.Reader) (string, error) {
 	buffer := make([]byte, 1024)
@@ -186,7 +91,5 @@ func GetFileType(reader io.Reader) (string, error) {
 
 func GenerateFid() string {
 	u := uuid.New()
-	return u.String()
+	return "fi_" + u.String()
 }
-
-var ErrFidNotExits = fmt.Errorf("Fid Not Exits")

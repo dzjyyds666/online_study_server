@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Cos_DeleteObject_FullMethodName = "/proto.Cos/DeleteObject"
-	Cos_CopyObject_FullMethodName   = "/proto.Cos/CopyObject"
+	Cos_DeleteObject_FullMethodName     = "/proto.Cos/DeleteObject"
+	Cos_CopyObject_FullMethodName       = "/proto.Cos/CopyObject"
+	Cos_UploadClassCover_FullMethodName = "/proto.Cos/UploadClassCover"
 )
 
 // CosClient is the client API for Cos service.
@@ -29,6 +30,7 @@ const (
 type CosClient interface {
 	DeleteObject(ctx context.Context, in *DeleteObjectRequest, opts ...grpc.CallOption) (*CosCommonResponse, error)
 	CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CosCommonResponse, error)
+	UploadClassCover(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[UploadClassCoverReq, UploadClassCoverResp], error)
 }
 
 type cosClient struct {
@@ -59,12 +61,26 @@ func (c *cosClient) CopyObject(ctx context.Context, in *CopyObjectRequest, opts 
 	return out, nil
 }
 
+func (c *cosClient) UploadClassCover(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[UploadClassCoverReq, UploadClassCoverResp], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Cos_ServiceDesc.Streams[0], Cos_UploadClassCover_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[UploadClassCoverReq, UploadClassCoverResp]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Cos_UploadClassCoverClient = grpc.ClientStreamingClient[UploadClassCoverReq, UploadClassCoverResp]
+
 // CosServer is the server API for Cos service.
 // All implementations must embed UnimplementedCosServer
 // for forward compatibility.
 type CosServer interface {
 	DeleteObject(context.Context, *DeleteObjectRequest) (*CosCommonResponse, error)
 	CopyObject(context.Context, *CopyObjectRequest) (*CosCommonResponse, error)
+	UploadClassCover(grpc.ClientStreamingServer[UploadClassCoverReq, UploadClassCoverResp]) error
 	mustEmbedUnimplementedCosServer()
 }
 
@@ -80,6 +96,9 @@ func (UnimplementedCosServer) DeleteObject(context.Context, *DeleteObjectRequest
 }
 func (UnimplementedCosServer) CopyObject(context.Context, *CopyObjectRequest) (*CosCommonResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CopyObject not implemented")
+}
+func (UnimplementedCosServer) UploadClassCover(grpc.ClientStreamingServer[UploadClassCoverReq, UploadClassCoverResp]) error {
+	return status.Errorf(codes.Unimplemented, "method UploadClassCover not implemented")
 }
 func (UnimplementedCosServer) mustEmbedUnimplementedCosServer() {}
 func (UnimplementedCosServer) testEmbeddedByValue()             {}
@@ -138,6 +157,13 @@ func _Cos_CopyObject_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Cos_UploadClassCover_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(CosServer).UploadClassCover(&grpc.GenericServerStream[UploadClassCoverReq, UploadClassCoverResp]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Cos_UploadClassCoverServer = grpc.ClientStreamingServer[UploadClassCoverReq, UploadClassCoverResp]
+
 // Cos_ServiceDesc is the grpc.ServiceDesc for Cos service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -154,6 +180,12 @@ var Cos_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Cos_CopyObject_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "UploadClassCover",
+			Handler:       _Cos_UploadClassCover_Handler,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "pb/cos.proto",
 }

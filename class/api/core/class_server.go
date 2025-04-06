@@ -476,3 +476,7 @@ func (cls *ClassServer) ImportStudentFromExcel(ctx context.Context, filename, ci
 	}
 	return resp.Uids, nil
 }
+
+func (cls *ClassServer) UploadClassCover(ctx context.Context, md5, fileType, dirId string, open bool) (string, error) {
+	// 调用cos上传文件
+}

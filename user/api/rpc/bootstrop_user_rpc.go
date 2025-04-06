@@ -21,7 +21,7 @@ func StratUserRpcServer(ctx context.Context, server *core.UserServer) error {
 	}
 
 	userServer := grpc.NewServer()
-	proto.RegisterUserServer(userServer, &userRpcService.UserServer{
+	proto.RegisterUserServer(userServer, &userRpcService.UserRpcServer{
 		UserServer: server,
 	})
 	if err := userServer.Serve(listen); err != nil {

@@ -21,7 +21,7 @@ func StartCosRpcServer(ctx context.Context) error {
 	}
 
 	cosServer := grpc.NewServer()
-	proto.RegisterCosServer(cosServer, &service.CosService{})
+	proto.RegisterCosServer(cosServer, &service.CosRpcServer{})
 	logx.GetLogger("study").Infof("gRPC Server is running on port %s", *config.GloableConfig.RpcPort)
 	if err := cosServer.Serve(listen); err != nil {
 		logx.GetLogger("study").Errorf("StartCosRpcServer|Serve Error|%v", err)
