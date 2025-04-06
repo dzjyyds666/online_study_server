@@ -21,6 +21,7 @@ github.com/dzjyyds666/opensource/httpx v0.0.0-20250310151156-54599e325e0a h1:t9U
 github.com/dzjyyds666/opensource/httpx v0.0.0-20250310151156-54599e325e0a/go.mod h1:peuPScjLUkWC4BHCtri5jEYWEib8vVI97AlwKAK6w4Y=
 github.com/dzjyyds666/opensource/logx v0.0.0-20250305150926-66661c9f8725 h1:dK1AS4L6Msghr/45GTHThfmduxvNJNZetRJb8CcH5Cw=
 github.com/dzjyyds666/opensource/logx v0.0.0-20250305150926-66661c9f8725/go.mod h1:aToy2QiT9rSCVOtDeyiH9BUL35fHqeF84yFXz2auzOM=
+github.com/dzjyyds666/opensource/logx v0.0.0-20250329121256-8ac52f6728de/go.mod h1:aToy2QiT9rSCVOtDeyiH9BUL35fHqeF84yFXz2auzOM=
 github.com/dzjyyds666/opensource/sdk v0.0.0-20250310151156-54599e325e0a h1:5vzKQrsnngo3trjghAVwn1IgzOYcfmypw9217iP78Zs=
 github.com/dzjyyds666/opensource/sdk v0.0.0-20250310151156-54599e325e0a/go.mod h1:kSFH2kKvkdCRS4yIqUAtm+uDpa9D8UgeFvHFNxN88vY=
 github.com/go-logr/logr v1.4.2 h1:6pFjapn8bFcIbiKo3XT4j/BhANplGihG6tvd+8rYgrY=

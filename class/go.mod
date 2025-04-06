@@ -6,7 +6,7 @@ require (
 	common v0.0.0
 	github.com/dzjyyds666/opensource/common v0.0.0-20250310151156-54599e325e0a
 	github.com/dzjyyds666/opensource/httpx v0.0.0-20250310151156-54599e325e0a
-	github.com/dzjyyds666/opensource/logx v0.0.0-20250305150926-66661c9f8725
+	github.com/dzjyyds666/opensource/logx v0.0.0-20250329121256-8ac52f6728de
 	github.com/dzjyyds666/opensource/sdk v0.0.0-20250310151156-54599e325e0a
 	github.com/google/uuid v1.6.0
 	github.com/labstack/echo v3.3.10+incompatible

@@ -12,12 +12,23 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+var InitStatus = struct {
+	Ing  string `json:"ing"`
+	Done string `json:"done"`
+	Fail string `json:"fail"`
+}{
+	Ing:  "ing",
+	Done: "done",
+	Fail: "fail",
+}
+
 type InitMultipartUpload struct {
 	Fid        string `json:"fid,omitempty"`
 	PartBytes  int64  `json:"part_bytes,omitempty"`
 	TotalParts int64  `json:"total_parts,omitempty"`
 	LastParts  int64  `json:"last_parts,omitempty"`
 	UploadId   string `json:"upload_id,omitempty"`
+	Status     string `json:"status,omitempty"` // 状态
 }
 
 func (imu *InitMultipartUpload) WithFid(fid string) *InitMultipartUpload {
@@ -42,6 +53,16 @@ func (imu *InitMultipartUpload) WithTotalParts(totalParts int64) *InitMultipartU
 
 func (imu *InitMultipartUpload) WithLastParts(lastParts int64) *InitMultipartUpload {
 	imu.LastParts = lastParts
+	return imu
+}
+
+func (imu *InitMultipartUpload) Marshal() string {
+	data, _ := json.Marshal(imu)
+	return string(data)
+}
+
+func (imu *InitMultipartUpload) WithStatus(status string) *InitMultipartUpload {
+	imu.Status = status
 	return imu
 }
 

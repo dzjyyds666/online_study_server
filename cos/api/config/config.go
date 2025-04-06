@@ -18,6 +18,7 @@ type Config struct {
 	RpcPort *int    `json:"rpc_port"` // rpc服务端口
 	Host    *string `json:"host"`     // 服务器地址
 	Name    *string `json:"name"`     // 服务器名称
+	TmpDir  *string `json:"tmp_dir"`
 
 	Redis *Redis `json:"redis"`
 	S3    *S3    `json:"s3"`

@@ -26,7 +26,6 @@ type CosFile struct {
 	FileSize    *int64  `json:"file_size,omitempty"`
 	FileType    *string `json:"file_type,omitempty"`
 	DirectoryId *string `json:"directory_id,omitempty"`
-	r           io.Reader
 }
 
 func (cf *CosFile) MergeFilePath() string {
@@ -66,11 +65,6 @@ func (cf *CosFile) WithDirectoryId(directoryId string) *CosFile {
 func (cf *CosFile) Marshal() string {
 	marshal, _ := json.Marshal(cf)
 	return string(marshal)
-}
-
-func (cf *CosFile) WithReader(r io.Reader) *CosFile {
-	cf.r = r
-	return cf
 }
 
 var ErrPrepareIndexExits = fmt.Errorf("CreatePrepareIndex Exits")

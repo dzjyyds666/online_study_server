@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func RegisterRouter(e *echo.Echo, cs *CosServer) {
+func RegisterRouter(e *echo.Echo, cs *CosService) {
 	e.Use(middleware.Recover())
 	//e.Use(middleware.CORSWithConfig(middleware.DefaultCORSConfig))
 	cos := e.Group("/v1/cos")
