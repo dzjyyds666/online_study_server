@@ -19,14 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	User_AddStudentToClass_FullMethodName = "/proto.user/AddStudentToClass"
+	User_AddStudentToClass_FullMethodName      = "/proto.user/AddStudentToClass"
+	User_BatchAddStudentToClass_FullMethodName = "/proto.user/BatchAddStudentToClass"
 )
 
 // UserClient is the client API for User service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserClient interface {
-	AddStudentToClass(ctx context.Context, in *AddStudentToClassRequest, opts ...grpc.CallOption) (*AddStudentToClassResponse, error)
+	AddStudentToClass(ctx context.Context, in *AddStudentToClassRequest, opts ...grpc.CallOption) (*CommonResponse, error)
+	BatchAddStudentToClass(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[FileChunk, StudentIds], error)
 }
 
 type userClient struct {
@@ -37,9 +39,9 @@ func NewUserClient(cc grpc.ClientConnInterface) UserClient {
 	return &userClient{cc}
 }
 
-func (c *userClient) AddStudentToClass(ctx context.Context, in *AddStudentToClassRequest, opts ...grpc.CallOption) (*AddStudentToClassResponse, error) {
+func (c *userClient) AddStudentToClass(ctx context.Context, in *AddStudentToClassRequest, opts ...grpc.CallOption) (*CommonResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AddStudentToClassResponse)
+	out := new(CommonResponse)
 	err := c.cc.Invoke(ctx, User_AddStudentToClass_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -47,11 +49,25 @@ func (c *userClient) AddStudentToClass(ctx context.Context, in *AddStudentToClas
 	return out, nil
 }
 
+func (c *userClient) BatchAddStudentToClass(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[FileChunk, StudentIds], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &User_ServiceDesc.Streams[0], User_BatchAddStudentToClass_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[FileChunk, StudentIds]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type User_BatchAddStudentToClassClient = grpc.ClientStreamingClient[FileChunk, StudentIds]
+
 // UserServer is the server API for User service.
 // All implementations must embed UnimplementedUserServer
 // for forward compatibility.
 type UserServer interface {
-	AddStudentToClass(context.Context, *AddStudentToClassRequest) (*AddStudentToClassResponse, error)
+	AddStudentToClass(context.Context, *AddStudentToClassRequest) (*CommonResponse, error)
+	BatchAddStudentToClass(grpc.ClientStreamingServer[FileChunk, StudentIds]) error
 	mustEmbedUnimplementedUserServer()
 }
 
@@ -62,8 +78,11 @@ type UserServer interface {
 // pointer dereference when methods are called.
 type UnimplementedUserServer struct{}
 
-func (UnimplementedUserServer) AddStudentToClass(context.Context, *AddStudentToClassRequest) (*AddStudentToClassResponse, error) {
+func (UnimplementedUserServer) AddStudentToClass(context.Context, *AddStudentToClassRequest) (*CommonResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddStudentToClass not implemented")
+}
+func (UnimplementedUserServer) BatchAddStudentToClass(grpc.ClientStreamingServer[FileChunk, StudentIds]) error {
+	return status.Errorf(codes.Unimplemented, "method BatchAddStudentToClass not implemented")
 }
 func (UnimplementedUserServer) mustEmbedUnimplementedUserServer() {}
 func (UnimplementedUserServer) testEmbeddedByValue()              {}
@@ -104,6 +123,13 @@ func _User_AddStudentToClass_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _User_BatchAddStudentToClass_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(UserServer).BatchAddStudentToClass(&grpc.GenericServerStream[FileChunk, StudentIds]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type User_BatchAddStudentToClassServer = grpc.ClientStreamingServer[FileChunk, StudentIds]
+
 // User_ServiceDesc is the grpc.ServiceDesc for User service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -116,6 +142,12 @@ var User_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _User_AddStudentToClass_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "BatchAddStudentToClass",
+			Handler:       _User_BatchAddStudentToClass_Handler,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "pb/user.proto",
 }

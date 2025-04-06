@@ -5,16 +5,28 @@ package proto;
 option go_package = ".;proto";
 
 service user{
-  rpc AddStudentToClass(AddStudentToClassRequest) returns (AddStudentToClassResponse);
+  rpc AddStudentToClass(AddStudentToClassRequest) returns (CommonResponse);
+  rpc BatchAddStudentToClass(stream FileChunk) returns(StudentIds);
 }
 
 message AddStudentToClassRequest{
   string cid = 1;
-  repeated string uids = 2;
+  string  uid = 2;
+  string  name = 3;
 }
 
-message AddStudentToClassResponse{
+message CommonResponse{
   bool success = 1;
+}
+
+message StudentIds{
+  repeated string uids = 1;
+}
+
+message FileChunk{
+  bytes content = 1; // 文件内容
+  string  filename = 2; // 文件名
+  string  cid = 3; // 课程id
 }
 
 message Student{

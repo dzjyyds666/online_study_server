@@ -4,6 +4,7 @@ import "encoding/json"
 
 type UserInfo struct {
 	Uid      string `gorm:"uid;primaryKey" json:"uid"`
+	Name     string `gorm:"name" json:"name"'`
 	Password string `json:"password" gorm:"password"`
 	Avatar   string `json:"avatar" gorm:"avatar"`
 	Role     int    `json:"role" gorm:"role"`
@@ -17,6 +18,11 @@ type UserInfo struct {
 
 func (ui *UserInfo) WithUid(uid string) *UserInfo {
 	ui.Uid = uid
+	return ui
+}
+
+func (ui *UserInfo) WithName(name string) *UserInfo {
+	ui.Name = name
 	return ui
 }
 

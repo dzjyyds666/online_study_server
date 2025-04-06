@@ -48,21 +48,16 @@ func main() {
 		Password: *config.GloableConfig.Redis.Password,
 		DB:       *config.GloableConfig.Redis.DB,
 	})
-
 	hcli := &http.Client{
 		Timeout: 30 * time.Second,
 	}
-
 	s3Client := s3.NewFromConfig(cfg, func(options *s3.Options) {
-		options.HTTPClient = &http.Client{Timeout: 30 * time.Second}
+		options.HTTPClient = hcli
 		options.UsePathStyle = true
 	})
-
 	ctx, cancel := context.WithCancel(context.Background()) // 创建上下文
 	defer cancel()                                          // 确保在退出时取消所有子任务
-
 	var g errgroup.Group
-
 	g.Go(func() error {
 		err := http2.StartCosHttpServer(ctx, client, s3Client)
 		if err != nil {
@@ -72,7 +67,6 @@ func main() {
 		}
 		return nil
 	})
-
 	g.Go(func() error {
 		err := rpc.StartCosRpcServer(ctx)
 		if err != nil {
@@ -82,7 +76,6 @@ func main() {
 		}
 		return nil
 	})
-
 	if err := g.Wait(); err != nil {
 		logx.GetLogger("study").Errorf("main|err:%v", err)
 	}

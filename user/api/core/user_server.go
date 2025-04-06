@@ -10,6 +10,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"io"
+	"time"
 	"user/api/config"
 	mymiddleware "user/api/middleware"
 )
@@ -20,12 +22,17 @@ type UserServer struct {
 	mySql    *gorm.DB
 }
 
-func NewUserServer(ctx context.Context, dsClient *redis.Client, mySql *gorm.DB) *UserServer {
+func NewUserServer(ctx context.Context, dsClient *redis.Client, mySql *gorm.DB) (*UserServer, error) {
+	err := mySql.AutoMigrate(&UserInfo{})
+	if err != nil {
+		logx.GetLogger("study").Errorf("UserServer|StartError|AutoMigrate|err:%v", err)
+		return nil, err
+	}
 	return &UserServer{
 		ctx:      ctx,
 		dsClient: dsClient,
 		mySql:    mySql,
-	}
+	}, nil
 }
 
 func (us *UserServer) RegisterUser(ctx context.Context, user *UserInfo) error {
@@ -91,4 +98,94 @@ func (us *UserServer) CreateToken(ctx context.Context, uid string, role int) (st
 		return "", err
 	}
 	return token, nil
+}
+
+func (us *UserServer) BetchAddStudentToClass(ctx context.Context, cid string, r io.Reader) ([]string, error) {
+	rows, err := parseExcel("学生名单", r)
+	if err != nil {
+		logx.GetLogger("study").Errorf("BetchAddStudentToClass|ParseExcel Error|%v", err)
+		return nil, err
+	}
+	defaultPassword, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
+	if err != nil {
+		logx.GetLogger("study").Errorf("BetchAddStudentToClass|GenerateFromPassword Error|%v", err)
+		return nil, err
+	}
+	ids := make([]string, len(rows)-1)
+	users := make([]UserInfo, len(rows)-1)
+	for _, row := range rows {
+		var user UserInfo
+		user.WithUid(row[0])
+		err := us.mySql.Where("uid = ?", user.Uid).First(&user).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			logx.GetLogger("study").Errorf("BetchAddStudentToClass|Query User Info Error|%v", err)
+			break
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			user.WithName(row[1]).
+				WithCollage(row[2]).
+				WithMajor(row[3]).
+				WithRole(UserRole.Student).
+				WithStatus(UserStatus.Active).
+				WithCreateTs(time.Now().Unix()).
+				WithUpdateTs(time.Now().Unix()).
+				WithPassword(string(defaultPassword))
+			err = us.mySql.WithContext(ctx).Create(&user).Error
+			if err != nil {
+				logx.GetLogger("study").Errorf("BetchAddStudentToClass|Create User Info Error|%v", err)
+				break
+			}
+		}
+		// 插入到学生的班级列表中
+		err = us.dsClient.ZAdd(ctx, buildStudentClassListKey(user.Uid), redis.Z{
+			Member: row[0],
+			Score:  float64(time.Now().Unix()),
+		}).Err()
+		if err != nil {
+			logx.GetLogger("study").Errorf("BetchAddStudentToClass|Add Student To Class Error|%v", err)
+			break
+		}
+		users = append(users, user)
+		ids = append(ids, user.Uid)
+	}
+	return ids, nil
+}
+
+func (us *UserServer) AddStudentToClass(ctx context.Context, cid, uid, name string) error {
+	var user UserInfo
+	user.WithUid(uid)
+	defaultPassword, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
+	if err != nil {
+		logx.GetLogger("study").Errorf("BetchAddStudentToClass|GenerateFromPassword Error|%v", err)
+		return err
+	}
+	err = us.mySql.Where("uid = ?", user.Uid).First(&user).Error
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		logx.GetLogger("study").Errorf("AddStudentToClass|Query User Info Error|%v", err)
+		return err
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		user.WithName(name).
+			WithCollage("未知").
+			WithMajor("未知").
+			WithRole(UserRole.Student).
+			WithStatus(UserStatus.Active).
+			WithCreateTs(time.Now().Unix()).
+			WithUpdateTs(time.Now().Unix()).
+			WithPassword(string(defaultPassword))
+		err = us.mySql.WithContext(ctx).Create(&user).Error
+		if err != nil {
+			logx.GetLogger("study").Errorf("AddStudentToClass|Create User Info Error|%v", err)
+			return err
+		}
+	}
+	err = us.dsClient.ZAdd(ctx, buildStudentClassListKey(user.Uid), redis.Z{
+		Member: uid,
+		Score:  float64(time.Now().Unix()),
+	}).Err()
+	if err != nil {
+		logx.GetLogger("study").Errorf("AddStudentToClass|Add Student To Class Error|%v", err)
+		return err
+	}
+	return nil
 }

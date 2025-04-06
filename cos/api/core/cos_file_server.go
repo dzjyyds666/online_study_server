@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/dzjyyds666/opensource/common"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
@@ -369,6 +370,101 @@ func (cfs *CosFileServer) SingleUpload(ctx context.Context, bucket, fid string, 
 	return info, nil
 }
 
-func (cfs *CosFileServer) CompleteMultUpload(ctx context.Context, bucket, fid string) error {
+func (cfs *CosFileServer) CompleteMultUpload(ctx context.Context, bucket, fid string, completeParts []types.CompletedPart) error {
+	initInfo, err := cfs.QueryInitInfo(ctx, fid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("CompleteMultUpload|QueryInitInfo Error|%v", err)
+		return err
+	}
 
+	info, err := cfs.QueryFilePrepareInfo(ctx, fid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("CompleteMultUpload|QueryFilePrepareInfo Error|%v", err)
+		return err
+	}
+	_, err = cfs.s3Client.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
+		Bucket:   aws.String(bucket),
+		Key:      aws.String(info.MergeFilePath()),
+		UploadId: aws.String(initInfo.UploadId),
+		MultipartUpload: &types.CompletedMultipartUpload{
+			Parts: completeParts,
+		},
+	})
+	if err != nil {
+		logx.GetLogger("study").Errorf("CompleteMultUpload|CompleteMultipartUpload Error|%v", err)
+		return err
+	}
+	// 删除初始化上传的信息
+	err = cfs.cosDB.Del(ctx, buildInitFileInfoKey(fid)).Err()
+	if err != nil {
+		logx.GetLogger("study").Errorf("CompleteMultUpload|Del Error|%v", err)
+		return err
+	}
+	err = cfs.cosDB.Rename(ctx, buildPrepareFileInfoKey(fid), buildFileInfoKey(fid)).Err()
+	if err != nil {
+		logx.GetLogger("study").Errorf("CompleteMultUpload|Rename Error|%v", err)
+		return err
+	}
+	logx.GetLogger("study").Infof("CompleteMultUpload|CompleteMultipartUpload Success")
+	return nil
+}
+
+func (cfs *CosFileServer) AbortUpload(ctx context.Context, bucket, fid string) error {
+	initInfo, err := cfs.QueryInitInfo(ctx, fid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("AbortUpload|QueryInitInfo Error|%v", err)
+		return err
+	}
+	info, err := cfs.QueryFilePrepareInfo(ctx, fid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("AbortUpload|QueryFilePrepareInfo Error|%v", err)
+		return err
+	}
+	_, err = cfs.s3Client.AbortMultipartUpload(ctx, &s3.AbortMultipartUploadInput{
+		Bucket:   aws.String(bucket),
+		Key:      aws.String(info.MergeFilePath()),
+		UploadId: aws.String(initInfo.UploadId),
+	})
+	if err != nil {
+		logx.GetLogger("study").Errorf("AbortUpload|AbortMultipartUpload Error|%v", err)
+		return err
+	}
+	err = cfs.cosDB.Del(ctx, buildInitFileInfoKey(fid), buildPrepareFileInfoKey(fid)).Err()
+	if err != nil {
+		logx.GetLogger("study").Errorf("AbortUpload|Del Error|%v", err)
+		return err
+	}
+
+	logx.GetLogger("study").Errorf("AbortUpload|AbortMultipartUpload Success")
+	return nil
+}
+
+func (cfs *CosFileServer) UploadPart(ctx context.Context, bucket, fid, partId string, reader io.Reader) error {
+	initInfo, err := cfs.QueryInitInfo(ctx, fid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("UploadPart|QueryInitInfo Error|%v", err)
+		return err
+	}
+
+	info, err := cfs.QueryFilePrepareInfo(ctx, fid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("UploadPart|QueryFilePrepareInfo Error|%v", err)
+		return err
+	}
+
+	partIdInt, _ := strconv.Atoi(partId)
+
+	_, err = cfs.s3Client.UploadPart(ctx, &s3.UploadPartInput{
+		Bucket:     aws.String(bucket),
+		Key:        aws.String(info.MergeFilePath()),
+		UploadId:   aws.String(initInfo.UploadId),
+		PartNumber: aws.Int32(int32(partIdInt)),
+		Body:       reader,
+	})
+	if err != nil {
+		logx.GetLogger("study").Errorf("UploadPart|UploadPart Error|%v", err)
+		return err
+	}
+	logx.GetLogger("study").Infof("UploadPart|UploadPart Success")
+	return nil
 }

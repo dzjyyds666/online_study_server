@@ -12,16 +12,15 @@ import (
 
 func RegisterRouter(e *echo.Echo, cs *CosService) {
 	e.Use(middleware.Recover())
-	//e.Use(middleware.CORSWithConfig(middleware.DefaultCORSConfig))
 	cos := e.Group("/v1/cos")
-	cos.Add("POST", "/upload/apply", cs.HandlerApplyUpload)
-	cos.Add("POST", "/upload/single/:fid", cs.HandlerSingleUpload)
-	cos.Add("GET", "/file/:fid", cs.HandlerGetFile)
-
-	cos.Add("POST", "/upload/init", cs.HandlerInitMultipartUpload)
-	cos.Add("POST", "/upload/multi/:fid", cs.HandlerMultiUpload)
+	cos.Add("POST", "/upload/apply", cs.HandleApplyUpload)
+	cos.Add("POST", "/upload/single/:fid", cs.HandleSingleUpload)
+	cos.Add("POST", "/upload/init", cs.HandleInitMultipartUpload)
+	cos.Add("POST", "/upload/part", cs.HandleUploadPart)
+	cos.Add("POST", "/upload/init/video", cs.HandleInitUploadVideo)
+	cos.Add("POST", "/upload/part/video", cs.HandleUploadVideoPart)
 	cos.Add("POST", "/upload/complete/:fid", cs.CompleteUpload)
-	cos.Add("POST", "/upload/abort/:fid", cs.HandlerAbortUpload)
+	cos.Add("POST", "/upload/abort/:fid", cs.HandleAbortUpload)
 
 	RecordRouteToFile(FilterRouter(e.Routes()))
 }

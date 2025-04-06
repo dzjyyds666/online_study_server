@@ -40,7 +40,6 @@ func (cls *ClassService) HandleCreateClass(ctx echo.Context) error {
 			"msg": "Param Invalid",
 		})
 	}
-
 	tuid := ctx.Get("uid")
 	//生成随机的classId
 	cid := core2.NewClassId(8)
@@ -75,7 +74,6 @@ func (cls *ClassService) HandleCopyClass(ctx echo.Context) error {
 			"msg": "copy Class Error",
 		})
 	}
-
 	logx.GetLogger("study").Infof("HandleCopyClass|CopyClass Success|%s", common.ToStringWithoutError(info))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
@@ -91,7 +89,6 @@ func (cls *ClassService) HandleListTeacherClass(ctx echo.Context) error {
 	}
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
-
 func (cls *ClassService) HandleUpdateClass(ctx echo.Context) error {
 	var class *core2.Class
 	decoder := json.NewDecoder(ctx.Request().Body)
@@ -360,4 +357,34 @@ func (cls *ClassService) HandleDeleteResource(ctx echo.Context) error {
 	}
 	logx.GetLogger("study").Infof("HandleDeleteResource|DeleteResource|Succ|%s", *resource.Fid)
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, resource)
+}
+
+func (cls *ClassService) HandleImportStudentFromExcel(ctx echo.Context) error {
+	cid := ctx.Param("cid")
+	file, err := ctx.FormFile("file")
+	if err != nil || len(cid) <= 0 {
+		logx.GetLogger("study").Errorf("HandleImportStudentFromExcel|Decode err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	filename := file.Filename
+	open, err := file.Open()
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleImportStudentFromExcel|Open err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Open File Error",
+		})
+	}
+
+	list, err := cls.classServ.ImportStudentFromExcel(ctx.Request().Context(), filename, cid, open)
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleImportStudentFromExcel|ImportStudentFromExcel err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "ImportStudentFromExcel Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }

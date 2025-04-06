@@ -24,7 +24,8 @@ const (
 type AddStudentToClassRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Cid           string                 `protobuf:"bytes,1,opt,name=cid,proto3" json:"cid,omitempty"`
-	Uids          []string               `protobuf:"bytes,2,rep,name=uids,proto3" json:"uids,omitempty"`
+	Uid           string                 `protobuf:"bytes,2,opt,name=uid,proto3" json:"uid,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -66,34 +67,41 @@ func (x *AddStudentToClassRequest) GetCid() string {
 	return ""
 }
 
-func (x *AddStudentToClassRequest) GetUids() []string {
+func (x *AddStudentToClassRequest) GetUid() string {
 	if x != nil {
-		return x.Uids
+		return x.Uid
 	}
-	return nil
+	return ""
 }
 
-type AddStudentToClassResponse struct {
+func (x *AddStudentToClassRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type CommonResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AddStudentToClassResponse) Reset() {
-	*x = AddStudentToClassResponse{}
+func (x *CommonResponse) Reset() {
+	*x = CommonResponse{}
 	mi := &file_pb_user_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AddStudentToClassResponse) String() string {
+func (x *CommonResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AddStudentToClassResponse) ProtoMessage() {}
+func (*CommonResponse) ProtoMessage() {}
 
-func (x *AddStudentToClassResponse) ProtoReflect() protoreflect.Message {
+func (x *CommonResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pb_user_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -105,16 +113,120 @@ func (x *AddStudentToClassResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AddStudentToClassResponse.ProtoReflect.Descriptor instead.
-func (*AddStudentToClassResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use CommonResponse.ProtoReflect.Descriptor instead.
+func (*CommonResponse) Descriptor() ([]byte, []int) {
 	return file_pb_user_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AddStudentToClassResponse) GetSuccess() bool {
+func (x *CommonResponse) GetSuccess() bool {
 	if x != nil {
 		return x.Success
 	}
 	return false
+}
+
+type StudentIds struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Uids          []string               `protobuf:"bytes,1,rep,name=uids,proto3" json:"uids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StudentIds) Reset() {
+	*x = StudentIds{}
+	mi := &file_pb_user_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StudentIds) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StudentIds) ProtoMessage() {}
+
+func (x *StudentIds) ProtoReflect() protoreflect.Message {
+	mi := &file_pb_user_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StudentIds.ProtoReflect.Descriptor instead.
+func (*StudentIds) Descriptor() ([]byte, []int) {
+	return file_pb_user_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *StudentIds) GetUids() []string {
+	if x != nil {
+		return x.Uids
+	}
+	return nil
+}
+
+type FileChunk struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Content       []byte                 `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`   // 文件内容
+	Filename      string                 `protobuf:"bytes,2,opt,name=filename,proto3" json:"filename,omitempty"` // 文件名
+	Cid           string                 `protobuf:"bytes,3,opt,name=cid,proto3" json:"cid,omitempty"`           // 课程id
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FileChunk) Reset() {
+	*x = FileChunk{}
+	mi := &file_pb_user_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FileChunk) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FileChunk) ProtoMessage() {}
+
+func (x *FileChunk) ProtoReflect() protoreflect.Message {
+	mi := &file_pb_user_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FileChunk.ProtoReflect.Descriptor instead.
+func (*FileChunk) Descriptor() ([]byte, []int) {
+	return file_pb_user_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *FileChunk) GetContent() []byte {
+	if x != nil {
+		return x.Content
+	}
+	return nil
+}
+
+func (x *FileChunk) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *FileChunk) GetCid() string {
+	if x != nil {
+		return x.Cid
+	}
+	return ""
 }
 
 type Student struct {
@@ -131,7 +243,7 @@ type Student struct {
 
 func (x *Student) Reset() {
 	*x = Student{}
-	mi := &file_pb_user_proto_msgTypes[2]
+	mi := &file_pb_user_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -143,7 +255,7 @@ func (x *Student) String() string {
 func (*Student) ProtoMessage() {}
 
 func (x *Student) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_user_proto_msgTypes[2]
+	mi := &file_pb_user_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -156,7 +268,7 @@ func (x *Student) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Student.ProtoReflect.Descriptor instead.
 func (*Student) Descriptor() ([]byte, []int) {
-	return file_pb_user_proto_rawDescGZIP(), []int{2}
+	return file_pb_user_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Student) GetSid() string {
@@ -205,21 +317,30 @@ var File_pb_user_proto protoreflect.FileDescriptor
 
 const file_pb_user_proto_rawDesc = "" +
 	"\n" +
-	"\rpb/user.proto\x12\x05proto\"@\n" +
+	"\rpb/user.proto\x12\x05proto\"R\n" +
 	"\x18AddStudentToClassRequest\x12\x10\n" +
-	"\x03cid\x18\x01 \x01(\tR\x03cid\x12\x12\n" +
-	"\x04uids\x18\x02 \x03(\tR\x04uids\"5\n" +
-	"\x19AddStudentToClassResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\x91\x01\n" +
+	"\x03cid\x18\x01 \x01(\tR\x03cid\x12\x10\n" +
+	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"*\n" +
+	"\x0eCommonResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\" \n" +
+	"\n" +
+	"StudentIds\x12\x12\n" +
+	"\x04uids\x18\x01 \x03(\tR\x04uids\"S\n" +
+	"\tFileChunk\x12\x18\n" +
+	"\acontent\x18\x01 \x01(\fR\acontent\x12\x1a\n" +
+	"\bfilename\x18\x02 \x01(\tR\bfilename\x12\x10\n" +
+	"\x03cid\x18\x03 \x01(\tR\x03cid\"\x91\x01\n" +
 	"\aStudent\x12\x10\n" +
 	"\x03sid\x18\x01 \x01(\tR\x03sid\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
 	"\acollege\x18\x03 \x01(\tR\acollege\x12\x14\n" +
 	"\x05major\x18\x04 \x01(\tR\x05major\x12\x16\n" +
 	"\x06avatar\x18\x05 \x01(\tR\x06avatar\x12\x18\n" +
-	"\adeleted\x18\x06 \x01(\bR\adeleted2^\n" +
-	"\x04user\x12V\n" +
-	"\x11AddStudentToClass\x12\x1f.proto.AddStudentToClassRequest\x1a .proto.AddStudentToClassResponseB\tZ\a.;protob\x06proto3"
+	"\adeleted\x18\x06 \x01(\bR\adeleted2\x94\x01\n" +
+	"\x04user\x12K\n" +
+	"\x11AddStudentToClass\x12\x1f.proto.AddStudentToClassRequest\x1a\x15.proto.CommonResponse\x12?\n" +
+	"\x16BatchAddStudentToClass\x12\x10.proto.FileChunk\x1a\x11.proto.StudentIds(\x01B\tZ\a.;protob\x06proto3"
 
 var (
 	file_pb_user_proto_rawDescOnce sync.Once
@@ -233,17 +354,21 @@ func file_pb_user_proto_rawDescGZIP() []byte {
 	return file_pb_user_proto_rawDescData
 }
 
-var file_pb_user_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_pb_user_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_pb_user_proto_goTypes = []any{
-	(*AddStudentToClassRequest)(nil),  // 0: proto.AddStudentToClassRequest
-	(*AddStudentToClassResponse)(nil), // 1: proto.AddStudentToClassResponse
-	(*Student)(nil),                   // 2: proto.Student
+	(*AddStudentToClassRequest)(nil), // 0: proto.AddStudentToClassRequest
+	(*CommonResponse)(nil),           // 1: proto.CommonResponse
+	(*StudentIds)(nil),               // 2: proto.StudentIds
+	(*FileChunk)(nil),                // 3: proto.FileChunk
+	(*Student)(nil),                  // 4: proto.Student
 }
 var file_pb_user_proto_depIdxs = []int32{
 	0, // 0: proto.user.AddStudentToClass:input_type -> proto.AddStudentToClassRequest
-	1, // 1: proto.user.AddStudentToClass:output_type -> proto.AddStudentToClassResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	3, // 1: proto.user.BatchAddStudentToClass:input_type -> proto.FileChunk
+	1, // 2: proto.user.AddStudentToClass:output_type -> proto.CommonResponse
+	2, // 3: proto.user.BatchAddStudentToClass:output_type -> proto.StudentIds
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -260,7 +385,7 @@ func file_pb_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pb_user_proto_rawDesc), len(file_pb_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

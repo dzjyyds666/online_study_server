@@ -5,7 +5,6 @@ import (
 	"cos/api/config"
 	"cos/api/core"
 	"encoding/json"
-	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -40,19 +39,19 @@ func NewCosServer(ctx context.Context, ds *redis.Client, s3Client *s3.Client) (*
 }
 
 // 需要传入文件的名称，md5，长度，文件夹id
-func (cs *CosService) HandlerApplyUpload(ctx echo.Context) error {
+func (cs *CosService) HandleApplyUpload(ctx echo.Context) error {
 
 	decoder := json.NewDecoder(ctx.Request().Body)
 	var cosFile core.CosFile
 	err := decoder.Decode(&cosFile)
 	if err != nil {
-		logx.GetLogger("study").Infof("HandlerApplyUpload|Params bind Error|%v", err)
+		logx.GetLogger("study").Infof("HandleApplyUpload|Params bind Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
 	}
 
-	logx.GetLogger("study").Infof("HandlerApplyUpload|Params bind Success|%s", common.ToStringWithoutError(cosFile))
+	logx.GetLogger("study").Infof("HandleApplyUpload|Params bind Success|%s", common.ToStringWithoutError(cosFile))
 
 	// uuid生成fid
 	fid := core.GenerateFid()
@@ -60,12 +59,12 @@ func (cs *CosService) HandlerApplyUpload(ctx echo.Context) error {
 
 	err = cs.cosServer.ApplyUpload(ctx.Request().Context(), &cosFile)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandlerApplyUpload|CreatePrepareIndex|err:%v", err)
+		logx.GetLogger("study").Errorf("HandleApplyUpload|CreatePrepareIndex|err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Create File PrepareInfo Error",
 		})
 	}
-	logx.GetLogger("study").Infof("HandlerApplyUpload|CreatePrepareIndex|Succ|%s", common.ToStringWithoutError(cosFile))
+	logx.GetLogger("study").Infof("HandleApplyUpload|CreatePrepareIndex|Succ|%s", common.ToStringWithoutError(cosFile))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, cosFile)
 }
 
@@ -206,6 +205,46 @@ func (cs *CosService) HandleInitMultipartUpload(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, initupload)
 }
 
+func (cs *CosService) HandleUploadPart(ctx echo.Context) error {
+	fid := ctx.QueryParam("fid")
+	partId := ctx.QueryParam("partId")
+	if len(fid) <= 0 || len(partId) <= 0 {
+		logx.GetLogger("study").Errorf("HandleUploadPart|fid or partId is empty")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	file, err := ctx.FormFile("file")
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleUploadPart|Decode err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	open, err := file.Open()
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleUploadPart|Open err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	defer open.Close()
+
+	err = cs.cosServer.UploadPart(ctx.Request().Context(), cs.bucket, fid, partId, open)
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleUploadPart|UploadPart err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "UploadPart Error",
+		})
+	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"msg": "UploadPart Success",
+	})
+}
+
 type EndPart struct {
 	PartId int32  `json:"part_id"`
 	ETag   string `json:"etag"`
@@ -231,32 +270,7 @@ func (cs *CosService) CompleteUpload(ctx echo.Context) error {
 		})
 	}
 
-	init := &core.InitMultipartUpload{
-		Fid: fid,
-	}
-
-	initInfo, err := init.QueryIndexToInit(ctx.Request().Context(), cs.redis)
-	if err != nil {
-		logx.GetLogger("study").Errorf("CompleteUpload|QueryIndexToInit err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "QueryIndexToInit Error",
-		})
-	}
-
-	// 查询prepare信息
-	file := core.CosFile{
-		Fid: &fid,
-	}
-
-	fileInfo, err := file.QueryPrepareInfo(ctx.Request().Context(), cs.redis)
-	if err != nil {
-		logx.GetLogger("study").Errorf("CompleteUpload|QueryPrepareInfo err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "QueryPrepareInfo Error",
-		})
-	}
-
-	completeParts := make([]types.CompletedPart, len(endparts))
+	completeParts := make([]types.CompletedPart, len(endparts)-1)
 	for i, endpart := range endparts {
 		completeParts[i] = types.CompletedPart{
 			ETag:       &endpart.ETag,
@@ -264,28 +278,11 @@ func (cs *CosService) CompleteUpload(ctx echo.Context) error {
 		}
 	}
 
-	_, err = cs.s3Client.CompleteMultipartUpload(ctx.Request().Context(), &s3.CompleteMultipartUploadInput{
-		Bucket:   aws.String(cs.bucket),
-		Key:      aws.String(fileInfo.MergeFilePath()),
-		UploadId: aws.String(initInfo.UploadId),
-		MultipartUpload: &types.CompletedMultipartUpload{
-			Parts: completeParts,
-		},
-	})
+	err = cs.cosServer.CompleteMultUpload(ctx.Request().Context(), cs.bucket, fid, completeParts)
 	if err != nil {
 		logx.GetLogger("study").Errorf("CompleteUpload|CompleteMultipartUpload err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "CompleteMult Error",
-		})
-	}
-	// 修改prepare文件为index
-	prepareKey := fmt.Sprintf(core.RedisPrepareInfoKey, init.Fid)
-	index := fmt.Sprintf(core.RedisInfoKey, init.Fid)
-	err = cs.redis.RenameNX(ctx.Request().Context(), prepareKey, index).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("CompleteUpload|RenameNX err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "RenameNX Error",
 		})
 	}
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
@@ -293,58 +290,20 @@ func (cs *CosService) CompleteUpload(ctx echo.Context) error {
 	})
 }
 
-func (cs *CosService) HandlerAbortUpload(ctx echo.Context) error {
+func (cs *CosService) HandleAbortUpload(ctx echo.Context) error {
 	fid := ctx.Param("fid")
 	if len(fid) == 0 {
-		logx.GetLogger("study").Errorf("HandlerAbortUpload|fid is empty")
+		logx.GetLogger("study").Errorf("HandleAbortUpload|fid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
 	}
 
-	init := core.InitMultipartUpload{Fid: fid}
-
-	initInfo, err := init.QueryIndexToInit(ctx.Request().Context(), cs.redis)
+	err := cs.cosServer.AbortUpload(ctx.Request().Context(), cs.bucket, fid)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandlerAbortUpload|QueryIndexToInit err:%v", err)
+		logx.GetLogger("study").Errorf("HandleAbortUpload|AbortUpload err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "QueryIndexToInit Error",
-		})
-	}
-
-	// 查询prepare信息
-	file := core.CosFile{
-		Fid: &fid,
-	}
-
-	fileInfo, err := file.QueryPrepareInfo(ctx.Request().Context(), cs.redis)
-	if err != nil {
-		logx.GetLogger("study").Errorf("CompleteUpload|QueryPrepareInfo err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "QueryPrepareInfo Error",
-		})
-	}
-
-	_, err = cs.s3Client.AbortMultipartUpload(ctx.Request().Context(), &s3.AbortMultipartUploadInput{
-		Bucket:   aws.String(cs.bucket),
-		Key:      aws.String(fileInfo.MergeFilePath()),
-		UploadId: aws.String(initInfo.UploadId),
-	})
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandlerAbortUpload|AbortMultipartUpload err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "AbortMultipartUpload Error",
-		})
-	}
-
-	// 删除redis中的prepare文件和init文件
-	prepareKey := fmt.Sprintf(core.RedisPrepareInfoKey, fid)
-	initKey := fmt.Sprintf(core.RedisInitInfoKey, fid)
-	err = cs.redis.Del(ctx.Request().Context(), prepareKey, initKey).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandlerAbortUpload|Del err|%s|%s|%v", prepareKey, initKey, err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "Redis Del Error",
+			"msg": "AbortUpload Error",
 		})
 	}
 

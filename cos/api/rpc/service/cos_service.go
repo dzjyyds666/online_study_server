@@ -1,9 +1,9 @@
 package service
 
 import (
+	"common/proto"
 	"context"
 	"cos/api/core"
-	"cos/api/proto"
 	"github.com/dzjyyds666/opensource/common"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"

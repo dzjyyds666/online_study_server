@@ -9,6 +9,7 @@ import (
 	"errors"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
+	"io"
 	"time"
 )
 
@@ -434,4 +435,46 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 		class.ChapterList = append(class.ChapterList, chInfo)
 	}
 	return class, nil
+}
+
+func (cls *ClassServer) ImportStudentFromExcel(ctx context.Context, filename, cid string, r io.Reader) ([]string, error) {
+	userClient := client.GetUserRpcClient(ctx)
+	stream, err := userClient.BatchAddStudentToClass(ctx)
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|ImportStudentFromExcel|BatchRegisterError|%v", err)
+		return nil, err
+	}
+	buf := make([]byte, 1024*32)
+	firstChunk := true
+
+	for {
+		n, err := r.Read(buf)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			logx.GetLogger("study").Errorf("ClassServer|ImportStudentFromExcel|ReadError|%v", err)
+			return nil, err
+		}
+		chunk := &proto.FileChunk{
+			Content: buf[:n],
+		}
+
+		if firstChunk {
+			chunk.Filename = filename
+			chunk.Cid = cid
+			firstChunk = false
+		}
+		if err = stream.Send(chunk); err != nil {
+			logx.GetLogger("study").Errorf("ClassServer|ImportStudentFromExcel|SendError|%v", err)
+			return nil, err
+		}
+	}
+
+	resp, err := stream.CloseAndRecv()
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|ImportStudentFromExcel|CloseAndRecvError|%v", err)
+		return nil, err
+	}
+	return resp.Uids, nil
 }

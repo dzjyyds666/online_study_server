@@ -1,9 +1,10 @@
 package rpc
 
 import (
+	"common/proto"
 	"context"
 	"cos/api/config"
-	pb "cos/api/proto"
+
 	"cos/api/rpc/service"
 	"errors"
 	"fmt"
@@ -20,7 +21,7 @@ func StartCosRpcServer(ctx context.Context) error {
 	}
 
 	cosServer := grpc.NewServer()
-	pb.RegisterCosServer(cosServer, &service.CosService{})
+	proto.RegisterCosServer(cosServer, &service.CosService{})
 	logx.GetLogger("study").Infof("gRPC Server is running on port %s", *config.GloableConfig.RpcPort)
 	if err := cosServer.Serve(listen); err != nil {
 		logx.GetLogger("study").Errorf("StartCosRpcServer|Serve Error|%v", err)

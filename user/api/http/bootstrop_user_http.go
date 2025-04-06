@@ -5,16 +5,15 @@ import (
 	"fmt"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
-	"github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 	"user/api/config"
+	"user/api/core"
 	"user/api/http/service"
 )
 
 // user 启动类
-func StartUserHttpServer(ctx context.Context, redis *redis.Client, mysql *gorm.DB) error {
+func StartUserHttpServer(ctx context.Context, server *core.UserServer) error {
 	e := echo.New()
-	userServer, err := userHttpService.NewUserService(ctx, redis, mysql, nil)
+	userServer, err := userHttpService.NewUserService(ctx, server)
 	if err != nil {
 		logx.GetLogger("study").Errorf("UserService|StartError|NewUserServer|err:%v", err)
 		return err

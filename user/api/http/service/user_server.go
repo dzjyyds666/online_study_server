@@ -9,10 +9,7 @@ import (
 	"github.com/dzjyyds666/opensource/httpx"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
-	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/gomail.v2"
-	"gorm.io/gorm"
 	"time"
 	core2 "user/api/core"
 )
@@ -22,15 +19,10 @@ type UserService struct {
 	userServer *core2.UserServer
 }
 
-func NewUserService(ctx context.Context, client *redis.Client, mysql *gorm.DB, dialer *gomail.Dialer) (*UserService, error) {
-	err := mysql.AutoMigrate(&core2.UserInfo{})
-	if err != nil {
-		logx.GetLogger("study").Errorf("UserService|StartError|AutoMigrate|err:%v", err)
-		return nil, err
-	}
+func NewUserService(ctx context.Context, server *core2.UserServer) (*UserService, error) {
 	userServer := &UserService{
 		ctx:        ctx,
-		userServer: core2.NewUserServer(ctx, client, mysql),
+		userServer: server,
 	}
 	return userServer, nil
 }

@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 	"strconv"
 	"user/api/config"
+	"user/api/core"
 	"user/api/http"
 	"user/api/rpc"
 )
@@ -41,15 +42,18 @@ func main() {
 		logx.GetLogger("study").Errorf("NewUserServer|gorm.Open err:%v", err)
 		return
 	}
-
 	ctx, cancel := context.WithCancel(context.Background())
-
+	server, err := core.NewUserServer(ctx, client, mysql)
+	if err != nil {
+		logx.GetLogger("study").Errorf("main|NewUserServer|err:%v", err)
+		return
+	}
 	defer cancel()
 
 	var g errgroup.Group
 
 	g.Go(func() error {
-		err = http.StartUserHttpServer(ctx, client, mysql)
+		err = http.StartUserHttpServer(ctx, server)
 		if err != nil {
 			logx.GetLogger("study").Errorf("main|StartUserHttpServer|err:%v", err)
 			cancel()
@@ -59,7 +63,7 @@ func main() {
 	})
 
 	g.Go(func() error {
-		err = rpc.StratUserRpcServer(ctx, client, mysql)
+		err = rpc.StratUserRpcServer(ctx, server)
 		if err != nil {
 			logx.GetLogger("study").Errorf("main|StratUserRpcServer|err:%v", err)
 			cancel()
