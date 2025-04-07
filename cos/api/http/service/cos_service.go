@@ -68,25 +68,25 @@ func (cs *CosService) HandleApplyUpload(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, cosFile)
 }
 
-func (cs *CosService) HandleInitUploadVideo(ctx echo.Context) error {
-	var init core.InitMultipartUpload
-	decoder := json.NewDecoder(ctx.Request().Body)
-	if err := decoder.Decode(&init); err != nil {
-		logx.GetLogger("study").Errorf("HandleInitUploadVideo|Decode err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
-			"msg": "Params Invalid",
-		})
-	}
-
-	err := cs.cosServer.InitUploadVideo(ctx.Request().Context(), &init)
-	if err != nil {
-		logx.GetLogger("study").Errorf("HandleInitUploadVideo|InitUpload err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-			"msg": "InitUpload Error",
-		})
-	}
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, init)
-}
+//func (cs *CosService) HandleInitUploadVideo(ctx echo.Context) error {
+//	var init core.InitMultipartUpload
+//	decoder := json.NewDecoder(ctx.Request().Body)
+//	if err := decoder.Decode(&init); err != nil {
+//		logx.GetLogger("study").Errorf("HandleInitUploadVideo|Decode err:%v", err)
+//		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+//			"msg": "Params Invalid",
+//		})
+//	}
+//
+//	err := cs.cosServer.InitUploadVideo(ctx.Request().Context(), &init)
+//	if err != nil {
+//		logx.GetLogger("study").Errorf("HandleInitUploadVideo|InitUpload err:%v", err)
+//		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+//			"msg": "InitUpload Error",
+//		})
+//	}
+//	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, init)
+//}
 
 func (cs *CosService) HandleUploadVideoPart(ctx echo.Context) error {
 	fid := ctx.QueryParam("fid")
@@ -113,9 +113,7 @@ func (cs *CosService) HandleUploadVideoPart(ctx echo.Context) error {
 			"msg": "Params Invalid",
 		})
 	}
-
 	defer open.Close()
-
 	err = cs.cosServer.UploadVideoPart(ctx.Request().Context(), fid, partId, open)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleUploadPartToTmp|UploadPart err:%v", err)
@@ -201,7 +199,6 @@ func (cs *CosService) HandleInitMultipartUpload(ctx echo.Context) error {
 			"msg": "InitMultipartUpload Error",
 		})
 	}
-
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, initupload)
 }
 
@@ -233,7 +230,7 @@ func (cs *CosService) HandleUploadPart(ctx echo.Context) error {
 
 	defer open.Close()
 
-	err = cs.cosServer.UploadPart(ctx.Request().Context(), cs.bucket, fid, partId, open)
+	etag, err := cs.cosServer.UploadPart(ctx.Request().Context(), cs.bucket, fid, partId, open)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleUploadPart|UploadPart err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -241,7 +238,8 @@ func (cs *CosService) HandleUploadPart(ctx echo.Context) error {
 		})
 	}
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
-		"msg": "UploadPart Success",
+		"part_id": partId,
+		"etag":    *etag,
 	})
 }
 

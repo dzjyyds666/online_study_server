@@ -477,6 +477,45 @@ func (cls *ClassServer) ImportStudentFromExcel(ctx context.Context, filename, ci
 	return resp.Uids, nil
 }
 
-func (cls *ClassServer) UploadClassCover(ctx context.Context, md5, fileType, dirId string, open bool) (string, error) {
+func (cls *ClassServer) UploadClassCover(ctx context.Context, md5, fileType, dirId string, open io.Reader) (string, error) {
 	// 调用cos上传文件
+	cosClient := client.GetCosRpcClient(ctx)
+	stream, err := cosClient.UploadClassCover(ctx)
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|UploadClassCover|UploadClassCoverError|%v", err)
+		return "", err
+	}
+	buf := make([]byte, 1024*1024)
+	firstChunk := true
+	for {
+		n, err := open.Read(buf)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			logx.GetLogger("study").Errorf("ClassServer|UploadClassCover|ReadError|%v", err)
+			return "", err
+		}
+
+		chunk := &proto.UploadClassCoverReq{
+			Content: buf[:n],
+		}
+		if firstChunk {
+			chunk.Md5 = md5
+			chunk.FileType = fileType
+			chunk.DirectoryId = dirId
+			firstChunk = false
+		}
+		if err := stream.Send(chunk); err != nil {
+			logx.GetLogger("study").Errorf("ClassServer|UploadClassCover|SendError|%v", err)
+			return "", err
+		}
+	}
+
+	recv, err := stream.CloseAndRecv()
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|UploadClassCover|CloseAndRecvError|%v", err)
+		return "", err
+	}
+	return recv.Fid, nil
 }

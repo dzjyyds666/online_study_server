@@ -399,11 +399,9 @@ func (cls *ClassService) HandleUploadClassCover(ctx echo.Context) error {
 			"msg": "Params Invalid",
 		})
 	}
-
 	md5 := ctx.QueryParam("md5")
 	fileType := ctx.QueryParam("file_type")
 	dirId := ctx.QueryParam("dir_id")
-
 	open, err := file.Open()
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleUploadClassCover|Open err:%v", err)
@@ -411,7 +409,6 @@ func (cls *ClassService) HandleUploadClassCover(ctx echo.Context) error {
 			"msg": "Open File Error",
 		})
 	}
-
 	fid, err := cls.classServ.UploadClassCover(ctx.Request().Context(), md5, fileType, dirId, open)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleUploadClassCover|UploadClassCover err:%v", err)
@@ -419,7 +416,6 @@ func (cls *ClassService) HandleUploadClassCover(ctx echo.Context) error {
 			"msg": "UploadClassCover Error",
 		})
 	}
-
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
 		"fid": fid,
 	})

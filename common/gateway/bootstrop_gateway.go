@@ -37,20 +37,16 @@ func reverseProxy(target string) echo.HandlerFunc {
 
 func main() {
 	e := echo.New()
-
 	e.Use(middleware.CORSWithConfig(middleware.DefaultCORSConfig))
-
 	// 代理不同的微服务
 	userGroup := e.Group("/v1/user")
 	userGroup.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return reverseProxy("http://127.0.0.1:19001")
 	})
-
 	cosGroup := e.Group("/v1/cos")
 	cosGroup.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return reverseProxy("http://127.0.0.1:19002")
 	})
-
 	classGroup := e.Group("/v1/class")
 	classGroup.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return reverseProxy("http://127.0.0.1:19003")

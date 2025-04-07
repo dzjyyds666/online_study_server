@@ -16,6 +16,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 )
 
 type CosFileServer struct {
@@ -122,28 +123,33 @@ func (cfs *CosFileServer) InitUpload(ctx context.Context, bucket string, init *I
 		logx.GetLogger("study").Errorf("InitUpload|QueryFilePrepareInfo err:%v", err)
 		return err
 	}
-
-	objectKey := info.MergeFilePath()
-
-	upload, err := cfs.s3Client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(objectKey),
-	})
-	if err != nil {
-		logx.GetLogger("study").Errorf("InitUpload|CreateMultipartUpload err:%v", err)
+	logx.GetLogger("study").Infof("InitUpload|QueryFilePrepareInfo|%v", common.ToStringWithoutError(info))
+	if strings.Contains(*info.FileType, "video") {
+		err := cfs.InitUploadVideo(ctx, init)
+		if err != nil {
+			return err
+		}
+		return nil
+	} else {
+		objectKey := info.MergeFilePath()
+		upload, err := cfs.s3Client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(objectKey),
+		})
+		if err != nil {
+			logx.GetLogger("study").Errorf("InitUpload|CreateMultipartUpload err:%v", err)
+			return err
+		}
+		init.WithUploadId(*upload.UploadId).WithStatus(InitStatus.Ing)
+		// 把uplaod保存到redis中
+		err = cfs.cosDB.Set(ctx, buildInitFileInfoKey(init.Fid), init.Marshal(), 0).Err()
+		if err != nil {
+			logx.GetLogger("study").Errorf("InitUpload|SetError|%v", err)
+			return err
+		}
+		logx.GetLogger("study").Infof("InitUpload|CreateMultipartUpload|%v", common.ToStringWithoutError(upload))
 		return err
 	}
-
-	init.WithUploadId(*upload.UploadId).WithStatus(InitStatus.Ing)
-	// 把uplaod保存到redis中
-	err = cfs.cosDB.Set(ctx, buildInitFileInfoKey(init.Fid), init.Marshal(), 0).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("InitUpload|SetError|%v", err)
-		return err
-	}
-
-	logx.GetLogger("study").Errorf("InitUpload|CreateMultipartUpload|%v", common.ToStringWithoutError(upload))
-	return err
 }
 
 func (cfs *CosFileServer) InitUploadVideo(ctx context.Context, init *InitMultipartUpload) error {
@@ -153,7 +159,6 @@ func (cfs *CosFileServer) InitUploadVideo(ctx context.Context, init *InitMultipa
 		logx.GetLogger("study").Errorf("InitUpload|SetError|%v", err)
 		return err
 	}
-
 	return nil
 }
 
@@ -441,22 +446,22 @@ func (cfs *CosFileServer) AbortUpload(ctx context.Context, bucket, fid string) e
 	return nil
 }
 
-func (cfs *CosFileServer) UploadPart(ctx context.Context, bucket, fid, partId string, reader io.Reader) error {
+func (cfs *CosFileServer) UploadPart(ctx context.Context, bucket, fid, partId string, reader io.Reader) (*string, error) {
 	initInfo, err := cfs.QueryInitInfo(ctx, fid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("UploadPart|QueryInitInfo Error|%v", err)
-		return err
+		return nil, err
 	}
 
 	info, err := cfs.QueryFilePrepareInfo(ctx, fid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("UploadPart|QueryFilePrepareInfo Error|%v", err)
-		return err
+		return nil, err
 	}
 
 	partIdInt, _ := strconv.Atoi(partId)
 
-	_, err = cfs.s3Client.UploadPart(ctx, &s3.UploadPartInput{
+	result, err := cfs.s3Client.UploadPart(ctx, &s3.UploadPartInput{
 		Bucket:     aws.String(bucket),
 		Key:        aws.String(info.MergeFilePath()),
 		UploadId:   aws.String(initInfo.UploadId),
@@ -465,10 +470,10 @@ func (cfs *CosFileServer) UploadPart(ctx context.Context, bucket, fid, partId st
 	})
 	if err != nil {
 		logx.GetLogger("study").Errorf("UploadPart|UploadPart Error|%v", err)
-		return err
+		return nil, err
 	}
 	logx.GetLogger("study").Infof("UploadPart|UploadPart Success")
-	return nil
+	return result.ETag, nil
 }
 
 func (cfs *CosFileServer) UploadClassCover(ctx context.Context, filename, dirId, fileType, md5 string, size int64, reader io.Reader) (string, error) {
