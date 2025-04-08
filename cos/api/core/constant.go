@@ -7,7 +7,14 @@ const (
 	RedisInitInfoKey     = "cos:%s:init:info"
 	RedisUploadPartIdKey = "cos:%s:upload:part:list"
 	RedisInfoKey         = "cos:%s:info"
+
+	// 视频处理队列
+	RedisVideoLambdaQueueKey = "cos:lambda:video:queue"
 )
+
+func buildVideoLambdaQueueKey() string {
+	return RedisVideoLambdaQueueKey
+}
 
 func buildFileInfoKey(fid string) string {
 	return fmt.Sprintf(RedisInfoKey, fid)

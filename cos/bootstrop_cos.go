@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
-	"golang.org/x/sync/errgroup"
 	"net/http"
 	"strconv"
 	"time"
@@ -57,27 +56,17 @@ func main() {
 		options.UsePathStyle = true
 	})
 	ctx, cancel := context.WithCancel(context.Background()) // 创建上下文
-	defer cancel()                                          // 确保在退出时取消所有子任务
-	var g errgroup.Group
-	g.Go(func() error {
-		err := http2.StartCosHttpServer(ctx, client, s3Client)
-		if err != nil {
-			logx.GetLogger("study").Errorf("main|StartApiServer|err:%v", err)
-			cancel()
-			return err
-		}
-		return nil
-	})
-	g.Go(func() error {
-		err := rpc.StartCosRpcServer(ctx)
-		if err != nil {
-			logx.GetLogger("study").Errorf("main|StartRpcServer|err:%v", err)
-			cancel()
-			return err
-		}
-		return nil
-	})
-	if err := g.Wait(); err != nil {
-		logx.GetLogger("study").Errorf("main|err:%v", err)
+	defer cancel()
+	// 启动http服务
+	err = http2.StartCosHttpServer(ctx, client, s3Client)
+	if err != nil {
+		logx.GetLogger("study").Errorf("main|StartApiServer|err:%v", err)
+		cancel()
+	}
+	// 启动rpc服务
+	err = rpc.StartCosRpcServer(ctx)
+	if err != nil {
+		logx.GetLogger("study").Errorf("main|StartRpcServer|err:%v", err)
+		cancel()
 	}
 }

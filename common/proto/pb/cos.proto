@@ -7,8 +7,12 @@ option go_package = ".;proto";
 service Cos{
   rpc DeleteObject(DeleteObjectRequest) returns (CosCommonResponse);
   rpc CopyObject(CopyObjectRequest) returns(CosCommonResponse);
-
   rpc UploadClassCover(stream UploadClassCoverReq) returns(UploadClassCoverResp);
+  rpc AddVideoToLambdaQueue(VideoInfo) returns(CosCommonResponse);
+}
+
+message VideoInfo{
+  string  fid = 1;
 }
 
 message UploadClassCoverReq{

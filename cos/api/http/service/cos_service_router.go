@@ -4,21 +4,19 @@ import (
 	"encoding/json"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
 	"os"
 	"strings"
 	"time"
 )
 
 func RegisterRouter(e *echo.Echo, cs *CosService) {
-	e.Use(middleware.Recover())
+	//e.Use(middleware.Recover())
 	cos := e.Group("/v1/cos")
 	cos.Add("POST", "/upload/apply", cs.HandleApplyUpload)
 	cos.Add("POST", "/upload/single/:fid", cs.HandleSingleUpload)
 	cos.Add("POST", "/upload/init", cs.HandleInitMultipartUpload)
 	cos.Add("POST", "/upload/part", cs.HandleUploadPart)
 	//cos.Add("POST", "/upload/init/video", cs.HandleInitUploadVideo)
-	cos.Add("POST", "/upload/part/video", cs.HandleUploadVideoPart)
 	cos.Add("POST", "/upload/complete/:fid", cs.CompleteUpload)
 	cos.Add("POST", "/upload/abort/:fid", cs.HandleAbortUpload)
 

@@ -16,7 +16,6 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"strings"
 )
 
 type CosFileServer struct {
@@ -124,32 +123,31 @@ func (cfs *CosFileServer) InitUpload(ctx context.Context, bucket string, init *I
 		return err
 	}
 	logx.GetLogger("study").Infof("InitUpload|QueryFilePrepareInfo|%v", common.ToStringWithoutError(info))
-	if strings.Contains(*info.FileType, "video") {
-		err := cfs.InitUploadVideo(ctx, init)
-		if err != nil {
-			return err
-		}
-		return nil
-	} else {
-		objectKey := info.MergeFilePath()
-		upload, err := cfs.s3Client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(objectKey),
-		})
-		if err != nil {
-			logx.GetLogger("study").Errorf("InitUpload|CreateMultipartUpload err:%v", err)
-			return err
-		}
-		init.WithUploadId(*upload.UploadId).WithStatus(InitStatus.Ing)
-		// 把uplaod保存到redis中
-		err = cfs.cosDB.Set(ctx, buildInitFileInfoKey(init.Fid), init.Marshal(), 0).Err()
-		if err != nil {
-			logx.GetLogger("study").Errorf("InitUpload|SetError|%v", err)
-			return err
-		}
-		logx.GetLogger("study").Infof("InitUpload|CreateMultipartUpload|%v", common.ToStringWithoutError(upload))
+	//if strings.Contains(*info.FileType, "video") {
+	//	err := cfs.InitUploadVideo(ctx, init)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	return nil
+	//} else {
+	objectKey := info.MergeFilePath()
+	upload, err := cfs.s3Client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(objectKey),
+	})
+	if err != nil {
+		logx.GetLogger("study").Errorf("InitUpload|CreateMultipartUpload err:%v", err)
 		return err
 	}
+	init.WithUploadId(*upload.UploadId).WithStatus(InitStatus.Ing)
+	// 把uplaod保存到redis中
+	err = cfs.cosDB.Set(ctx, buildInitFileInfoKey(init.Fid), init.Marshal(), 0).Err()
+	if err != nil {
+		logx.GetLogger("study").Errorf("InitUpload|SetError|%v", err)
+		return err
+	}
+	logx.GetLogger("study").Infof("InitUpload|CreateMultipartUpload|%v", common.ToStringWithoutError(upload))
+	return err
 }
 
 func (cfs *CosFileServer) InitUploadVideo(ctx context.Context, init *InitMultipartUpload) error {
@@ -179,64 +177,62 @@ func (cfs *CosFileServer) QueryFilePrepareInfo(ctx context.Context, fid string) 
 	return &cosFile, nil
 }
 
-func (cfs *CosFileServer) UploadVideoPart(ctx context.Context, fid string, partId string, reader io.Reader) error {
-	// 先存入本地的临时目录中
-	info, err := cfs.QueryFilePrepareInfo(ctx, fid)
-	if err != nil {
-		logx.GetLogger("study").Errorf("UploadVideoPart|QueryFilePrepareInfo Error|%v", err)
-		cfs.UpdateInitStatus(ctx, fid, InitStatus.Fail)
-		return err
-	}
-	tmpPath := fmt.Sprintf("%s/%s", config.GloableConfig.TmpDir, *info.Fid+partId+path.Ext(*info.FileName))
+//func (cfs *CosFileServer) UploadVideoPart(ctx context.Context, fid string, partId string, reader io.Reader) error {
+//	// 先存入本地的临时目录中
+//	info, err := cfs.QueryFilePrepareInfo(ctx, fid)
+//	if err != nil {
+//		logx.GetLogger("study").Errorf("UploadVideoPart|QueryFilePrepareInfo Error|%v", err)
+//		cfs.UpdateInitStatus(ctx, fid, InitStatus.Fail)
+//		return err
+//	}
+//	tmpPath := fmt.Sprintf("%s/%s", config.GloableConfig.TmpDir, *info.Fid+partId+path.Ext(*info.FileName))
+//
+//	// 写入文件中
+//	file, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE, 0666)
+//	if err != nil {
+//		logx.GetLogger("study").Errorf("UploadVideoPart|OpenFile Error|%v", err)
+//		cfs.UpdateInitStatus(ctx, fid, InitStatus.Fail)
+//		return err
+//	}
+//
+//	defer file.Close()
+//	_, err = io.Copy(file, reader)
+//	if err != nil {
+//		logx.GetLogger("study").Errorf("UploadVideoPart|io.Copy Error|%v", err)
+//		cfs.UpdateInitStatus(ctx, fid, InitStatus.Fail)
+//		return err
+//	}
+//	// 把分片id存入redis中
+//	err = cfs.cosDB.SAdd(ctx, buildUploadPartIdKey(fid), partId).Err()
+//	if err != nil {
+//		logx.GetLogger("study").Errorf("UploadVideoPart|SAdd Error|%v", err)
+//		cfs.UpdateInitStatus(ctx, fid, InitStatus.Fail)
+//		return err
+//	}
+//	return nil
+//}
 
-	// 写入文件中
-	file, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE, 0666)
-	if err != nil {
-		logx.GetLogger("study").Errorf("UploadVideoPart|OpenFile Error|%v", err)
-		cfs.UpdateInitStatus(ctx, fid, InitStatus.Fail)
-		return err
-	}
-
-	defer file.Close()
-	_, err = io.Copy(file, reader)
-	if err != nil {
-		logx.GetLogger("study").Errorf("UploadVideoPart|io.Copy Error|%v", err)
-		cfs.UpdateInitStatus(ctx, fid, InitStatus.Fail)
-		return err
-	}
-	// 把分片id存入redis中
-	err = cfs.cosDB.SAdd(ctx, buildUploadPartIdKey(fid), partId).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("UploadVideoPart|SAdd Error|%v", err)
-		cfs.UpdateInitStatus(ctx, fid, InitStatus.Fail)
-		return err
-	}
-	return nil
-}
-
-func (cfs *CosFileServer) UpdateInitStatus(ctx context.Context, fid string, status string) {
-	key := buildInitFileInfoKey(fid)
-	result, err := cfs.cosDB.Get(ctx, key).Result()
-	if err != nil {
-		logx.GetLogger("study").Errorf("UpdateInitStatus|Get Error|%v", err)
-		return
-	}
-
-	var init InitMultipartUpload
-	err = json.Unmarshal([]byte(result), &init)
-	if err != nil {
-		logx.GetLogger("study").Errorf("UpdateInitStatus|Unmarshal Error|%v", err)
-		return
-	}
-
-	init.WithStatus(status)
-	err = cfs.cosDB.Set(ctx, key, init.Marshal(), 0).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("UpdateInitStatus|Set Error|%v", err)
-		return
-	}
-	return
-}
+//func (cfs *CosFileServer) UpdateInitStatus(ctx context.Context, fid string, status string) {
+//	key := buildInitFileInfoKey(fid)
+//	result, err := cfs.cosDB.Get(ctx, key).Result()
+//	if err != nil {
+//		logx.GetLogger("study").Errorf("UpdateInitStatus|Get Error|%v", err)
+//		return
+//	}
+//	var init InitMultipartUpload
+//	err = json.Unmarshal([]byte(result), &init)
+//	if err != nil {
+//		logx.GetLogger("study").Errorf("UpdateInitStatus|Unmarshal Error|%v", err)
+//		return
+//	}
+//	init.WithStatus(status)
+//	err = cfs.cosDB.Set(ctx, key, init.Marshal(), 0).Err()
+//	if err != nil {
+//		logx.GetLogger("study").Errorf("UpdateInitStatus|Set Error|%v", err)
+//		return
+//	}
+//	return
+//}
 
 func (cfs *CosFileServer) CompleteUploadVideo(ctx context.Context, fid string) error {
 	initInfo, err := cfs.QueryInitInfo(ctx, fid)
@@ -378,6 +374,7 @@ func (cfs *CosFileServer) SingleUpload(ctx context.Context, bucket, fid string, 
 }
 
 func (cfs *CosFileServer) CompleteMultUpload(ctx context.Context, bucket, fid string, completeParts []types.CompletedPart) error {
+
 	initInfo, err := cfs.QueryInitInfo(ctx, fid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("CompleteMultUpload|QueryInitInfo Error|%v", err)
@@ -441,7 +438,6 @@ func (cfs *CosFileServer) AbortUpload(ctx context.Context, bucket, fid string) e
 		logx.GetLogger("study").Errorf("AbortUpload|Del Error|%v", err)
 		return err
 	}
-
 	logx.GetLogger("study").Errorf("AbortUpload|AbortMultipartUpload Success")
 	return nil
 }
@@ -452,15 +448,12 @@ func (cfs *CosFileServer) UploadPart(ctx context.Context, bucket, fid, partId st
 		logx.GetLogger("study").Errorf("UploadPart|QueryInitInfo Error|%v", err)
 		return nil, err
 	}
-
 	info, err := cfs.QueryFilePrepareInfo(ctx, fid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("UploadPart|QueryFilePrepareInfo Error|%v", err)
 		return nil, err
 	}
-
 	partIdInt, _ := strconv.Atoi(partId)
-
 	result, err := cfs.s3Client.UploadPart(ctx, &s3.UploadPartInput{
 		Bucket:     aws.String(bucket),
 		Key:        aws.String(info.MergeFilePath()),
@@ -485,20 +478,26 @@ func (cfs *CosFileServer) UploadClassCover(ctx context.Context, filename, dirId,
 		WithFileName(filename).
 		WithFileMD5(md5).
 		WithDirectoryId(dirId)
-
 	// 先创建文件的prepare信息
 	err := cfs.ApplyUpload(ctx, &file)
 	if err != nil {
 		logx.GetLogger("study").Errorf("UploadClassCover|ApplyUpload Error|%v", err)
 		return "", err
 	}
-
 	// 直传
 	_, err = cfs.SingleUpload(ctx, cfs.bucket, fid, reader)
 	if err != nil {
 		logx.GetLogger("study").Errorf("UploadClassCover|SingleUpload Error|%v", err)
 		return "", err
 	}
-
 	return *file.Fid, nil
+}
+
+func (cfs *CosFileServer) PushVideoToLambdaQueue(ctx context.Context, fid string) error {
+	err := cfs.cosDB.LPush(ctx, buildVideoLambdaQueueKey(), fid).Err()
+	if err != nil {
+		logx.GetLogger("study").Errorf("PushVideoToLambdaQueue|LPush Error|%v", err)
+		return err
+	}
+	return nil
 }
