@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"sync/atomic"
 	"time"
 )
 
@@ -23,7 +24,7 @@ type LambdaQueueServer struct {
 	ctx             context.Context
 	hcli            *http.Client
 	cosServ         *CosFileServer
-	coroutineNumber int // 协程的数量
+	coroutineNumber int64 // 协程的数量
 	bucket          string
 	tmpDir          string
 }
@@ -59,6 +60,7 @@ func (lqs *LambdaQueueServer) WatchQueue(ctx context.Context, queueName string) 
 			logx.GetLogger("study").Errorf("LambdaQueueServer|WatchQueue|BRPop Error|%v", err)
 			continue
 		}
+		atomic.AddInt64(&lqs.coroutineNumber, 1)
 		//执行视频的处理
 		err = lqs.FormatVideo(ctx, result[1])
 		if err != nil {
