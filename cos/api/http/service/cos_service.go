@@ -27,7 +27,7 @@ func NewCosServer(ctx context.Context, ds *redis.Client, s3Client *s3.Client) (*
 	cosServer := &CosService{
 		cosServer: core.NewCosFileServer(ctx, ds, s3Client),
 		bucket:    aws.ToString(config.GloableConfig.S3.Bucket[0]),
-		tmpPart:   "/tmp/study",
+		tmpPart:   aws.ToString(config.GloableConfig.TmpDir),
 	}
 
 	err := cosServer.checkAndCreateBucket()

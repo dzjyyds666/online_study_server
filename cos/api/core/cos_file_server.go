@@ -501,3 +501,15 @@ func (cfs *CosFileServer) PushVideoToLambdaQueue(ctx context.Context, fid string
 	}
 	return nil
 }
+
+func (cfs *CosFileServer) GetFile(ctx context.Context, bucket, key string) (io.ReadCloser, error) {
+	object, err := cfs.s3Client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		logx.GetLogger("study").Errorf("GetFile|GetObject Error|%v", err)
+		return nil, err
+	}
+	return object.Body, nil
+}
