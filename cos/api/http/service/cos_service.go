@@ -13,21 +13,31 @@ import (
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
 	"github.com/redis/go-redis/v9"
+	"net/http"
+	"strings"
+	"time"
 )
 
 type CosService struct {
-	bucket    string
-	tmpPart   string // 临时文件存放
-	cosServer *core.CosFileServer
+	bucket       string
+	tmpPart      string // 临时文件存放
+	cosServer    *core.CosFileServer
+	lambdaServer *core.LambdaQueueServer
 }
 
 func NewCosServer(ctx context.Context, ds *redis.Client, s3Client *s3.Client) (*CosService, error) {
 	// 初始化s3客户端
 
+	hcli := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+	cosFileServer := core.NewCosFileServer(ctx, ds, s3Client)
+	server := core.NewLambdaQueueServer(ctx, hcli, cosFileServer)
 	cosServer := &CosService{
-		cosServer: core.NewCosFileServer(ctx, ds, s3Client),
-		bucket:    aws.ToString(config.GloableConfig.S3.Bucket[0]),
-		tmpPart:   aws.ToString(config.GloableConfig.TmpDir),
+		cosServer:    cosFileServer,
+		lambdaServer: server,
+		bucket:       aws.ToString(config.GloableConfig.S3.Bucket[0]),
+		tmpPart:      aws.ToString(config.GloableConfig.TmpDir),
 	}
 
 	err := cosServer.checkAndCreateBucket()
@@ -35,7 +45,12 @@ func NewCosServer(ctx context.Context, ds *redis.Client, s3Client *s3.Client) (*
 		logx.GetLogger("study").Errorf("NewCosServer|CheckAndCreateBucket|err:%v", err)
 		return nil, err
 	}
+	go server.Start(ctx)
 	return cosServer, nil
+}
+
+func (cs *CosService) Start(ctx context.Context) {
+	cs.lambdaServer.Start(ctx)
 }
 
 // 需要传入文件的名称，md5，长度，文件夹id
@@ -158,6 +173,18 @@ func (cs *CosService) HandleSingleUpload(ctx echo.Context) error {
 		})
 	}
 
+	if strings.Contains(*info.FileType, "video") {
+		logx.GetLogger("study").Infof("HandleSingleUpload|video")
+		// 把视频fid推入队列中
+		err = cs.cosServer.PushVideoToLambdaQueue(ctx.Request().Context(), fid)
+		if err != nil {
+			logx.GetLogger("study").Errorf("HandleSingleUpload|PushVideoToQueue err:%v", err)
+			return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+				"msg": "PushVideoToQueue Error",
+			})
+		}
+	}
+
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
 
@@ -258,13 +285,26 @@ func (cs *CosService) CompleteUpload(ctx echo.Context) error {
 			PartNumber: &endpart.PartId,
 		}
 	}
-	err = cs.cosServer.CompleteMultUpload(ctx.Request().Context(), cs.bucket, fid, completeParts)
+	info, err := cs.cosServer.CompleteMultUpload(ctx.Request().Context(), cs.bucket, fid, completeParts)
 	if err != nil {
 		logx.GetLogger("study").Errorf("CompleteUpload|CompleteMultipartUpload err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "CompleteMult Error",
 		})
 	}
+
+	if strings.Contains(*info.FileType, "video") {
+		logx.GetLogger("study").Infof("HandleSingleUpload|video")
+		// 把视频fid推入队列中
+		err = cs.cosServer.PushVideoToLambdaQueue(ctx.Request().Context(), fid)
+		if err != nil {
+			logx.GetLogger("study").Errorf("HandleSingleUpload|PushVideoToQueue err:%v", err)
+			return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+				"msg": "PushVideoToQueue Error",
+			})
+		}
+	}
+
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
 		"msg": "CompleteUpload Success",
 	})

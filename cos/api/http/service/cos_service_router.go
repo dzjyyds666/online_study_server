@@ -16,7 +16,6 @@ func RegisterRouter(e *echo.Echo, cs *CosService) {
 	cos.Add("POST", "/upload/single/:fid", cs.HandleSingleUpload)
 	cos.Add("POST", "/upload/init", cs.HandleInitMultipartUpload)
 	cos.Add("POST", "/upload/part", cs.HandleUploadPart)
-	//cos.Add("POST", "/upload/init/video", cs.HandleInitUploadVideo)
 	cos.Add("POST", "/upload/complete/:fid", cs.CompleteUpload)
 	cos.Add("POST", "/upload/abort/:fid", cs.HandleAbortUpload)
 

@@ -1,9 +1,11 @@
 package core
 
 import (
+	"bufio"
 	"context"
 	"cos/api/config"
 	"errors"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/dzjyyds666/opensource/common"
 	"github.com/dzjyyds666/opensource/logx"
@@ -11,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
 	"sync/atomic"
 	"time"
@@ -39,8 +42,17 @@ func NewLambdaQueueServer(ctx context.Context, hcli *http.Client, server *CosFil
 	}
 }
 
+func (lqs *LambdaQueueServer) Start(ctx context.Context) {
+	err := lqs.WatchQueue(ctx, buildVideoLambdaQueueKey())
+	if err != nil {
+		logx.GetLogger("study").Errorf("LambdaQueueServer|Start|WatchQueue Error|%v", err)
+		return
+	}
+}
+
 func (lqs *LambdaQueueServer) WatchQueue(ctx context.Context, queueName string) error {
 	// 开始监听队列
+	logx.GetLogger("study").Infof("LambdaQueueServer|WatchQueue|Start|%s", queueName)
 	for {
 		if lqs.coroutineNumber >= MAX_COROUTINE_NUMBER {
 			// 超过最大异步数量，暂时不处理
@@ -85,20 +97,50 @@ func (lqs *LambdaQueueServer) FormatVideo(ctx context.Context, fid string) error
 	}
 	defer r.Close()
 	// 把文件写入到临时路径
-	err = lqs.SaveFile(ctx, file, r)
+	originPath := path.Join(lqs.tmpDir, aws.ToString(file.Fid)+path.Ext(aws.ToString(file.FileName)))
+	err = lqs.SaveFile(ctx, file, originPath, r)
 	if err != nil {
 		logx.GetLogger("study").Errorf("LambdaQueueServer|FormatVideo|SaveFile Error|%v|%s", err, common.ToStringWithoutError(file))
 		return err
 	}
 
-	// todo 执行文件的处理
+	params := []string{
+		"-i", originPath,
+		"-filter_complex",
+		"[0:v]split=3[v360][v720][v1080];" +
+			"[v360]scale=w=640:h=360[vv360];" +
+			"[v720]scale=w=1280:h=720[vv720];" +
+			"[v1080]scale=w=1920:h=1080[vv1080]",
+		"-map", "[vv360]", "-map", "a",
+		"-c:v:0", "libx264", "-b:v:0", "800k",
+		"-c:a:0", "aac", "-ac", "2", "-b:a:0", "96k",
+		"-f", "hls", "-hls_time", "6", "-hls_playlist_type", "vod",
+		"-hls_segment_filename", "output/360p/segment_%03d.ts", "output/360p/index.m3u8",
 
+		"-map", "[vv720]", "-map", "a",
+		"-c:v:1", "libx264", "-b:v:1", "2000k",
+		"-c:a:1", "aac", "-ac", "2", "-b:a:1", "128k",
+		"-f", "hls", "-hls_time", "6", "-hls_playlist_type", "vod",
+		"-hls_segment_filename", "output/720p/segment_%03d.ts", "output/720p/index.m3u8",
+
+		"-map", "[vv1080]", "-map", "a",
+		"-c:v:2", "libx264", "-b:v:2", "5000k",
+		"-c:a:2", "aac", "-ac", "2", "-b:a:2", "192k",
+		"-f", "hls", "-hls_time", "6", "-hls_playlist_type", "vod",
+		"-hls_segment_filename", "output/1080p/segment_%03d.ts", "output/1080p/index.m3u8",
+	}
+
+	// 把文件转换为hls格式
+	err = Exec(ctx, "D:\\utils\\ffmpeg-7.0.2-full_build-shared\\bin\\ffmpeg.exe", params...)
+	if err != nil {
+		logx.GetLogger("study").Errorf("LambdaQueueServer|FormatVideo|Exec Error|%v|%s", err, common.ToStringWithoutError(file))
+		return err
+	}
 	return nil
 }
 
-func (lqs *LambdaQueueServer) SaveFile(ctx context.Context, file *CosFile, reader io.Reader) error {
-	targetPath := path.Join(lqs.tmpDir, aws.ToString(file.FileName))
-	openFile, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0642)
+func (lqs *LambdaQueueServer) SaveFile(ctx context.Context, file *CosFile, targetPath string, reader io.Reader) error {
+	openFile, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, os.ModePerm)
 	if err != nil {
 		logx.GetLogger("study").Errorf("LambdaQueueServer|SaveFile|OpenFile Error|%v|%s", err, common.ToStringWithoutError(file))
 		return err
@@ -116,5 +158,30 @@ func (lqs *LambdaQueueServer) SaveFile(ctx context.Context, file *CosFile, reade
 		_, err = openFile.Write(buf[:n])
 	}
 	logx.GetLogger("study").Infof("LambdaQueueServer|SaveFile|SaveFile Success|%s", targetPath)
+	return nil
+}
+
+func Exec(ctx context.Context, name string, params ...string) error {
+	cmd := exec.CommandContext(ctx, name, params...)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		logx.GetLogger("study").Errorf("Exec|StdoutPipe Error|%v", err)
+		return err
+	}
+
+	if err := cmd.Start(); err != nil {
+		logx.GetLogger("study").Errorf("Exec|Start Error|%v", err)
+		return err
+	}
+
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
+	}
+
+	if err := cmd.Wait(); err != nil {
+		logx.GetLogger("study").Errorf("Exec|Wait Error|%v", err)
+		return err
+	}
 	return nil
 }

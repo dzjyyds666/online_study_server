@@ -369,22 +369,21 @@ func (cfs *CosFileServer) SingleUpload(ctx context.Context, bucket, fid string, 
 		logx.GetLogger("study").Errorf("SingleUpload|CompleteFileIndex Error|%v", err)
 		return nil, err
 	}
-
 	return info, nil
 }
 
-func (cfs *CosFileServer) CompleteMultUpload(ctx context.Context, bucket, fid string, completeParts []types.CompletedPart) error {
+func (cfs *CosFileServer) CompleteMultUpload(ctx context.Context, bucket, fid string, completeParts []types.CompletedPart) (*CosFile, error) {
 
 	initInfo, err := cfs.QueryInitInfo(ctx, fid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("CompleteMultUpload|QueryInitInfo Error|%v", err)
-		return err
+		return nil, err
 	}
 
 	info, err := cfs.QueryFilePrepareInfo(ctx, fid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("CompleteMultUpload|QueryFilePrepareInfo Error|%v", err)
-		return err
+		return nil, err
 	}
 	_, err = cfs.s3Client.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
 		Bucket:   aws.String(bucket),
@@ -396,21 +395,21 @@ func (cfs *CosFileServer) CompleteMultUpload(ctx context.Context, bucket, fid st
 	})
 	if err != nil {
 		logx.GetLogger("study").Errorf("CompleteMultUpload|CompleteMultipartUpload Error|%v", err)
-		return err
+		return nil, err
 	}
 	// 删除初始化上传的信息
 	err = cfs.cosDB.Del(ctx, buildInitFileInfoKey(fid)).Err()
 	if err != nil {
 		logx.GetLogger("study").Errorf("CompleteMultUpload|Del Error|%v", err)
-		return err
+		return nil, err
 	}
 	err = cfs.cosDB.Rename(ctx, buildPrepareFileInfoKey(fid), buildFileInfoKey(fid)).Err()
 	if err != nil {
 		logx.GetLogger("study").Errorf("CompleteMultUpload|Rename Error|%v", err)
-		return err
+		return nil, err
 	}
 	logx.GetLogger("study").Infof("CompleteMultUpload|CompleteMultipartUpload Success")
-	return nil
+	return info, nil
 }
 
 func (cfs *CosFileServer) AbortUpload(ctx context.Context, bucket, fid string) error {
