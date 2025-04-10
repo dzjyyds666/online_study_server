@@ -30,6 +30,10 @@ func RegisterRouter(e *echo.Echo, cls *ClassService) {
 	teacher.Add("POST", "/resource/upload", cls.HandleUploadResource, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
 	teacher.Add("GET", "/resource/delete/:fid", cls.HandleDeleteResource, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
 	teacher.Add("POST", "/resource/update", cls.HandleUpdateResource, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
+	teacher.Add("POST", "/task/create", cls.HandleCreateTask, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
+	teacher.Add("POST", "/task/list", cls.HandleListTask, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
+	teacher.Add("GET", "/task/delete/:tid", cls.HandleDeleteTask, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
+
 	student := globApiPrefix.Group("/stu")
 	student.Add("POST", "/query/:cid", cls.HandleQueryClassInfo, mymiddleware.AuthMw(mymiddleware.UserRole.Student))
 

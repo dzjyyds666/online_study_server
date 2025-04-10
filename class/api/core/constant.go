@@ -21,7 +21,18 @@ const (
 	RedisResourceInfoKey = "class:resource:%s:info" // 课程资源信息
 
 	RedisMd5FileList = "class:md5:%s:file:list" // md5文件列表
+
+	RedisClassTaskList = "class:%s:task:list" // 任务列表
+	RedisTaskInfo      = "class:task:%s:info" // 任务信息
 )
+
+func BuildClassTaskList(cid string) string {
+	return fmt.Sprintf(RedisClassTaskList, cid)
+}
+
+func BuildTaskInfo(tid string) string {
+	return fmt.Sprintf(RedisTaskInfo, tid)
+}
 
 func BuildAllClassList() string {
 	return RedisAllClassList

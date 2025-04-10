@@ -7,9 +7,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/dzjyyds666/opensource/common"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
 	"io"
+	"math"
+	"strconv"
 	"time"
 )
 
@@ -17,6 +20,7 @@ type ClassServer struct {
 	ctx           context.Context
 	classDB       *redis.Client
 	chapterServer *ChapterServer // 章节服务
+	taskServer    *TaskServer    // 作业
 }
 
 func NewClassServer(ctx context.Context, dsClient *redis.Client) *ClassServer {
@@ -148,14 +152,14 @@ func (cls *ClassServer) QueryClassInfo(ctx context.Context, cid string) (*Class,
 		return nil, err
 	}
 
-	var class *Class
-	err = json.Unmarshal([]byte(result), class)
+	var class Class
+	err = json.Unmarshal([]byte(result), &class)
 	if err != nil {
 		logx.GetLogger("study").Errorf("ClassServer|QueryClassInfo|UnmarshalClassInfoError|%v", err)
 		return nil, err
 	}
-
-	return class, nil
+	logx.GetLogger("study").Infof("ClassServer|QueryClassInfo|QueryClassInfoSuccess|%v", common.ToStringWithoutError(class))
+	return &class, nil
 }
 
 func (cls *ClassServer) CreateChapter(ctx context.Context, info *Chapter) error {
@@ -283,7 +287,7 @@ func (cls *ClassServer) QueryClassList(ctx context.Context, uid string) ([]*Clas
 		logx.GetLogger("study").Errorf("ClassServer|QueryClassList|QueryClassListError|%v", err)
 		return nil, err
 	}
-	list := make([]*Class, len(cids))
+	list := make([]*Class, 0, len(cids))
 	for _, id := range cids {
 		info, err := cls.QueryClassInfo(ctx, id)
 		if err != nil {
@@ -518,4 +522,77 @@ func (cls *ClassServer) UploadClassCover(ctx context.Context, md5, fileType, dir
 		return "", err
 	}
 	return recv.Fid, nil
+}
+
+func (cls *ClassServer) CreateTask(ctx context.Context, task *Task) error {
+	id := NewTaskId(8)
+	task.WithId(id)
+
+	err := cls.taskServer.CreateTask(ctx, task)
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|CreateTask|CreateTaskError|%v", err)
+		return err
+	}
+	err = cls.classDB.ZAdd(ctx, BuildClassTaskList(task.Cid), redis.Z{
+		Score:  float64(time.Now().Unix()),
+		Member: task.TaskId,
+	}).Err()
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|CreateTask|AddTaskToClassError|%v", err)
+		return nil
+	}
+	return nil
+}
+
+func (cls *ClassServer) ListTask(ctx context.Context, list *ListTask) error {
+	zrangeBy := &redis.ZRangeBy{
+		Min:    "0",
+		Max:    strconv.FormatInt(math.MaxInt64, 10),
+		Count:  list.Limit,
+		Offset: 0,
+	}
+	if len(list.ReferId) > 0 {
+		score, err := cls.classDB.ZScore(ctx, BuildClassTaskList(list.Cid), list.ReferId).Result()
+		if err != nil {
+			logx.GetLogger("study").Errorf("ClassServer|ListTask|GetReferIdScoreError|%v", err)
+			return err
+		}
+		zrangeBy.Min = "(" + strconv.FormatInt(int64(score), 10)
+	}
+
+	taskIds, err := cls.classDB.ZRangeByScore(ctx, BuildClassTaskList(list.Cid), zrangeBy).Result()
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|ListTask|GetTaskIdListError|%v", err)
+		return err
+	}
+	for _, taskId := range taskIds {
+		task, err := cls.taskServer.QueryTaskInfo(ctx, taskId)
+		if err != nil {
+			logx.GetLogger("study").Errorf("ClassServer|ListTask|GetTaskInfoError|%v", err)
+			return err
+		}
+		list.Tasks = append(list.Tasks, task)
+	}
+	return nil
+}
+
+func (cls *ClassServer) DeleteTask(ctx context.Context, tid string) (*Task, error) {
+	info, err := cls.taskServer.QueryTaskInfo(ctx, tid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|DeleteTask|GetTaskInfoError|%v", err)
+		return nil, err
+	}
+
+	err = cls.taskServer.DeleteTask(ctx, tid)
+	if err != nil {
+		logx.GetLogger().Errorf("ClassServer|DeleteTask|DeleteTaskError|%v", err)
+		return nil, err
+	}
+	// 移除任务列表中的索引
+	err = cls.classDB.ZRem(ctx, BuildClassTaskList(info.Cid), tid).Err()
+	if err != nil {
+		logx.GetLogger().Errorf("ClassServer|DeleteTask|RemoveTaskFromClassError|%v", err)
+		return nil, err
+	}
+	return info, nil
 }
