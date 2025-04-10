@@ -18,8 +18,8 @@ import (
 
 func main() {
 
-	var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\cos\\api\\config\\config.json", "config.json file path")
-	//var configPath = flag.String("c", "/Users/zhijundu/code/GolandProjects/online_study_server/cos/api/config/config.json", "config.json file path")
+	//var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\cos\\api\\config\\config.json", "config.json file path")
+	var configPath = flag.String("c", "/Users/zhijundu/code/GolandProjects/online_study_server/cos/api/config/config.json", "config.json file path")
 	err := config.RefreshEtcdConfig(*configPath)
 	if err != nil {
 		logx.GetLogger("study").Errorf("apiService|RefreshEtcdConfig|err:%v", err)
@@ -37,6 +37,7 @@ func main() {
 		S3config.WithRegion(*config.GloableConfig.S3.Region),
 		S3config.WithBaseEndpoint(*config.GloableConfig.S3.Endpoint),
 		S3config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(*config.GloableConfig.S3.AccessKey, *config.GloableConfig.S3.SecretKey, "")))
+
 	if err != nil {
 		logx.GetLogger("study").Errorf("NewCosServer|S3config.LoadDefaultConfig err:%v", err)
 		return
@@ -54,6 +55,7 @@ func main() {
 	s3Client := s3.NewFromConfig(cfg, func(options *s3.Options) {
 		options.HTTPClient = hcli
 		options.UsePathStyle = true
+		options.DisableLogOutputChecksumValidationSkipped = true
 	})
 	ctx, cancel := context.WithCancel(context.Background()) // 创建上下文
 	defer cancel()

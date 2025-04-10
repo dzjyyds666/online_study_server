@@ -14,7 +14,6 @@ import (
 	"github.com/labstack/echo"
 	"github.com/redis/go-redis/v9"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -45,7 +44,7 @@ func NewCosServer(ctx context.Context, ds *redis.Client, s3Client *s3.Client) (*
 		logx.GetLogger("study").Errorf("NewCosServer|CheckAndCreateBucket|err:%v", err)
 		return nil, err
 	}
-	go server.Start(ctx)
+	//go server.Start(ctx)
 	return cosServer, nil
 }
 
@@ -173,17 +172,17 @@ func (cs *CosService) HandleSingleUpload(ctx echo.Context) error {
 		})
 	}
 
-	if strings.Contains(*info.FileType, "video") {
-		logx.GetLogger("study").Infof("HandleSingleUpload|video")
-		// 把视频fid推入队列中
-		err = cs.cosServer.PushVideoToLambdaQueue(ctx.Request().Context(), fid)
-		if err != nil {
-			logx.GetLogger("study").Errorf("HandleSingleUpload|PushVideoToQueue err:%v", err)
-			return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-				"msg": "PushVideoToQueue Error",
-			})
-		}
-	}
+	//if strings.Contains(*info.FileType, "video") {
+	//	logx.GetLogger("study").Infof("HandleSingleUpload|video")
+	//	// 把视频fid推入队列中
+	//	err = cs.cosServer.PushVideoToLambdaQueue(ctx.Request().Context(), fid)
+	//	if err != nil {
+	//		logx.GetLogger("study").Errorf("HandleSingleUpload|PushVideoToQueue err:%v", err)
+	//		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+	//			"msg": "PushVideoToQueue Error",
+	//		})
+	//	}
+	//}
 
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
@@ -293,21 +292,19 @@ func (cs *CosService) CompleteUpload(ctx echo.Context) error {
 		})
 	}
 
-	if strings.Contains(*info.FileType, "video") {
-		logx.GetLogger("study").Infof("HandleSingleUpload|video")
-		// 把视频fid推入队列中
-		err = cs.cosServer.PushVideoToLambdaQueue(ctx.Request().Context(), fid)
-		if err != nil {
-			logx.GetLogger("study").Errorf("HandleSingleUpload|PushVideoToQueue err:%v", err)
-			return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-				"msg": "PushVideoToQueue Error",
-			})
-		}
-	}
+	//if strings.Contains(*info.FileType, "video") {
+	//	logx.GetLogger("study").Infof("HandleSingleUpload|video")
+	//	// 把视频fid推入队列中
+	//	err = cs.cosServer.PushVideoToLambdaQueue(ctx.Request().Context(), fid)
+	//	if err != nil {
+	//		logx.GetLogger("study").Errorf("HandleSingleUpload|PushVideoToQueue err:%v", err)
+	//		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+	//			"msg": "PushVideoToQueue Error",
+	//		})
+	//	}
+	//}
 
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
-		"msg": "CompleteUpload Success",
-	})
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
 
 func (cs *CosService) HandleAbortUpload(ctx echo.Context) error {
@@ -339,4 +336,24 @@ func (cs *CosService) checkAndCreateBucket() error {
 		panic(err)
 	}
 	return nil
+}
+
+func (cs *CosService) HandleGetFile(ctx echo.Context) error {
+	fid := ctx.Param("fid")
+	if len(fid) <= 0 {
+		logx.GetLogger("study").Errorf("HandleGetFile|fid is empty")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+	logx.GetLogger("study").Infof("HandleGetFile|fid:%s", fid)
+	r, fileType, err := cs.cosServer.CheckFile(ctx.Request().Context(), fid)
+	defer r.Close()
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleGetFile|GetFile err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "GetFile Error",
+		})
+	}
+	return ctx.Stream(http.StatusOK, *fileType, r)
 }

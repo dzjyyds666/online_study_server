@@ -28,7 +28,7 @@ func reverseProxy(target string) echo.HandlerFunc {
 		}
 
 		//打印日志信息
-		log.Debugf("请求信息：%s", c.Request().URL.String())
+		log.Infof("请求信息：%s", c.Request().URL.String())
 		// 代理请求
 		proxy.ServeHTTP(c.Response(), c.Request())
 		return nil

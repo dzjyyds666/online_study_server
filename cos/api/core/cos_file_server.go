@@ -512,3 +512,17 @@ func (cfs *CosFileServer) GetFile(ctx context.Context, bucket, key string) (io.R
 	}
 	return object.Body, nil
 }
+
+func (cfs *CosFileServer) CheckFile(ctx context.Context, fid string) (io.ReadCloser, *string, error) {
+	file, err := cfs.QueryCosFile(ctx, fid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("CheckFile|QueryCosFile Error|%v", err)
+		return nil, nil, err
+	}
+	r, err := cfs.GetFile(ctx, cfs.bucket, file.MergeFilePath())
+	if err != nil {
+		logx.GetLogger("study").Errorf("CheckFile|GetFile Error|%v", err)
+		return nil, nil, err
+	}
+	return r, file.FileType, nil
+}
