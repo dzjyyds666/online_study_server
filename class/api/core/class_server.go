@@ -212,7 +212,7 @@ func (cls *ClassServer) QueryChapterList(ctx context.Context, cid string) ([]*Ch
 		return nil, err
 	}
 
-	list := make([]*Chapter, len(chids))
+	list := make([]*Chapter, 0, len(chids))
 
 	for _, chid := range chids {
 		info, err := cls.chapterServer.QueryChapterInfo(ctx, chid)
@@ -595,4 +595,8 @@ func (cls *ClassServer) DeleteTask(ctx context.Context, tid string) (*Task, erro
 		return nil, err
 	}
 	return info, nil
+}
+
+func (cls *ClassServer) QueryResourceList(ctx context.Context, list *ResourceList) error {
+	return cls.chapterServer.QueryResourceList(ctx, list)
 }

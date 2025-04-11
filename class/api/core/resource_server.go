@@ -19,6 +19,23 @@ func NewResourceServer(ctx context.Context, dsClient *redis.Client) *ResourceSer
 	}
 }
 
+func (rs *ResourceServer) QueryResourceList(ctx context.Context, list *ResourceList) error {
+	result, err := rs.resourceDB.ZRange(ctx, BuildChapterResourceList(list.SourceId), 0, -1).Result()
+	if err != nil {
+		logx.GetLogger("study").Errorf("ResourceServer|QueryResourceList|QueryResourceListError|%v", err)
+		return err
+	}
+	for _, id := range result {
+		resourceInfo, err := rs.QueryResourceInfo(ctx, id)
+		if err != nil {
+			logx.GetLogger("study").Errorf("ResourceServer|QueryResourceList|QueryResourceInfoError|%v", err)
+			return err
+		}
+		list.ResourceList = append(list.ResourceList, *resourceInfo)
+	}
+	return nil
+}
+
 func (rs *ResourceServer) CreateResource(ctx context.Context, info *Resource) error {
 	// 先存储资源的信息
 	data := info.Marshal()

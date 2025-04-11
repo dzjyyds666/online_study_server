@@ -36,6 +36,7 @@ func RegisterRouter(e *echo.Echo, cls *ClassService) {
 
 	student := globApiPrefix.Group("/stu")
 	student.Add("GET", "/query/:cid", cls.HandleQueryClassInfo, mymiddleware.AuthMw(mymiddleware.UserRole.Student))
+	student.Add("GET", "/resource/list/:chid", cls.HandleListReource, mymiddleware.AuthMw(mymiddleware.UserRole.Student))
 
 	RecordRouteToFile(FilterRouter(e.Routes()))
 }

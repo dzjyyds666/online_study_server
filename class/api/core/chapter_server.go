@@ -24,6 +24,10 @@ func NewChapterServer(ctx context.Context, dsClient *redis.Client) *ChapterServe
 	}
 }
 
+func (cs *ChapterServer) QueryResourceList(ctx context.Context, list *ResourceList) error {
+	return cs.resourceServ.QueryResourceList(ctx, list)
+}
+
 func (cs *ChapterServer) CreateChapter(ctx context.Context, info *Chapter) error {
 	rawData := info.Marshal()
 	err := cs.chapterDB.Set(ctx, BuildChapterInfo(*info.Chid), rawData, 0).Err()
@@ -109,8 +113,8 @@ func (cs *ChapterServer) QueryChapterInfo(ctx context.Context, chid string) (*Ch
 		return nil, err
 	}
 
-	var info *Chapter
-	err = json.Unmarshal([]byte(result), info)
+	var info Chapter
+	err = json.Unmarshal([]byte(result), &info)
 	if err != nil {
 		logx.GetLogger("study").Errorf("ChapterServer|QueryChapterInfo|UnmarshalChapterInfoError|%v", err)
 		return nil, err
@@ -131,8 +135,7 @@ func (cs *ChapterServer) QueryChapterInfo(ctx context.Context, chid string) (*Ch
 		}
 		info.ResourceList = append(info.ResourceList, *resourceInfo)
 	}
-
-	return info, nil
+	return &info, nil
 }
 
 func (cs *ChapterServer) CreateResource(ctx context.Context, info *Resource) error {

@@ -361,6 +361,28 @@ func (cls *ClassService) HandleDeleteResource(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, resource)
 }
 
+func (cls *ClassService) HandleListReource(ctx echo.Context) error {
+	var list *core2.ResourceList
+	decoder := json.NewDecoder(ctx.Request().Body)
+	if err := decoder.Decode(&list); nil != err {
+		logx.GetLogger("study").Errorf("HandleQueryResourceInfo|Decode err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	list.Limit = 1000
+	err := cls.classServ.QueryResourceList(ctx.Request().Context(), list)
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleQueryResourceInfo|Query ResourceList Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Query ResourceList Error",
+		})
+	}
+	logx.GetLogger("study").Infof("HandleQueryResourceInfo|Query ResourceList Success|%s", common.ToStringWithoutError(list))
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
+}
+
 func (cls *ClassService) HandleImportStudentFromExcel(ctx echo.Context) error {
 	cid := ctx.Param("cid")
 	file, err := ctx.FormFile("file")
