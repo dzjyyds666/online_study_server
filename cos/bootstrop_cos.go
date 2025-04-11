@@ -12,14 +12,17 @@ import (
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 )
 
 func main() {
 
-	var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\cos\\api\\config\\config.json", "config.json file path")
-	//var configPath = flag.String("c", "/Users/zhijundu/code/GolandProjects/online_study_server/cos/api/config/config.json", "config.json file path")
+	//var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\cos\\api\\config\\config.json", "config.json file path")
+	var configPath = flag.String("c", "/Users/zhijundu/code/GolandProjects/online_study_server/cos/api/config/config.json", "config.json file path")
 	err := config.RefreshEtcdConfig(*configPath)
 	if err != nil {
 		logx.GetLogger("study").Errorf("apiService|RefreshEtcdConfig|err:%v", err)
@@ -60,15 +63,22 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background()) // 创建上下文
 	defer cancel()
 	// 启动http服务
-	err = http2.StartCosHttpServer(ctx, client, s3Client)
-	if err != nil {
-		logx.GetLogger("study").Errorf("main|StartApiServer|err:%v", err)
-		cancel()
-	}
+	go http2.StartCosHttpServer(ctx, client, s3Client)
 	// 启动rpc服务
-	err = rpc.StartCosRpcServer(ctx)
-	if err != nil {
-		logx.GetLogger("study").Errorf("main|StartRpcServer|err:%v", err)
+	go rpc.StartCosRpcServer(ctx, client, s3Client)
+
+	// 创建信号通道
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// 监听信号
+	go func() {
+		<-signalChan
+		logx.GetLogger("study").Info("main|Received shutdown signal, shutting down...")
 		cancel()
-	}
+	}()
+
+	// 主 Goroutine 阻塞，等待取消信号
+	<-ctx.Done()
+	logx.GetLogger("study").Info("main|Shutdown complete")
 }

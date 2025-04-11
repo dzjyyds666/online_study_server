@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/dzjyyds666/opensource/common"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
-	"golang.org/x/sync/errgroup"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"user/api/config"
 	"user/api/core"
 	"user/api/http"
@@ -16,8 +19,8 @@ import (
 )
 
 func main() {
-	//var configPath = flag.String("c", "/Users/zhijundu/code/GolandProjects/online_study_server/user/api/config/config.json", "config.json file path")
-	var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\user\\api\\config\\config.json", "config.json file path")
+	var configPath = flag.String("c", "/Users/zhijundu/code/GolandProjects/online_study_server/user/api/config/config.json", "config.json file path")
+	//var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\user\\api\\config\\config.json", "config.json file path")
 	err := config.RefreshEtcdConfig(*configPath)
 	if err != nil {
 		logx.GetLogger("study").Errorf("main|RefreshEtcdConfig|err:%v", err)
@@ -28,6 +31,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	logx.GetLogger("study").Infof("main|LoadConfigFromEtcd|config:%s", common.ToStringWithoutError(config.GloableConfig))
 
 	client := redis.NewClient(&redis.Options{
 		Addr:     *config.GloableConfig.Redis.Host + ":" + strconv.Itoa(*config.GloableConfig.Redis.Port),
@@ -51,30 +56,22 @@ func main() {
 	}
 	defer cancel()
 
-	var g errgroup.Group
+	go http.StartUserHttpServer(ctx, server)
 
-	g.Go(func() error {
-		err = http.StartUserHttpServer(ctx, server)
-		if err != nil {
-			logx.GetLogger("study").Errorf("main|StartUserHttpServer|err:%v", err)
-			cancel()
-			return err
-		}
-		return nil
-	})
+	go rpc.StratUserRpcServer(ctx, server)
 
-	g.Go(func() error {
-		err = rpc.StratUserRpcServer(ctx, server)
-		if err != nil {
-			logx.GetLogger("study").Errorf("main|StratUserRpcServer|err:%v", err)
-			cancel()
-			return err
-		}
-		return nil
-	})
+	// 创建信号通道
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
-	if err := g.Wait(); err != nil {
-		logx.GetLogger("study").Errorf("main|err:%v", err)
-		return
-	}
+	// 监听信号
+	go func() {
+		<-signalChan
+		logx.GetLogger("study").Info("main|Received shutdown signal, shutting down...")
+		cancel()
+	}()
+
+	// 主 Goroutine 阻塞，等待取消信号
+	<-ctx.Done()
+	logx.GetLogger("study").Info("main|Shutdown complete")
 }

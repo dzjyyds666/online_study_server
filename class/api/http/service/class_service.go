@@ -310,6 +310,8 @@ func (cls *ClassService) HandleUploadResource(ctx echo.Context) error {
 			"msg": "Params Invalid",
 		})
 	}
+
+	logx.GetLogger("study").Errorf("HandleUploadResource|resource:%s", common.ToStringWithoutError(resource))
 	resource.WithPublished(false).WithDownloadable(false)
 	err := cls.classServ.CreateResource(ctx.Request().Context(), resource)
 	if err != nil {

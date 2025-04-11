@@ -23,6 +23,7 @@ const (
 	Cos_CopyObject_FullMethodName            = "/proto.Cos/CopyObject"
 	Cos_UploadClassCover_FullMethodName      = "/proto.Cos/UploadClassCover"
 	Cos_AddVideoToLambdaQueue_FullMethodName = "/proto.Cos/AddVideoToLambdaQueue"
+	Cos_GetFileInfo_FullMethodName           = "/proto.Cos/GetFileInfo"
 )
 
 // CosClient is the client API for Cos service.
@@ -33,6 +34,7 @@ type CosClient interface {
 	CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CosCommonResponse, error)
 	UploadClassCover(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[UploadClassCoverReq, UploadClassCoverResp], error)
 	AddVideoToLambdaQueue(ctx context.Context, in *VideoInfo, opts ...grpc.CallOption) (*CosCommonResponse, error)
+	GetFileInfo(ctx context.Context, in *ResourceInfo, opts ...grpc.CallOption) (*ResourceInfo, error)
 }
 
 type cosClient struct {
@@ -86,6 +88,16 @@ func (c *cosClient) AddVideoToLambdaQueue(ctx context.Context, in *VideoInfo, op
 	return out, nil
 }
 
+func (c *cosClient) GetFileInfo(ctx context.Context, in *ResourceInfo, opts ...grpc.CallOption) (*ResourceInfo, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResourceInfo)
+	err := c.cc.Invoke(ctx, Cos_GetFileInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CosServer is the server API for Cos service.
 // All implementations must embed UnimplementedCosServer
 // for forward compatibility.
@@ -94,6 +106,7 @@ type CosServer interface {
 	CopyObject(context.Context, *CopyObjectRequest) (*CosCommonResponse, error)
 	UploadClassCover(grpc.ClientStreamingServer[UploadClassCoverReq, UploadClassCoverResp]) error
 	AddVideoToLambdaQueue(context.Context, *VideoInfo) (*CosCommonResponse, error)
+	GetFileInfo(context.Context, *ResourceInfo) (*ResourceInfo, error)
 	mustEmbedUnimplementedCosServer()
 }
 
@@ -115,6 +128,9 @@ func (UnimplementedCosServer) UploadClassCover(grpc.ClientStreamingServer[Upload
 }
 func (UnimplementedCosServer) AddVideoToLambdaQueue(context.Context, *VideoInfo) (*CosCommonResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddVideoToLambdaQueue not implemented")
+}
+func (UnimplementedCosServer) GetFileInfo(context.Context, *ResourceInfo) (*ResourceInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFileInfo not implemented")
 }
 func (UnimplementedCosServer) mustEmbedUnimplementedCosServer() {}
 func (UnimplementedCosServer) testEmbeddedByValue()             {}
@@ -198,6 +214,24 @@ func _Cos_AddVideoToLambdaQueue_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Cos_GetFileInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResourceInfo)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CosServer).GetFileInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Cos_GetFileInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CosServer).GetFileInfo(ctx, req.(*ResourceInfo))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Cos_ServiceDesc is the grpc.ServiceDesc for Cos service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -216,6 +250,10 @@ var Cos_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddVideoToLambdaQueue",
 			Handler:    _Cos_AddVideoToLambdaQueue_Handler,
+		},
+		{
+			MethodName: "GetFileInfo",
+			Handler:    _Cos_GetFileInfo_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

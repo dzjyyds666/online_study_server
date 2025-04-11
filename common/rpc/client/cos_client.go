@@ -17,7 +17,6 @@ var (
 func GetCosRpcClient(ctx context.Context) proto.CosClient {
 	once.Do(func() {
 		var err error
-		// todo 修改rpc启动从配置文件中读取
 		cosClientConn, err = grpc.DialContext(ctx, "127.0.0.1:29002", grpc.WithInsecure())
 		if err != nil {
 			logx.GetLogger("study").Errorf("UserServer|StartError|NewUserServer|err:%v", err)

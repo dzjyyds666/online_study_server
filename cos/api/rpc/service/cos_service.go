@@ -10,7 +10,7 @@ import (
 )
 
 type CosRpcServer struct {
-	cosServer *core.CosFileServer
+	CosServer *core.CosFileServer
 	proto.UnimplementedCosServer
 }
 
@@ -49,7 +49,7 @@ func (cs *CosRpcServer) UploadClassFile(stream proto.Cos_UploadClassCoverServer)
 
 		fileData.Write(chunk.Content)
 	}
-	fid, err := cs.cosServer.UploadClassCover(context.Background(), filename, dirId, fileType, md5, fileSize, &fileData)
+	fid, err := cs.CosServer.UploadClassCover(context.Background(), filename, dirId, fileType, md5, fileSize, &fileData)
 	if err != nil {
 		logx.GetLogger("study").Errorf("UploadClassCover|UploadClassCover Error|%v", err)
 		return err
@@ -61,7 +61,7 @@ func (cs *CosRpcServer) UploadClassFile(stream proto.Cos_UploadClassCoverServer)
 
 func (cs *CosRpcServer) AddVideoToLambdaQueue(ctx context.Context, in *proto.VideoInfo) (*proto.CosCommonResponse, error) {
 	// 把视频fid写入redis队列中
-	err := cs.cosServer.PushVideoToLambdaQueue(ctx, in.Fid)
+	err := cs.CosServer.PushVideoToLambdaQueue(ctx, in.Fid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("AddVideoToLambdaQueue|PushVideoToLambdaQueue Error|%v", err)
 		return &proto.CosCommonResponse{
@@ -71,4 +71,19 @@ func (cs *CosRpcServer) AddVideoToLambdaQueue(ctx context.Context, in *proto.Vid
 	return &proto.CosCommonResponse{
 		Success: true,
 	}, nil
+}
+
+func (cs *CosRpcServer) GetFileInfo(ctx context.Context, in *proto.ResourceInfo) (*proto.ResourceInfo, error) {
+	file, err := cs.CosServer.QueryCosFile(ctx, in.GetFid())
+	if err != nil {
+		logx.GetLogger("study").Errorf("GetFileInfo|QueryCosFile Error|%v", err)
+		return nil, err
+	}
+	info := &proto.ResourceInfo{
+		Fid:      in.GetFid(),
+		FileType: *file.FileType,
+		FileSize: *file.FileSize,
+		FileName: *file.FileName,
+	}
+	return info, nil
 }

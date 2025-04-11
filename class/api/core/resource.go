@@ -1,6 +1,7 @@
 package core
 
 import (
+	"common/proto"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,10 +19,16 @@ func BuildResourceKey(fid string) string {
 }
 
 type Resource struct {
-	Fid          *string `json:"fid,omitempty"`
-	Published    *bool   `json:"published"`
-	Downloadable *bool   `json:"downloadable"` // 是否可以下载
-	Chid         *string `json:"chid,omitempty"`
+	Fid          *string             `json:"fid,omitempty"`
+	Published    *bool               `json:"published"`
+	Downloadable *bool               `json:"downloadable"` // 是否可以下载
+	Chid         *string             `json:"chid,omitempty"`
+	FileInfo     *proto.ResourceInfo `json:"file_info"` // 文件信息
+}
+
+func (r *Resource) WithFileInfo(info *proto.ResourceInfo) *Resource {
+	r.FileInfo = info
+	return r
 }
 
 func (r *Resource) WithFid(fid string) *Resource {

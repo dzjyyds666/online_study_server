@@ -1,6 +1,8 @@
 package core
 
 import (
+	"common/proto"
+	"common/rpc/client"
 	"encoding/json"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
@@ -60,16 +62,23 @@ func (rs *ResourceServer) QueryResourceInfo(ctx context.Context, fid string) (*R
 		return nil, err
 	}
 
-	// TODO rpc调用cos获取文件的基础信息
+	cosRpcClient := client.GetCosRpcClient(ctx)
+	info, err := cosRpcClient.GetFileInfo(ctx, &proto.ResourceInfo{
+		Fid: fid,
+	})
+	if err != nil {
+		logx.GetLogger("study").Errorf("ResourceServer|QueryResourceInfo|GetFileInfo Error|%v", err)
+		return nil, err
+	}
 
-	var resource *Resource
-	err = json.Unmarshal([]byte(result), resource)
+	var resource Resource
+	err = json.Unmarshal([]byte(result), &resource)
 	if err != nil {
 		logx.GetLogger("study").Errorf("ResourceServer|QueryResourceInfo|Unmarshal Resource Info Error|%v", err)
 		return nil, err
 	}
-
-	return resource, nil
+	resource.WithFileInfo(info)
+	return &resource, nil
 }
 
 // 更新资源的状态

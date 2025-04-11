@@ -7,7 +7,7 @@ import (
 )
 
 func StratClassRpcService(ctx context.Context, ds *redis.Client) error {
-	//
+
 	//listen, err := net.Listen("tcp", fmt.Sprintf("%s:%d", *config.GloableConfig.Host, *config.GloableConfig.RpcPort))
 	//if err!=nil{
 	//	logx.GetLogger("study").Errorf("StratClassRpcService|Listen Error|%v", err)

@@ -9,6 +9,14 @@ service Cos{
   rpc CopyObject(CopyObjectRequest) returns(CosCommonResponse);
   rpc UploadClassCover(stream UploadClassCoverReq) returns(UploadClassCoverResp);
   rpc AddVideoToLambdaQueue(VideoInfo) returns(CosCommonResponse);
+  rpc GetFileInfo(ResourceInfo) returns(ResourceInfo);
+}
+
+message ResourceInfo{
+  string fid = 1;
+  string fileName = 2;
+  string fileType = 3;
+  int64 fileSize = 4;
 }
 
 message VideoInfo{
@@ -39,12 +47,4 @@ message DeleteObjectRequest {
 
 message CosCommonResponse {
   bool success = 1;
-}
-
-message ResourceInfo{
-  string fid = 1;
-  string fileName = 2;
-  string fileType = 3;
-  string fileSize = 4;
-  string md5 = 5;
 }

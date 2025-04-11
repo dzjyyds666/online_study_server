@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
 	"os"
 	"strings"
 	"time"
 )
 
 func RegisterRouter(e *echo.Echo, cls *ClassService) {
-	e.Use(middleware.Recover())
+	//e.Use(middleware.Recover())
 	globApiPrefix := e.Group("/v1/class")
 	teacher := globApiPrefix.Group("/tch")
 	teacher.Add("GET", "/list", cls.HandleListTeacherClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
