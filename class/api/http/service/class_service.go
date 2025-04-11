@@ -420,3 +420,65 @@ func (cls *ClassService) HandleUploadClassCover(ctx echo.Context) error {
 		"fid": fid,
 	})
 }
+
+func (cls *ClassService) HandleCreateTask(ctx echo.Context) error {
+	var task *core2.Task
+	decoder := json.NewDecoder(ctx.Request().Body)
+	if err := decoder.Decode(&task); err != nil {
+		logx.GetLogger("study").Errorf("HandleCreateTask|Decode err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	err := cls.classServ.CreateTask(ctx.Request().Context(), task)
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleCreateTask|CreateTask err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "CreateTask Error",
+		})
+	}
+
+	logx.GetLogger("study").Infof("HandleCreateTask|CreateTask|Succ|%s", common.ToStringWithoutError(task))
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, task)
+}
+
+func (cls *ClassService) HandleListTask(ctx echo.Context) error {
+	var list *core2.ListTask
+	decoder := json.NewDecoder(ctx.Request().Body)
+	if err := decoder.Decode(&list); err != nil {
+		logx.GetLogger("study").Errorf("HandleListTask|Decode err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	err := cls.classServ.ListTask(ctx.Request().Context(), list)
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleListTask|ListTask err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "ListTask Error",
+		})
+	}
+	logx.GetLogger("study").Infof("HandleListTask|ListTask|Succ|%s", common.ToStringWithoutError(list))
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
+}
+
+func (cls *ClassService) HandleDeleteTask(ctx echo.Context) error {
+	tid := ctx.Param("tid")
+	if len(tid) <= 0 {
+		logx.GetLogger("study").Errorf("DeleteTask|tid is empty")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Param Invalid",
+		})
+	}
+
+	task, err := cls.classServ.DeleteTask(ctx.Request().Context(), tid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("DeleteTask|DeleteTask err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "DeleteTask Error",
+		})
+	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, task)
+}

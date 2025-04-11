@@ -22,6 +22,10 @@ func NewClassId(length int) string {
 	return "ci_" + GenerateRandomString(length)
 }
 
+func NewTaskId(length int) string {
+	return "ti_" + GenerateRandomString(length)
+}
+
 func NewChapterId(length int) string {
 	return "ch_" + GenerateRandomString(length)
 }
