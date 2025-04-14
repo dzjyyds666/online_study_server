@@ -4,12 +4,13 @@ import (
 	core2 "class/api/core"
 	"context"
 	"encoding/json"
+	"time"
+
 	"github.com/dzjyyds666/opensource/common"
 	"github.com/dzjyyds666/opensource/httpx"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
 	"github.com/redis/go-redis/v9"
-	"time"
 )
 
 type ClassService struct {
@@ -92,7 +93,7 @@ func (cls *ClassService) HandleListTeacherClass(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
 func (cls *ClassService) HandleUpdateClass(ctx echo.Context) error {
-	var class *core2.Class
+	var class core2.Class
 	decoder := json.NewDecoder(ctx.Request().Body)
 	err := decoder.Decode(&class)
 	if err != nil {
@@ -109,7 +110,7 @@ func (cls *ClassService) HandleUpdateClass(ctx echo.Context) error {
 		})
 	}
 
-	err = cls.classServ.UpdateClass(ctx.Request().Context(), class)
+	err = cls.classServ.UpdateClass(ctx.Request().Context(), &class)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleUpdateClass|UpdateClass Error|%v", err)
 		return err
@@ -261,23 +262,15 @@ func (cls *ClassService) HandleRenameChapter(ctx echo.Context) error {
 }
 
 func (cls *ClassService) HandleDeleteChapter(ctx echo.Context) error {
-	var chapter *core2.Chapter
-	decoder := json.NewDecoder(ctx.Request().Body)
-	if err := decoder.Decode(&chapter); err != nil {
-		logx.GetLogger("study").Errorf("HandleDeleteChapter|ctx.Bind err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
-			"msg": "Params Invalid",
-		})
-	}
-
-	err := cls.classServ.DeleteChapter(ctx.Request().Context(), chapter)
+	chid := ctx.Param("chid")
+	err := cls.classServ.DeleteChapter(ctx.Request().Context(), chid)
 	if nil != err {
 		logx.GetLogger("study").Errorf("HandleDeleteChapter|Delete Chapter Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Delete Chapter Error",
 		})
 	}
-	logx.GetLogger("study").Infof("HandleDeleteChapter|Delete Chapter Success|%s", *chapter.Chid)
+	logx.GetLogger("study").Infof("HandleDeleteChapter|Delete Chapter Success|%s", chid)
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, nil)
 }
 
