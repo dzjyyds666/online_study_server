@@ -82,13 +82,13 @@ func (rs *ResourceServer) QueryResourceInfo(ctx context.Context, fid string) (*R
 }
 
 // 更新资源的状态
-func (rs *ResourceServer) UpdateResource(ctx context.Context, info *Resource) error {
+func (rs *ResourceServer) UpdateResource(ctx context.Context, info *Resource) (*Resource, error) {
 	// 更新resource的状态
 	// 获取资源的信息
 	resourceInfo, err := rs.QueryResourceInfo(ctx, *info.Fid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("ResourceServer|UpdateResource|Query Resource Info Error|%v", err)
-		return err
+		return nil, err
 	}
 	if info.Downloadable != nil {
 		resourceInfo.Downloadable = info.Downloadable
@@ -102,7 +102,7 @@ func (rs *ResourceServer) UpdateResource(ctx context.Context, info *Resource) er
 	err = rs.resourceDB.Set(ctx, BuildResourceInfo(*info.Fid), data, 0).Err()
 	if err != nil {
 		logx.GetLogger("study").Errorf("ResourceServer|UpdateResource|Set Resource Info Error|%v", err)
-		return err
+		return nil, err
 	}
-	return nil
+	return resourceInfo, nil
 }

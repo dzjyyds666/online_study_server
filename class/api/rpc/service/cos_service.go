@@ -1,6 +1,6 @@
 package service
 
-import "class/api/proto"
+import "common/proto"
 
 type CosService struct {
 	proto.UnimplementedCosServer

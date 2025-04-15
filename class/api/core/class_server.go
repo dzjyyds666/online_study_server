@@ -229,7 +229,7 @@ func (cls *ClassServer) CreateResource(ctx context.Context, resource *Resource) 
 	return cls.chapterServer.CreateResource(ctx, resource)
 }
 
-func (cls *ClassServer) UpdateResource(ctx context.Context, resource *Resource) error {
+func (cls *ClassServer) UpdateResource(ctx context.Context, resource *Resource) (*Resource, error) {
 	return cls.chapterServer.UpdateResource(ctx, resource)
 }
 

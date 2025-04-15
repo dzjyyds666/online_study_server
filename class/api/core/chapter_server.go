@@ -157,6 +157,6 @@ func (cs *ChapterServer) CreateResource(ctx context.Context, info *Resource) err
 	return nil
 }
 
-func (cs *ChapterServer) UpdateResource(ctx context.Context, info *Resource) error {
+func (cs *ChapterServer) UpdateResource(ctx context.Context, info *Resource) (*Resource, error) {
 	return cs.resourceServ.UpdateResource(ctx, info)
 }
