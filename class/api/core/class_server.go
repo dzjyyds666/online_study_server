@@ -7,13 +7,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/dzjyyds666/opensource/common"
-	"github.com/dzjyyds666/opensource/logx"
-	"github.com/redis/go-redis/v9"
 	"io"
 	"math"
 	"strconv"
 	"time"
+
+	"github.com/dzjyyds666/opensource/common"
+	"github.com/dzjyyds666/opensource/logx"
+	"github.com/redis/go-redis/v9"
 )
 
 type ClassServer struct {
@@ -189,9 +190,14 @@ func (cls *ClassServer) UpdateChapter(ctx context.Context, info *Chapter) error 
 	return cls.chapterServer.UpdateChapter(ctx, info)
 }
 
-func (cls *ClassServer) DeleteChapter(ctx context.Context, chapter *Chapter) error {
+func (cls *ClassServer) DeleteChapter(ctx context.Context, chid string) error {
+	chapter, err := cls.chapterServer.QueryChapterInfo(ctx, chid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|DeleteChapter|QueryChapterInfoError|%v", err)
+		return err
+	}
 	// 先从课程章节列表中删除
-	err := cls.classDB.ZRem(ctx, BuildClassChapterList(*chapter.SourceId), chapter.Chid).Err()
+	err = cls.classDB.ZRem(ctx, BuildClassChapterList(*chapter.SourceId), chapter.Chid).Err()
 	if err != nil {
 		logx.GetLogger("study").Errorf("ClassServer|DeleteChapter|DeleteChapterFromClassError|%v", err)
 		return err
@@ -238,14 +244,17 @@ func (cls *ClassServer) DeleteResource(ctx context.Context, fid string, chid str
 }
 
 func (cls *ClassServer) updateClassInfo(oldClass, newClass *Class) *Class {
-	if newClass.ClassName != nil {
+	if newClass.Cover != nil && len(*newClass.Cover) > 0 {
+		oldClass.WithCover(*newClass.Cover)
+	}
+	if newClass.ClassName != nil && len(*newClass.ClassName) > 0 {
 		oldClass.WithClassName(*newClass.ClassName)
 	}
-	if newClass.ClassDesc != nil {
+	if newClass.ClassDesc != nil && len(*newClass.ClassDesc) > 0 {
 		oldClass.WithClassDesc(*newClass.ClassDesc)
 	}
 
-	if newClass.ClassType != nil {
+	if newClass.ClassType != nil && len(*newClass.ClassType) > 0 {
 		oldClass.WithClassType(*newClass.ClassType)
 	}
 
@@ -257,26 +266,26 @@ func (cls *ClassServer) updateClassInfo(oldClass, newClass *Class) *Class {
 		oldClass.WithDeleted(*newClass.Deleted)
 	}
 
-	if newClass.ClassScore != nil {
+	if newClass.ClassScore != nil && len(*newClass.ClassScore) > 0 {
 		oldClass.WithClassScore(*newClass.ClassScore)
 	}
 
-	if newClass.ClassTime != nil {
+	if newClass.ClassTime != nil && len(*newClass.ClassTime) > 0 {
 		oldClass.WithClassTime(*newClass.ClassTime)
 	}
 
-	if newClass.ClassCollege != nil {
+	if newClass.ClassCollege != nil && len(*newClass.ClassCollege) > 0 {
 		oldClass.WithClassCollege(*newClass.ClassCollege)
 	}
 
-	if newClass.ClassSchoolTerm != nil {
+	if newClass.ClassSchoolTerm != nil && len(*newClass.ClassSchoolTerm) > 0 {
 		oldClass.WithClassSchoolTerm(*newClass.ClassSchoolTerm)
 	}
 
-	if newClass.ClassOutline != nil {
+	if newClass.ClassOutline != nil && len(*newClass.ClassOutline) > 0 {
 		oldClass.WithClassOutline(*newClass.ClassOutline)
 	}
-
+	logx.GetLogger("study").Infof("ClassServer|UpdateClass|UpdateClassInfoSuccess|%s", common.ToStringWithoutError(*oldClass))
 	return oldClass
 }
 

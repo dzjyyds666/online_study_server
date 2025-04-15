@@ -34,6 +34,11 @@ func (ci *Class) WithClassName(name string) *Class {
 	return ci
 }
 
+func (ci *Class) WithCover(cover string) *Class {
+	ci.Cover = &cover
+	return ci
+}
+
 func (ci *Class) WithClassDesc(desc string) *Class {
 	ci.ClassDesc = &desc
 	return ci
@@ -104,10 +109,10 @@ func (ci *Class) IsDeleted() bool {
 }
 
 func UnmarshalToClass(data []byte) (*Class, error) {
-	var ci *Class
-	err := json.Unmarshal(data, ci)
+	var ci Class
+	err := json.Unmarshal(data, &ci)
 	if err != nil {
 		return nil, err
 	}
-	return ci, nil
+	return &ci, nil
 }
