@@ -7,6 +7,19 @@ option go_package = ".;proto";
 service user{
   rpc AddStudentToClass(AddStudentToClassRequest) returns (UserCommonResponse);
   rpc BatchAddStudentToClass(stream FileChunk) returns(StudentIds);
+  rpc GetStudentsInfo(StudentIds) returns(StudentInfos);
+}
+
+message StudentInfos{
+  repeated StudentInfo infos = 1;
+}
+
+message StudentInfo{
+  string uid = 1;
+  string name = 2;
+  string college = 3;
+  string major = 4;
+  string avatar = 5;
 }
 
 message AddStudentToClassRequest{
@@ -29,11 +42,3 @@ message FileChunk{
   string  cid = 3; // 课程id
 }
 
-message Student{
-  string sid = 1;
-  string name = 2;
-  string college = 3;
-  string major = 4;
-  string avatar = 5;
-  bool deleted = 6;
-}

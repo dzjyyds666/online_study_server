@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"common/proto"
 	"context"
-	"github.com/dzjyyds666/opensource/logx"
 	"io"
 	"user/api/core"
+
+	"github.com/dzjyyds666/opensource/common"
+	"github.com/dzjyyds666/opensource/logx"
 )
 
 type UserRpcServer struct {
@@ -15,6 +17,12 @@ type UserRpcServer struct {
 }
 
 func (us *UserRpcServer) AddStudentToClass(ctx context.Context, req *proto.AddStudentToClassRequest) (*proto.UserCommonResponse, error) {
+	logx.GetLogger("study").Infof("AddStudentToClass|succes|%s", common.ToStringWithoutError(req))
+	err := us.UserServer.AddStudentToClass(context.Background(), req.Cid, req.Uid, req.Name)
+	if err != nil {
+		logx.GetLogger("study").Errorf("AddStudentToClass|AddStudentToClass|err:%v", err)
+		return nil, err
+	}
 	return &proto.UserCommonResponse{Success: true}, nil
 }
 
@@ -48,4 +56,23 @@ func (us *UserRpcServer) BatchAddStudentToClass(stream proto.User_BatchAddStuden
 	return stream.SendAndClose(&proto.StudentIds{
 		Uids: ids,
 	})
+}
+
+func (us *UserRpcServer) GetStudentsInfo(ctx context.Context, in *proto.StudentIds) (*proto.StudentInfos, error) {
+	list := &proto.StudentInfos{Infos: make([]*proto.StudentInfo, 0, len(in.Uids))}
+	for _, uid := range in.Uids {
+		info, err := us.UserServer.QueryUserInfo(ctx, uid)
+		if err != nil {
+			logx.GetLogger("study").Errorf("GetStudentsInfo|QueryUserInfo|err:%v", err)
+			continue
+		}
+		student := proto.StudentInfo{}
+		student.Uid = info.Uid
+		student.Name = info.Name
+		student.College = info.Collage
+		student.Major = info.Major
+		student.Avatar = info.Avatar
+		list.Infos = append(list.Infos, &student)
+	}
+	return list, nil
 }

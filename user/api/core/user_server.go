@@ -55,14 +55,14 @@ func (us *UserServer) UpdateUserInfo(ctx context.Context, user *UserInfo) error 
 }
 
 func (us *UserServer) QueryUserInfo(ctx context.Context, uid string) (*UserInfo, error) {
-	var user *UserInfo
-	err := us.mySql.WithContext(ctx).Where("uid = ?", uid).First(user).Error
+	var user UserInfo
+	err := us.mySql.WithContext(ctx).Where("uid = ?", uid).First(&user).Error
 	if err != nil {
 		logx.GetLogger("study").Errorf("UserServer|QueryUserInfo|Query User Info Error|%v", err)
 		return nil, err
 	}
 
-	return user, nil
+	return &user, nil
 }
 
 func (us *UserServer) Login(ctx context.Context, uid, password string) (int, error) {
@@ -157,6 +157,7 @@ func (us *UserServer) BetchAddStudentToClass(ctx context.Context, cid string, r 
 
 func (us *UserServer) AddStudentToClass(ctx context.Context, cid, uid, name string) error {
 	var user UserInfo
+	logx.GetLogger("study").Infof("AddStudentToClass|succes|%s", uid)
 	user.WithUid(uid)
 	defaultPassword, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
 	if err != nil {

@@ -492,3 +492,52 @@ func (cls *ClassService) HandleDeleteTask(ctx echo.Context) error {
 	}
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, task)
 }
+
+func (cls *ClassService) HandleQueryStudentList(ctx echo.Context) error {
+	cid := ctx.Param("cid")
+	if len(cid) <= 0 {
+		logx.GetLogger("study").Errorf("QueryStudentList|Param Invalid")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Param Invalid",
+		})
+	}
+	list, err := cls.classServ.QueryStudentList(ctx.Request().Context(), cid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("QueryStudentList|QueryStudentList err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "QueryStudentList err",
+		})
+	}
+	logx.GetLogger("study").Infof("QueryStudentList|QueryStudentList ok|%s", common.ToStringWithoutError(list))
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
+}
+
+type addStudent struct {
+	Uid  string `json:"uid"`
+	Name string `json:"name"`
+	Cid  string `json:"cid"`
+}
+
+func (cls *ClassService) HandleAddStudentToClass(ctx echo.Context) error {
+	var student addStudent
+	decoder := json.NewDecoder(ctx.Request().Body)
+	if err := decoder.Decode(&student); err != nil {
+		logx.GetLogger("study").Errorf("HandleAddStudentToClass|Decode err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+	logx.GetLogger("study").Infof("HandleAddStudentToClass|Params bind Success|%s", common.ToStringWithoutError(student))
+
+	err := cls.classServ.AddStudent(ctx.Request().Context(), student.Cid, student.Uid, student.Name)
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleAddStudentToClass|AddStudent err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "AddStudent Error",
+		})
+	}
+	logx.GetLogger("study").Infof("HandleAddStudentToClass|AddStudent|Succ|%s", common.ToStringWithoutError(student))
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"msg": "AddStudent Success",
+	})
+}

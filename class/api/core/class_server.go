@@ -20,8 +20,9 @@ import (
 type ClassServer struct {
 	ctx           context.Context
 	classDB       *redis.Client
-	chapterServer *ChapterServer // 章节服务
-	taskServer    *TaskServer    // 作业
+	chapterServer *ChapterServer      // 章节服务
+	taskServer    *TaskServer         // 作业
+	studentServer *ClassStudentServer // 学生服务
 }
 
 func NewClassServer(ctx context.Context, dsClient *redis.Client) *ClassServer {
@@ -29,6 +30,8 @@ func NewClassServer(ctx context.Context, dsClient *redis.Client) *ClassServer {
 		ctx:           ctx,
 		classDB:       dsClient,
 		chapterServer: NewChapterServer(ctx, dsClient),
+		taskServer:    NewTaskServer(ctx, dsClient),
+		studentServer: NewClassStudentServer(ctx, dsClient),
 	}
 }
 
@@ -488,7 +491,39 @@ func (cls *ClassServer) ImportStudentFromExcel(ctx context.Context, filename, ci
 		return nil, err
 	}
 
+	for _, uid := range resp.Uids {
+		err := cls.AddStudentToClassList(ctx, uid, cid)
+		if err != nil {
+			logx.GetLogger("study").Errorf("ClassServer|ImportStudentFromExcel|AddStudentToClassListError|%v", err)
+			continue
+		}
+	}
 	return resp.Uids, nil
+}
+
+func (cls *ClassServer) AddStudent(ctx context.Context, cid string, uid string, name string) error {
+	userClient := client.GetUserRpcClient(ctx)
+	resp, err := userClient.AddStudentToClass(ctx, &proto.AddStudentToClassRequest{
+		Uid:  uid,
+		Cid:  cid,
+		Name: name,
+	})
+
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|AddStudentToClassList|AddStudentToClassError|%v", err)
+		return err
+	}
+
+	if !resp.Success {
+		logx.GetLogger("study").Errorf("ClassServer|AddStudentToClassList|AddStudentToClassError|")
+		return errors.New("add student to class error")
+	}
+
+	return cls.AddStudentToClassList(ctx, uid, cid)
+}
+
+func (cls *ClassServer) AddStudentToClassList(ctx context.Context, uid string, cid string) error {
+	return cls.studentServer.AddStudentToClass(ctx, uid, cid)
 }
 
 func (cls *ClassServer) UploadClassCover(ctx context.Context, md5, fileType, dirId string, open io.Reader) (string, error) {
@@ -609,4 +644,8 @@ func (cls *ClassServer) DeleteTask(ctx context.Context, tid string) (*Task, erro
 
 func (cls *ClassServer) QueryResourceList(ctx context.Context, list *ResourceList) error {
 	return cls.chapterServer.QueryResourceList(ctx, list)
+}
+
+func (cls *ClassServer) QueryStudentList(ctx context.Context, cid string) (*proto.StudentInfos, error) {
+	return cls.studentServer.QueryStudentList(ctx, cid)
 }

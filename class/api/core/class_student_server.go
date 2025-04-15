@@ -1,10 +1,13 @@
 package core
 
 import (
+	"common/proto"
+	"common/rpc/client"
 	"context"
+	"time"
+
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
-	"time"
 )
 
 type ClassStudentServer struct {
@@ -33,7 +36,19 @@ func (css *ClassStudentServer) AddStudentToClass(ctx context.Context, uid string
 	return nil
 }
 
-func (css *ClassStudentServer) QueryStudentList(ctx context.Context, cid string, limit int, referUid string) error {
+func (css *ClassStudentServer) QueryStudentList(ctx context.Context, cid string) (*proto.StudentInfos, error) {
+	key := BuildClassStudentList(cid)
+	uids, err := css.studentDB.ZRange(ctx, key, 0, -1).Result()
+	if err != nil {
+		logx.GetLogger("study").Errorf("QueryStudentList|Query Student List Error|%v", err)
+		return nil, err
+	}
+	userClient := client.GetUserRpcClient(ctx)
+	resp, err := userClient.GetStudentsInfo(ctx, &proto.StudentIds{Uids: uids})
+	if err != nil {
+		logx.GetLogger("study").Errorf("QueryStudentList|GetStudentsInfo|%v", err)
+		return nil, err
+	}
 
-	return nil
+	return resp, nil
 }
