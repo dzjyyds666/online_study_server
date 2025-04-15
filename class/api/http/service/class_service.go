@@ -337,23 +337,16 @@ func (cls *ClassService) HandleUpdateResource(ctx echo.Context) error {
 }
 
 func (cls *ClassService) HandleDeleteResource(ctx echo.Context) error {
-	var resource *core2.Resource
-	decoder := json.NewDecoder(ctx.Request().Body)
-	if err := decoder.Decode(resource); err != nil {
-		logx.GetLogger("study").Errorf("HandleDeleteResource|Decode err:%v", err)
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
-			"msg": "Params Invalid",
-		})
-	}
-	err := cls.classServ.DeleteResource(ctx.Request().Context(), *resource.Fid, *resource.Chid)
+	fid := ctx.Param("fid")
+	info, err := cls.classServ.DeleteResource(ctx.Request().Context(), fid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleDeleteResource|DeleteResource Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "DeleteResource Error",
 		})
 	}
-	logx.GetLogger("study").Infof("HandleDeleteResource|DeleteResource|Succ|%s", *resource.Fid)
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, resource)
+	logx.GetLogger("study").Infof("HandleDeleteResource|DeleteResource|Succ|%s", common.ToStringWithoutError(info))
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
 
 func (cls *ClassService) HandleListReource(ctx echo.Context) error {
@@ -379,7 +372,7 @@ func (cls *ClassService) HandleListReource(ctx echo.Context) error {
 }
 
 func (cls *ClassService) HandleImportStudentFromExcel(ctx echo.Context) error {
-	cid := ctx.Param("cid")
+	cid := ctx.FormValue("cid")
 	file, err := ctx.FormFile("file")
 	if err != nil || len(cid) <= 0 {
 		logx.GetLogger("study").Errorf("HandleImportStudentFromExcel|Decode err:%v", err)

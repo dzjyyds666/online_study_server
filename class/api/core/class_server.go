@@ -239,8 +239,8 @@ func (cls *ClassServer) UpdateResource(ctx context.Context, resource *Resource) 
 	return cls.chapterServer.UpdateResource(ctx, resource)
 }
 
-func (cls *ClassServer) DeleteResource(ctx context.Context, fid string, chid string) error {
-	return cls.chapterServer.DeleteResource(ctx, fid, chid)
+func (cls *ClassServer) DeleteResource(ctx context.Context, fid string) (*Resource, error) {
+	return cls.chapterServer.DeleteResource(ctx, fid)
 }
 
 func (cls *ClassServer) updateClassInfo(oldClass, newClass *Class) *Class {
@@ -487,6 +487,7 @@ func (cls *ClassServer) ImportStudentFromExcel(ctx context.Context, filename, ci
 		logx.GetLogger("study").Errorf("ClassServer|ImportStudentFromExcel|CloseAndRecvError|%v", err)
 		return nil, err
 	}
+
 	return resp.Uids, nil
 }
 

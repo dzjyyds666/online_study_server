@@ -3,11 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/dzjyyds666/opensource/common"
-	"github.com/dzjyyds666/opensource/logx"
-	"github.com/redis/go-redis/v9"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
 	"os"
 	"os/signal"
 	"strconv"
@@ -16,11 +11,17 @@ import (
 	"user/api/core"
 	"user/api/http"
 	"user/api/rpc"
+
+	"github.com/dzjyyds666/opensource/common"
+	"github.com/dzjyyds666/opensource/logx"
+	"github.com/redis/go-redis/v9"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
 func main() {
-	// var configPath = flag.String("c", "/Users/zhijundu/code/GolandProjects/online_study_server/user/api/config/config.json", "config.json file path")
-	var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\user\\api\\config\\config.json", "config.json file path")
+	var configPath = flag.String("c", "/Users/zhijundu/code/GolandProjects/online_study_server/user/api/config/config.json", "config.json file path")
+	// var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\user\\api\\config\\config.json", "config.json file path")
 	err := config.RefreshEtcdConfig(*configPath)
 	if err != nil {
 		logx.GetLogger("study").Errorf("main|RefreshEtcdConfig|err:%v", err)

@@ -3,11 +3,12 @@ package classHttpService
 import (
 	mymiddleware "class/api/middleware"
 	"encoding/json"
-	"github.com/dzjyyds666/opensource/logx"
-	"github.com/labstack/echo"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/dzjyyds666/opensource/logx"
+	"github.com/labstack/echo"
 )
 
 func RegisterRouter(e *echo.Echo, cls *ClassService) {
@@ -32,6 +33,7 @@ func RegisterRouter(e *echo.Echo, cls *ClassService) {
 	teacher.Add("POST", "/task/create", cls.HandleCreateTask, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
 	teacher.Add("POST", "/task/list", cls.HandleListTask, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
 	teacher.Add("GET", "/task/delete/:tid", cls.HandleDeleteTask, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
+	teacher.Add("POST", "/student/import", cls.HandleImportStudentFromExcel, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
 
 	student := globApiPrefix.Group("/stu")
 	student.Add("GET", "/query/:cid", cls.HandleQueryClassInfo, mymiddleware.AuthMw(mymiddleware.UserRole.Student))

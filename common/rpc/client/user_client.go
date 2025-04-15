@@ -3,6 +3,7 @@ package client
 import (
 	"common/proto"
 	"context"
+
 	"google.golang.org/grpc"
 )
 
@@ -13,7 +14,7 @@ var (
 
 func GetUserRpcClient(ctx context.Context) proto.UserClient {
 	if userRpcClientConn == nil {
-		conn, err := grpc.DialContext(ctx, "127.0.0.1:8080", grpc.WithInsecure())
+		conn, err := grpc.DialContext(ctx, "127.0.0.1:29001", grpc.WithInsecure())
 		if err != nil {
 			panic(err)
 		}

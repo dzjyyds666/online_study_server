@@ -4,16 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"time"
+	"user/api/config"
+	mymiddleware "user/api/middleware"
+
 	"github.com/dzjyyds666/opensource/common"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/dzjyyds666/opensource/sdk"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-	"io"
-	"time"
-	"user/api/config"
-	mymiddleware "user/api/middleware"
 )
 
 type UserServer struct {
@@ -106,22 +107,25 @@ func (us *UserServer) BetchAddStudentToClass(ctx context.Context, cid string, r 
 		logx.GetLogger("study").Errorf("BetchAddStudentToClass|ParseExcel Error|%v", err)
 		return nil, err
 	}
+	logx.GetLogger("study").Infof("BetchAddStudentToClass|ParseExcel Success|%v", common.ToStringWithoutError(rows))
 	defaultPassword, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
 	if err != nil {
 		logx.GetLogger("study").Errorf("BetchAddStudentToClass|GenerateFromPassword Error|%v", err)
 		return nil, err
 	}
-	ids := make([]string, len(rows)-1)
-	users := make([]UserInfo, len(rows)-1)
-	for _, row := range rows {
+	ids := make([]string, 0, len(rows))
+	users := make([]UserInfo, 0, len(rows))
+	for index, row := range rows {
+		if index == 0 {
+			continue
+		}
 		var user UserInfo
 		user.WithUid(row[0])
 		err := us.mySql.Where("uid = ?", user.Uid).First(&user).Error
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			logx.GetLogger("study").Errorf("BetchAddStudentToClass|Query User Info Error|%v", err)
-			break
-		}
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+			continue
+		} else if errors.Is(err, gorm.ErrRecordNotFound) {
 			user.WithName(row[1]).
 				WithCollage(row[2]).
 				WithMajor(row[3]).
@@ -133,12 +137,12 @@ func (us *UserServer) BetchAddStudentToClass(ctx context.Context, cid string, r 
 			err = us.mySql.WithContext(ctx).Create(&user).Error
 			if err != nil {
 				logx.GetLogger("study").Errorf("BetchAddStudentToClass|Create User Info Error|%v", err)
-				break
+				continue
 			}
 		}
 		// 插入到学生的班级列表中
 		err = us.dsClient.ZAdd(ctx, buildStudentClassListKey(user.Uid), redis.Z{
-			Member: row[0],
+			Member: cid,
 			Score:  float64(time.Now().Unix()),
 		}).Err()
 		if err != nil {

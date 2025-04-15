@@ -5,15 +5,17 @@ import (
 	"context"
 	"cos/api/config"
 	"cos/api/core"
+
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/redis/go-redis/v9"
 
 	"cos/api/rpc/service"
 	"errors"
 	"fmt"
+	"net"
+
 	"github.com/dzjyyds666/opensource/logx"
 	"google.golang.org/grpc"
-	"net"
 )
 
 func StartCosRpcServer(ctx context.Context, client *redis.Client, s3Client *s3.Client) error {

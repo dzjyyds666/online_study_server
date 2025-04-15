@@ -3,9 +3,10 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"time"
+
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
-	"time"
 )
 
 type ChapterServer struct {
@@ -80,7 +81,7 @@ func (cs *ChapterServer) DeleteChapter(ctx context.Context, chid string) error {
 
 	for _, id := range ids {
 		// 删除章节信息
-		err := cs.DeleteResource(ctx, id, chid)
+		_, err := cs.DeleteResource(ctx, id)
 		if err != nil {
 			logx.GetLogger("study").Errorf("ChapterServer|DeleteResource|DeleteResourceError|%v", err)
 			break
@@ -89,20 +90,26 @@ func (cs *ChapterServer) DeleteChapter(ctx context.Context, chid string) error {
 	return nil
 }
 
-func (cs *ChapterServer) DeleteResource(ctx context.Context, fid string, chid string) error {
+func (cs *ChapterServer) DeleteResource(ctx context.Context, fid string) (*Resource, error) {
+	resourceInfo, err := cs.resourceServ.QueryResourceInfo(ctx, fid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("ChapterServer|DeleteResource|QueryResourceInfoError|%v", err)
+		return nil, err
+	}
+
 	// 先删除章节资源列表下的该资源
-	err := cs.chapterDB.ZRem(ctx, BuildChapterResourceList(chid), fid).Err()
+	err = cs.chapterDB.ZRem(ctx, BuildChapterResourceList(*resourceInfo.Chid), fid).Err()
 	if err != nil {
 		logx.GetLogger("study").Errorf("ChapterServer|DeleteResource|DeleteResourceFromChapterError|%v", err)
-		return err
+		return nil, err
 	}
 	// 删除资源信息
 	err = cs.resourceServ.DeleteResource(ctx, fid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("ChapterServer|DeleteResource|DeleteResourceError|%v", err)
-		return err
+		return nil, err
 	}
-	return nil
+	return resourceInfo, nil
 }
 
 func (cs *ChapterServer) QueryChapterInfo(ctx context.Context, chid string) (*Chapter, error) {
