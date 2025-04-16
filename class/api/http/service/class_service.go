@@ -432,7 +432,8 @@ func (cls *ClassService) HandleUploadClassCover(ctx echo.Context) error {
 }
 
 func (cls *ClassService) HandleCreateTask(ctx echo.Context) error {
-	var task *core2.Task
+	logx.GetLogger("study").Infof("HandleCreateTask|Start|%s", common.ToStringWithoutError(ctx.Request().Body))
+	var task core2.Task
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&task); err != nil {
 		logx.GetLogger("study").Errorf("HandleCreateTask|Decode err:%v", err)
@@ -441,7 +442,7 @@ func (cls *ClassService) HandleCreateTask(ctx echo.Context) error {
 		})
 	}
 
-	err := cls.classServ.CreateTask(ctx.Request().Context(), task)
+	err := cls.classServ.CreateTask(ctx.Request().Context(), &task)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleCreateTask|CreateTask err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
