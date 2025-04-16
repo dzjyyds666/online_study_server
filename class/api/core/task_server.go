@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"errors"
+
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
 )
@@ -50,6 +52,20 @@ func (ts *TaskServer) DeleteTask(ctx context.Context, taskId string) error {
 	err := ts.classDB.Del(ctx, key).Err()
 	if err != nil {
 		logx.GetLogger("study").Errorf("ClassServer|DeleteTask|DeleteTaskError|%v", err)
+		return err
+	}
+	return nil
+}
+
+func (ts *TaskServer) UpdateTask(ctx context.Context, task *Task) error {
+	// 先校验一下参数是否正常
+	if len(task.TaskId) <= 0 || len(task.Cid) <= 0 || len(task.TaskName) <= 0 || len(task.TaskContent) <= 0 {
+		return errors.New("params error")
+	}
+	key := BuildTaskInfo(task.TaskId)
+	err := ts.classDB.Set(ctx, key, task.Marshal(), 0).Err()
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|CreateTask|SetTaskInfoError|%v", err)
 		return err
 	}
 	return nil

@@ -6,10 +6,15 @@ option go_package = ".;proto";
 
 service Cos{
   rpc DeleteObject(DeleteObjectRequest) returns (CosCommonResponse);
-  rpc CopyObject(CopyObjectRequest) returns(CosCommonResponse);
+  rpc CopyObject(CopyObjectRequest) returns(CopyObjectResponse);
   rpc UploadClassCover(stream UploadClassCoverReq) returns(UploadClassCoverResp);
   rpc AddVideoToLambdaQueue(VideoInfo) returns(CosCommonResponse);
   rpc GetFileInfo(ResourceInfo) returns(ResourceInfo);
+  rpc DeleteTaskImage(ImageIds) returns(CosCommonResponse);
+}
+
+message ImageIds{
+  repeated string fids = 1;
 }
 
 message ResourceInfo{
@@ -37,8 +42,11 @@ message UploadClassCoverResp{
 }
 
 message CopyObjectRequest{
-  string srcFid = 1;
-  string dstFid = 2;
+  string fid = 1;
+}
+
+message CopyObjectResponse {
+  string newFid = 1;
 }
 
 message DeleteObjectRequest {

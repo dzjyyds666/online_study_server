@@ -318,7 +318,7 @@ func (cls *ClassServer) QueryTeacherDeletedClassList(ctx context.Context, uid st
 		return nil, err
 	}
 
-	list := make([]*Class, len(cids))
+	list := make([]*Class, 0, len(cids))
 
 	for _, cid := range cids {
 		info, err := cls.QueryClassInfo(ctx, cid)
@@ -384,6 +384,15 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 		return nil, err
 	}
 
+	err = cls.classDB.ZAdd(ctx, BuildTeacherClassList(*class.Teacher), redis.Z{
+		Member: newCid,
+		Score:  float64(time.Now().Unix()),
+	}).Err()
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|CopyClass|AddClassToTeacherError|%v", err)
+		return nil, err
+	}
+
 	// 复制章节，先查询到原本的章节列表
 	chapterList, err := cls.QueryChapterList(ctx, cid)
 	if err != nil {
@@ -413,41 +422,28 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 		}
 		// 复制资源
 		for _, resource := range chapter.ResourceList {
-			rid := NewFid()
-			var reInfo Resource
-			reInfo.WithChid(newchid).
-				WithFid(rid).
-				WithDownloadable(false).
-				WithPublished(false)
-			err := cls.CreateResource(ctx, &reInfo)
-			if err != nil {
-				logx.GetLogger("study").Errorf("ClassServer|CopyClass|CreateResourceError|%v", err)
-				break
-			}
-			cos := client.GetCosRpcClient(ctx)
-			_, err = cos.CopyObject(ctx, &proto.CopyObjectRequest{
-				SrcFid: *resource.Fid,
-				DstFid: rid,
-			})
+			// 调用cos复制文件
+			cosClient := client.GetCosRpcClient(ctx)
+			resp, err := cosClient.CopyObject(ctx, &proto.CopyObjectRequest{Fid: *resource.Fid})
 			if err != nil {
 				logx.GetLogger("study").Errorf("ClassServer|CopyClass|CopyObjectError|%v", err)
-				return nil, err
+				continue
 			}
-
+			resource.WithFid(resp.NewFid)
 			// 把资源添加到章节列表下
 			err = cls.classDB.ZAdd(ctx, BuildChapterResourceList(newchid), redis.Z{
-				Member: rid,
+				Member: resp.NewFid,
 				Score:  float64(time.Now().Unix()),
 			}).Err()
-
 			if err != nil {
 				logx.GetLogger("study").Errorf("ClassServer|CopyClass|AddResourceToChapterError|%v", err)
 				break
 			}
-			chInfo.ResourceList = append(chInfo.ResourceList, reInfo)
+			chInfo.ResourceList = append(chInfo.ResourceList, resource)
 		}
 		class.ChapterList = append(class.ChapterList, chInfo)
 	}
+	logx.GetLogger("study").Infof("ClassServer|CopyClass|CopyClassSuccess|%s", common.ToStringWithoutError(class))
 	return class, nil
 }
 
@@ -630,14 +626,22 @@ func (cls *ClassServer) DeleteTask(ctx context.Context, tid string) (*Task, erro
 
 	err = cls.taskServer.DeleteTask(ctx, tid)
 	if err != nil {
-		logx.GetLogger().Errorf("ClassServer|DeleteTask|DeleteTaskError|%v", err)
+		logx.GetLogger("study").Errorf("ClassServer|DeleteTask|DeleteTaskError|%v", err)
 		return nil, err
 	}
 	// 移除任务列表中的索引
 	err = cls.classDB.ZRem(ctx, BuildClassTaskList(info.Cid), tid).Err()
 	if err != nil {
-		logx.GetLogger().Errorf("ClassServer|DeleteTask|RemoveTaskFromClassError|%v", err)
+		logx.GetLogger("study").Errorf("ClassServer|DeleteTask|RemoveTaskFromClassError|%v", err)
 		return nil, err
+	}
+	// 调用cos删除iamge
+	cosClient := client.GetCosRpcClient(ctx)
+	_, err = cosClient.DeleteTaskImage(ctx, &proto.ImageIds{
+		Fids: info.TaskImageList,
+	})
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|DeleteTask|DeleteTaskImageError|%v", err)
 	}
 	return info, nil
 }
@@ -648,4 +652,8 @@ func (cls *ClassServer) QueryResourceList(ctx context.Context, list *ResourceLis
 
 func (cls *ClassServer) QueryStudentList(ctx context.Context, cid string) (*proto.StudentInfos, error) {
 	return cls.studentServer.QueryStudentList(ctx, cid)
+}
+
+func (cls *ClassServer) UpdateTask(ctx context.Context, task *Task) error {
+	return cls.taskServer.UpdateTask(ctx, task)
 }

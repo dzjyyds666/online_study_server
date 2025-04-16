@@ -5,13 +5,25 @@ import (
 	"common/proto"
 	"context"
 	"cos/api/core"
-	"github.com/dzjyyds666/opensource/logx"
 	"io"
+
+	"github.com/dzjyyds666/opensource/logx"
 )
 
 type CosRpcServer struct {
 	CosServer *core.CosFileServer
 	proto.UnimplementedCosServer
+}
+
+func (cs *CosRpcServer) CopyObject(ctx context.Context, in *proto.CopyObjectRequest) (*proto.CopyObjectResponse, error) {
+	fid, err := cs.CosServer.CopyObject(ctx, in.Fid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("CopyObject|CopyObject Error|%v", err)
+		return nil, err
+	}
+	return &proto.CopyObjectResponse{
+		NewFid: fid,
+	}, nil
 }
 
 func (cs *CosRpcServer) UploadClassFile(stream proto.Cos_UploadClassCoverServer) error {
@@ -86,4 +98,17 @@ func (cs *CosRpcServer) GetFileInfo(ctx context.Context, in *proto.ResourceInfo)
 		FileName: *file.FileName,
 	}
 	return info, nil
+}
+
+func (cs *CosRpcServer) DeleteTaskImage(ctx context.Context, in *proto.ImageIds) (*proto.CosCommonResponse, error) {
+	fids := in.GetFids()
+	for _, fid := range fids {
+		err := cs.CosServer.DeleteFile(ctx, fid)
+		if err != nil {
+			logx.GetLogger("study").Errorf("DeleteTaskImage|DeleteFile Error|%v", err)
+		}
+	}
+	return &proto.CosCommonResponse{
+		Success: true,
+	}, nil
 }

@@ -24,6 +24,7 @@ const (
 	Cos_UploadClassCover_FullMethodName      = "/proto.Cos/UploadClassCover"
 	Cos_AddVideoToLambdaQueue_FullMethodName = "/proto.Cos/AddVideoToLambdaQueue"
 	Cos_GetFileInfo_FullMethodName           = "/proto.Cos/GetFileInfo"
+	Cos_DeleteTaskImage_FullMethodName       = "/proto.Cos/DeleteTaskImage"
 )
 
 // CosClient is the client API for Cos service.
@@ -31,10 +32,11 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CosClient interface {
 	DeleteObject(ctx context.Context, in *DeleteObjectRequest, opts ...grpc.CallOption) (*CosCommonResponse, error)
-	CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CosCommonResponse, error)
+	CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CopyObjectResponse, error)
 	UploadClassCover(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[UploadClassCoverReq, UploadClassCoverResp], error)
 	AddVideoToLambdaQueue(ctx context.Context, in *VideoInfo, opts ...grpc.CallOption) (*CosCommonResponse, error)
 	GetFileInfo(ctx context.Context, in *ResourceInfo, opts ...grpc.CallOption) (*ResourceInfo, error)
+	DeleteTaskImage(ctx context.Context, in *ImageIds, opts ...grpc.CallOption) (*CosCommonResponse, error)
 }
 
 type cosClient struct {
@@ -55,9 +57,9 @@ func (c *cosClient) DeleteObject(ctx context.Context, in *DeleteObjectRequest, o
 	return out, nil
 }
 
-func (c *cosClient) CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CosCommonResponse, error) {
+func (c *cosClient) CopyObject(ctx context.Context, in *CopyObjectRequest, opts ...grpc.CallOption) (*CopyObjectResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CosCommonResponse)
+	out := new(CopyObjectResponse)
 	err := c.cc.Invoke(ctx, Cos_CopyObject_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -98,15 +100,26 @@ func (c *cosClient) GetFileInfo(ctx context.Context, in *ResourceInfo, opts ...g
 	return out, nil
 }
 
+func (c *cosClient) DeleteTaskImage(ctx context.Context, in *ImageIds, opts ...grpc.CallOption) (*CosCommonResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CosCommonResponse)
+	err := c.cc.Invoke(ctx, Cos_DeleteTaskImage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CosServer is the server API for Cos service.
 // All implementations must embed UnimplementedCosServer
 // for forward compatibility.
 type CosServer interface {
 	DeleteObject(context.Context, *DeleteObjectRequest) (*CosCommonResponse, error)
-	CopyObject(context.Context, *CopyObjectRequest) (*CosCommonResponse, error)
+	CopyObject(context.Context, *CopyObjectRequest) (*CopyObjectResponse, error)
 	UploadClassCover(grpc.ClientStreamingServer[UploadClassCoverReq, UploadClassCoverResp]) error
 	AddVideoToLambdaQueue(context.Context, *VideoInfo) (*CosCommonResponse, error)
 	GetFileInfo(context.Context, *ResourceInfo) (*ResourceInfo, error)
+	DeleteTaskImage(context.Context, *ImageIds) (*CosCommonResponse, error)
 	mustEmbedUnimplementedCosServer()
 }
 
@@ -120,7 +133,7 @@ type UnimplementedCosServer struct{}
 func (UnimplementedCosServer) DeleteObject(context.Context, *DeleteObjectRequest) (*CosCommonResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteObject not implemented")
 }
-func (UnimplementedCosServer) CopyObject(context.Context, *CopyObjectRequest) (*CosCommonResponse, error) {
+func (UnimplementedCosServer) CopyObject(context.Context, *CopyObjectRequest) (*CopyObjectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CopyObject not implemented")
 }
 func (UnimplementedCosServer) UploadClassCover(grpc.ClientStreamingServer[UploadClassCoverReq, UploadClassCoverResp]) error {
@@ -131,6 +144,9 @@ func (UnimplementedCosServer) AddVideoToLambdaQueue(context.Context, *VideoInfo)
 }
 func (UnimplementedCosServer) GetFileInfo(context.Context, *ResourceInfo) (*ResourceInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFileInfo not implemented")
+}
+func (UnimplementedCosServer) DeleteTaskImage(context.Context, *ImageIds) (*CosCommonResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteTaskImage not implemented")
 }
 func (UnimplementedCosServer) mustEmbedUnimplementedCosServer() {}
 func (UnimplementedCosServer) testEmbeddedByValue()             {}
@@ -232,6 +248,24 @@ func _Cos_GetFileInfo_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Cos_DeleteTaskImage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ImageIds)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CosServer).DeleteTaskImage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Cos_DeleteTaskImage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CosServer).DeleteTaskImage(ctx, req.(*ImageIds))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Cos_ServiceDesc is the grpc.ServiceDesc for Cos service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -254,6 +288,10 @@ var Cos_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetFileInfo",
 			Handler:    _Cos_GetFileInfo_Handler,
+		},
+		{
+			MethodName: "DeleteTaskImage",
+			Handler:    _Cos_DeleteTaskImage_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

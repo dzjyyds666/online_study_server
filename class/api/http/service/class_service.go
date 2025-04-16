@@ -542,3 +542,25 @@ func (cls *ClassService) HandleAddStudentToClass(ctx echo.Context) error {
 		"msg": "AddStudent Success",
 	})
 }
+
+func (cls *ClassService) HandleUpdateTask(ctx echo.Context) error {
+	var task core2.Task
+	decoder := json.NewDecoder(ctx.Request().Body)
+	if err := decoder.Decode(&task); err != nil {
+		logx.GetLogger("study").Errorf("HandleUpdateTask|Decode err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+	logx.GetLogger("study").Infof("HandleUpdateTask|Params bind Success|%s", common.ToStringWithoutError(task))
+	err := cls.classServ.UpdateTask(ctx.Request().Context(), &task)
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleUpdateTask|UpdateTask err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "UpdateTask Error",
+		})
+	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"msg": "UpdateTask Success",
+	})
+}

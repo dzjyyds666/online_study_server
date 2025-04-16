@@ -6,16 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"path"
+	"strconv"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/dzjyyds666/opensource/common"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
-	"io"
-	"os"
-	"path"
-	"strconv"
 )
 
 type CosFileServer struct {
@@ -525,4 +526,56 @@ func (cfs *CosFileServer) CheckFile(ctx context.Context, fid string) (io.ReadClo
 		return nil, nil, err
 	}
 	return r, file.FileType, nil
+}
+
+func (cfs *CosFileServer) DeleteFile(ctx context.Context, fid string) error {
+	info, err := cfs.QueryCosFile(ctx, fid)
+	key := info.MergeFilePath()
+	_, err = cfs.s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(cfs.bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		logx.GetLogger("study").Errorf("DeleteFile|DeleteObject Error|%v", err)
+		return err
+	}
+
+	// 删除文件的index信息
+	err = cfs.cosDB.Del(ctx, buildFileInfoKey(fid)).Err()
+	if err != nil {
+		logx.GetLogger("study").Errorf("DeleteFile|Del Error|%v", err)
+		return err
+	}
+	return nil
+}
+
+func (cfs *CosFileServer) CopyObject(ctx context.Context, fid string) (string, error) {
+	info, err := cfs.QueryCosFile(ctx, fid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("CopyObject|QueryCosFile Error|%v", err)
+		return "", err
+	}
+	key := info.MergeFilePath()
+	// 生成新的fid
+	info.WithFid(GenerateFid())
+	newKey := info.MergeFilePath()
+
+	logx.GetLogger("study").Infof("CopyObject|CopyObject|%s|%s", key, newKey)
+	_, err = cfs.s3Client.CopyObject(ctx, &s3.CopyObjectInput{
+		Bucket:     aws.String(cfs.bucket),
+		CopySource: aws.String(cfs.bucket + key),
+		Key:        aws.String(newKey),
+	})
+	if err != nil {
+		logx.GetLogger("study").Errorf("CopyObject|CopyObject Error|%v", err)
+		return "", err
+	}
+
+	// 创建新的文件信息
+	err = cfs.SaveFileInfo(ctx, info)
+	if err != nil {
+		logx.GetLogger("study").Errorf("CopyObject|SaveFileInfo Error|%v", err)
+		return "", err
+	}
+	return *info.Fid, nil
 }
