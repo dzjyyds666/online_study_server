@@ -454,7 +454,7 @@ func (cls *ClassService) HandleCreateTask(ctx echo.Context) error {
 }
 
 func (cls *ClassService) HandleListTask(ctx echo.Context) error {
-	var list *core2.ListTask
+	var list core2.ListTask
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&list); err != nil {
 		logx.GetLogger("study").Errorf("HandleListTask|Decode err:%v", err)
@@ -463,7 +463,7 @@ func (cls *ClassService) HandleListTask(ctx echo.Context) error {
 		})
 	}
 
-	err := cls.classServ.ListTask(ctx.Request().Context(), list)
+	err := cls.classServ.ListTask(ctx.Request().Context(), &list)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleListTask|ListTask err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{

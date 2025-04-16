@@ -3,10 +3,11 @@ package core
 import "encoding/json"
 
 type Task struct {
-	TaskId      string `json:"task_id"`
-	TaskName    string `json:"task_name"`
-	TaskContent string `json:"task_content"`
-	Cid         string `json:"cid"`
+	TaskId        string   `json:"task_id"`
+	TaskName      string   `json:"task_name"`
+	TaskContent   string   `json:"task_content"`
+	TaskImageList []string `json:"task_image_list"` // 存储任务的图片列表
+	Cid           string   `json:"cid"`
 }
 
 func (t *Task) WithId(id string) *Task {
@@ -26,6 +27,14 @@ func (t *Task) WithName(name string) *Task {
 
 func (t *Task) WithContent(content string) *Task {
 	t.TaskContent = content
+	return t
+}
+
+func (t *Task) WithImageList(image string) *Task {
+	if t.TaskImageList == nil {
+		t.TaskImageList = make([]string, 0)
+	}
+	t.TaskImageList = append(t.TaskImageList, image)
 	return t
 }
 
