@@ -185,7 +185,7 @@ func (us *UserServer) AddStudentToClass(ctx context.Context, cid, uid, name stri
 		}
 	}
 	err = us.dsClient.ZAdd(ctx, buildStudentClassListKey(user.Uid), redis.Z{
-		Member: uid,
+		Member: cid,
 		Score:  float64(time.Now().Unix()),
 	}).Err()
 	if err != nil {
@@ -193,4 +193,14 @@ func (us *UserServer) AddStudentToClass(ctx context.Context, cid, uid, name stri
 		return err
 	}
 	return nil
+}
+
+func (us *UserServer) QueryStudentClassList(ctx context.Context, uid string) ([]string, error) {
+	// 查询学生的班级列表
+	classList, err := us.dsClient.ZRange(ctx, buildStudentClassListKey(uid), 0, -1).Result()
+	if err != nil {
+		logx.GetLogger("study").Errorf("QueryStudentClassList|Query Student Class List Error|%v", err)
+		return nil, err
+	}
+	return classList, nil
 }

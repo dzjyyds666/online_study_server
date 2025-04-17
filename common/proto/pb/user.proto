@@ -8,6 +8,7 @@ service user{
   rpc AddStudentToClass(AddStudentToClassRequest) returns (UserCommonResponse);
   rpc BatchAddStudentToClass(stream FileChunk) returns(StudentIds);
   rpc GetStudentsInfo(StudentIds) returns(StudentInfos);
+  rpc GetStudentClassList(StudentIds) returns(ClassCids);
 }
 
 message StudentInfos{
@@ -34,6 +35,11 @@ message UserCommonResponse{
 
 message StudentIds{
   repeated string uids = 1;
+}
+
+
+message ClassCids{
+  repeated string cids = 1;
 }
 
 message FileChunk{

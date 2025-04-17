@@ -564,3 +564,16 @@ func (cls *ClassService) HandleUpdateTask(ctx echo.Context) error {
 		"msg": "UpdateTask Success",
 	})
 }
+
+func (cls *ClassService) HandleListClass(ctx echo.Context) error {
+	uid := ctx.Get("uid").(string)
+	list, err := cls.classServ.ListStudentClass(ctx.Request().Context(), uid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleListClass|ListStudentClass err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "ListStudentClass Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
+}

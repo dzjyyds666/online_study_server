@@ -22,6 +22,7 @@ const (
 	User_AddStudentToClass_FullMethodName      = "/proto.user/AddStudentToClass"
 	User_BatchAddStudentToClass_FullMethodName = "/proto.user/BatchAddStudentToClass"
 	User_GetStudentsInfo_FullMethodName        = "/proto.user/GetStudentsInfo"
+	User_GetStudentClassList_FullMethodName    = "/proto.user/GetStudentClassList"
 )
 
 // UserClient is the client API for User service.
@@ -31,6 +32,7 @@ type UserClient interface {
 	AddStudentToClass(ctx context.Context, in *AddStudentToClassRequest, opts ...grpc.CallOption) (*UserCommonResponse, error)
 	BatchAddStudentToClass(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[FileChunk, StudentIds], error)
 	GetStudentsInfo(ctx context.Context, in *StudentIds, opts ...grpc.CallOption) (*StudentInfos, error)
+	GetStudentClassList(ctx context.Context, in *StudentIds, opts ...grpc.CallOption) (*ClassCids, error)
 }
 
 type userClient struct {
@@ -74,6 +76,16 @@ func (c *userClient) GetStudentsInfo(ctx context.Context, in *StudentIds, opts .
 	return out, nil
 }
 
+func (c *userClient) GetStudentClassList(ctx context.Context, in *StudentIds, opts ...grpc.CallOption) (*ClassCids, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClassCids)
+	err := c.cc.Invoke(ctx, User_GetStudentClassList_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServer is the server API for User service.
 // All implementations must embed UnimplementedUserServer
 // for forward compatibility.
@@ -81,6 +93,7 @@ type UserServer interface {
 	AddStudentToClass(context.Context, *AddStudentToClassRequest) (*UserCommonResponse, error)
 	BatchAddStudentToClass(grpc.ClientStreamingServer[FileChunk, StudentIds]) error
 	GetStudentsInfo(context.Context, *StudentIds) (*StudentInfos, error)
+	GetStudentClassList(context.Context, *StudentIds) (*ClassCids, error)
 	mustEmbedUnimplementedUserServer()
 }
 
@@ -99,6 +112,9 @@ func (UnimplementedUserServer) BatchAddStudentToClass(grpc.ClientStreamingServer
 }
 func (UnimplementedUserServer) GetStudentsInfo(context.Context, *StudentIds) (*StudentInfos, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStudentsInfo not implemented")
+}
+func (UnimplementedUserServer) GetStudentClassList(context.Context, *StudentIds) (*ClassCids, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetStudentClassList not implemented")
 }
 func (UnimplementedUserServer) mustEmbedUnimplementedUserServer() {}
 func (UnimplementedUserServer) testEmbeddedByValue()              {}
@@ -164,6 +180,24 @@ func _User_GetStudentsInfo_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _User_GetStudentClassList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StudentIds)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).GetStudentClassList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: User_GetStudentClassList_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).GetStudentClassList(ctx, req.(*StudentIds))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // User_ServiceDesc is the grpc.ServiceDesc for User service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -178,6 +212,10 @@ var User_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetStudentsInfo",
 			Handler:    _User_GetStudentsInfo_Handler,
+		},
+		{
+			MethodName: "GetStudentClassList",
+			Handler:    _User_GetStudentClassList_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

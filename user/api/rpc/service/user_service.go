@@ -76,3 +76,15 @@ func (us *UserRpcServer) GetStudentsInfo(ctx context.Context, in *proto.StudentI
 	}
 	return list, nil
 }
+
+func (us *UserRpcServer) GetStudentClassList(ctx context.Context, in *proto.StudentIds) (*proto.ClassCids, error) {
+	cids, err := us.UserServer.QueryStudentClassList(ctx, in.Uids[0])
+	if err != nil {
+		logx.GetLogger("study").Errorf("GetStudentClassList|QueryStudentClassList|err:%v", err)
+		return nil, err
+	}
+
+	return &proto.ClassCids{
+		Cids: cids,
+	}, nil
+}

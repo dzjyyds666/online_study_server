@@ -362,8 +362,8 @@ func (cls *ClassServer) DeleteClassFromTrash(ctx context.Context, cid string) er
 		return nil
 	}
 
-	if info.IsDeleted() {
-		logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|ClassNotDeleted|%v", err)
+	if !info.IsDeleted() {
+		logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|ClassNotDeleted")
 		return errors.New("class not deleted")
 	}
 
@@ -395,6 +395,22 @@ func (cls *ClassServer) DeleteClassFromTrash(ctx context.Context, cid string) er
 			continue
 		}
 	}
+
+	//  TODO // 删除课程下面的所有学生
+	// list, err := cls.studentServer.QueryStudentList(ctx, cid)
+	// if err!=nil{
+	// 	logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|QueryStudentListError|%v", err)
+	// 	return nil
+	// }
+
+	// for _, student := range list {
+	// 	err:= cls.studentServer.DeleteClassFromStudentList(ctx, cid)
+	// 	if err!=nil{
+	// 		logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromStudentListError|%v", err)
+	// 		continue
+	// 	}
+	// }
+
 	return nil
 }
 
@@ -702,4 +718,23 @@ func (cls *ClassServer) QueryStudentList(ctx context.Context, cid string) (*prot
 
 func (cls *ClassServer) UpdateTask(ctx context.Context, task *Task) error {
 	return cls.taskServer.UpdateTask(ctx, task)
+}
+
+func (cls *ClassServer) ListStudentClass(ctx context.Context, uid string) ([]*Class, error) {
+	client := client.GetUserRpcClient(ctx)
+	classids, err := client.GetStudentClassList(ctx, &proto.StudentIds{Uids: []string{uid}})
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|ListStudentClass|GetStudentClassListError|%v", err)
+		return nil, err
+	}
+	list := make([]*Class, 0)
+	for _, cid := range classids.Cids {
+		info, err := cls.QueryClassInfo(ctx, cid)
+		if err != nil {
+			logx.GetLogger("study").Errorf("ClassServer|ListStudentClass|QueryClassInfoError|%v", err)
+			continue
+		}
+		list = append(list, info)
+	}
+	return list, nil
 }

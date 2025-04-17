@@ -105,7 +105,7 @@ func (ci *Class) Marshal() string {
 }
 
 func (ci *Class) IsDeleted() bool {
-	return *ci.Deleted == true
+	return *ci.Deleted
 }
 
 func UnmarshalToClass(data []byte) (*Class, error) {
