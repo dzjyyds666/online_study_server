@@ -283,7 +283,8 @@ func (cls *ClassService) HandleQueryClassChapterlist(ctx echo.Context) error {
 		})
 	}
 
-	list, err := cls.classServ.QueryChapterList(ctx.Request().Context(), cid)
+	role := ctx.Get("role").(int)
+	list, err := cls.classServ.QueryChapterList(ctx.Request().Context(), cid, role)
 	if nil != err {
 		logx.GetLogger("study").Errorf("HandlerQueryClassChapterlist|QueryChapterList|Err|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{

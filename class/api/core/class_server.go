@@ -194,7 +194,7 @@ func (cls *ClassServer) UpdateChapter(ctx context.Context, info *Chapter) error 
 }
 
 func (cls *ClassServer) DeleteChapter(ctx context.Context, chid string) error {
-	chapter, err := cls.chapterServer.QueryChapterInfo(ctx, chid)
+	chapter, err := cls.chapterServer.QueryChapterInfo(ctx, chid, 3)
 	if err != nil {
 		logx.GetLogger("study").Errorf("ClassServer|DeleteChapter|QueryChapterInfoError|%v", err)
 		return err
@@ -214,7 +214,7 @@ func (cls *ClassServer) DeleteChapter(ctx context.Context, chid string) error {
 	return nil
 }
 
-func (cls *ClassServer) QueryChapterList(ctx context.Context, cid string) ([]*Chapter, error) {
+func (cls *ClassServer) QueryChapterList(ctx context.Context, cid string, role int) ([]*Chapter, error) {
 	chids, err := cls.classDB.ZRange(ctx, BuildClassChapterList(cid), 0, -1).Result()
 	if err != nil {
 		logx.GetLogger("study").Errorf("ClassServer|QueryChapterList|QueryChapterListError|%v", err)
@@ -224,7 +224,7 @@ func (cls *ClassServer) QueryChapterList(ctx context.Context, cid string) ([]*Ch
 	list := make([]*Chapter, 0, len(chids))
 
 	for _, chid := range chids {
-		info, err := cls.chapterServer.QueryChapterInfo(ctx, chid)
+		info, err := cls.chapterServer.QueryChapterInfo(ctx, chid, role)
 		if err != nil {
 			logx.GetLogger("study").Errorf("ClassServer|QueryChapterList|QueryChapterInfoError|%v", err)
 			return nil, err
@@ -450,7 +450,7 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 	}
 
 	// 复制章节，先查询到原本的章节列表
-	chapterList, err := cls.QueryChapterList(ctx, cid)
+	chapterList, err := cls.QueryChapterList(ctx, cid, 3)
 	if err != nil {
 		logx.GetLogger("study").Errorf("ClassServer|CopyClass|QueryChapterListError|%v", err)
 		return nil, err

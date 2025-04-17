@@ -1,6 +1,7 @@
 package core
 
 import (
+	"class/api/middleware"
 	"context"
 	"encoding/json"
 	"time"
@@ -118,7 +119,7 @@ func (cs *ChapterServer) DeleteResource(ctx context.Context, fid string) (*Resou
 	return resourceInfo, nil
 }
 
-func (cs *ChapterServer) QueryChapterInfo(ctx context.Context, chid string) (*Chapter, error) {
+func (cs *ChapterServer) QueryChapterInfo(ctx context.Context, chid string, role int) (*Chapter, error) {
 	key := BuildChapterInfo(chid)
 	result, err := cs.chapterDB.Get(ctx, key).Result()
 	if err != nil {
@@ -145,6 +146,11 @@ func (cs *ChapterServer) QueryChapterInfo(ctx context.Context, chid string) (*Ch
 		if err != nil {
 			logx.GetLogger("study").Errorf("ChapterServer|QueryChapterInfo|QueryResourceInfoError|%v", err)
 			return nil, err
+		}
+		if role == middleware.UserRole.Student {
+			if !resourceInfo.IsPublished() {
+				continue
+			}
 		}
 		info.ResourceList = append(info.ResourceList, *resourceInfo)
 	}
