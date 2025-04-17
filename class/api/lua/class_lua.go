@@ -71,6 +71,8 @@ const DeleteClass = `
 	local classDeleteListKey = KEYS[2]
 	local classInfoKey = KEYS[3]
 
+	local cid = ARGV[1]
+
 	redis.call("ZRem",teacherDeleteClassListKey,cid)
 	redis.call("ZRem",classDeleteListKey,cid)
 	redis.call("DEL",classInfoKey)

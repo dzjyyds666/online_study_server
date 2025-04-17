@@ -4,6 +4,7 @@ import (
 	"common/proto"
 	"common/rpc/client"
 	"encoding/json"
+
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/net/context"
@@ -51,7 +52,13 @@ func (rs *ResourceServer) CreateResource(ctx context.Context, info *Resource) er
 
 func (rs *ResourceServer) DeleteResource(ctx context.Context, fid string) error {
 	// 删除章节的info
-	return rs.resourceDB.Del(ctx, BuildResourceInfo(fid)).Err()
+	err := rs.resourceDB.Del(ctx, BuildResourceInfo(fid)).Err()
+	if err != nil {
+		logx.GetLogger("study").Errorf("ResourceServer|DeleteResource|Delete Resource Error|%v", err)
+		return err
+	}
+	// 调用rpc删除cos的资源
+	return nil
 }
 
 func (rs *ResourceServer) QueryResourceInfo(ctx context.Context, fid string) (*Resource, error) {

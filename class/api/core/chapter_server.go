@@ -63,10 +63,16 @@ func (cs *ChapterServer) UpdateChapter(ctx context.Context, info *Chapter) error
 }
 
 func (cs *ChapterServer) DeleteChapter(ctx context.Context, chid string) error {
+	// 从课程的章节列表中删除
+	err := cs.chapterDB.ZRem(ctx, BuildClassChapterList(chid), chid).Err()
+	if err != nil {
+		logx.GetLogger("study").Errorf("ChapterServer|DeleteChapter|DeleteChapterFromClassError|%v", err)
+		return err
+	}
 	// 先删除章节的信息
 	chapterKey := BuildChapterInfo(chid)
 
-	err := cs.chapterDB.Del(ctx, chapterKey).Err()
+	err = cs.chapterDB.Del(ctx, chapterKey).Err()
 	if err != nil {
 		logx.GetLogger("study").Errorf("ChapterServer|DeleteChapter|DeleteChapterInfoError|%v", err)
 		return err
@@ -80,7 +86,7 @@ func (cs *ChapterServer) DeleteChapter(ctx context.Context, chid string) error {
 	}
 
 	for _, id := range ids {
-		// 删除章节信息
+		// 删除资源信息
 		_, err := cs.DeleteResource(ctx, id)
 		if err != nil {
 			logx.GetLogger("study").Errorf("ChapterServer|DeleteResource|DeleteResourceError|%v", err)

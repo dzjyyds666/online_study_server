@@ -333,28 +333,68 @@ func (cls *ClassServer) QueryTeacherDeletedClassList(ctx context.Context, uid st
 
 func (cls *ClassServer) DeleteClassFromTrash(ctx context.Context, cid string) error {
 	// 先查询课程的信息
-	class, err := cls.QueryClassInfo(ctx, cid)
+	// class, err := cls.QueryClassInfo(ctx, cid)
+	// if err != nil {
+	// 	logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|QueryClassInfoError|%v", err)
+	// 	return err
+	// }
+
+	// if !class.IsDeleted() {
+	// 	logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|ClassNotDeleted|%v", err)
+	// 	return errors.New("class not deleted")
+	// }
+
+	// err = cls.classDB.Eval(ctx, lua.DeleteClass, []string{
+	// 	BuildTeacherClassDeletedList(*class.Teacher),
+	// 	BuildClassDeletedList(),
+	// 	BuildClassInfo(cid),
+	// }, cid).Err()
+
+	// if err != nil {
+	// 	logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromTrashError|%v", err)
+	// 	return err
+	// }
+
+	// return nil
+	info, err := cls.QueryClassInfo(ctx, cid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|QueryClassInfoError|%v", err)
-		return err
+		return nil
 	}
 
-	if !class.IsDeleted() {
+	if info.IsDeleted() {
 		logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|ClassNotDeleted|%v", err)
 		return errors.New("class not deleted")
 	}
 
-	err = cls.classDB.Eval(ctx, lua.DeleteClass, []string{
-		BuildTeacherClassDeletedList(*class.Teacher),
-		BuildClassDeletedList(),
-		BuildClassInfo(cid),
-	}, cid).Err()
-
+	// 删除课程
+	err = cls.classDB.ZRem(ctx, BuildAllClassList(), cid).Err()
 	if err != nil {
 		logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromTrashError|%v", err)
-		return err
+		return nil
 	}
 
+	// 从教师课程列表下面删除
+	err = cls.classDB.ZRem(ctx, BuildTeacherClassDeletedList(*info.Teacher), cid).Err()
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromTrashError|%v", err)
+		return nil
+	}
+
+	// 删除课程的信息
+	err = cls.classDB.Del(ctx, BuildClassInfo(cid)).Err()
+	if err != nil {
+		logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromTrashError|%v", err)
+		return nil
+	}
+
+	for _, chater := range info.ChapterList {
+		err := cls.chapterServer.DeleteChapter(ctx, *chater.Chid)
+		if err != nil {
+			logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|DeleteChapterError|%v", err)
+			continue
+		}
+	}
 	return nil
 }
 
@@ -430,6 +470,12 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 				continue
 			}
 			resource.WithFid(resp.NewFid)
+			// 存储资源的信息
+			err = cls.chapterServer.CreateResource(ctx, &resource)
+			if err != nil {
+				logx.GetLogger("study").Errorf("ClassServer|CopyClass|CreateResourceError|%v", err)
+				continue
+			}
 			// 把资源添加到章节列表下
 			err = cls.classDB.ZAdd(ctx, BuildChapterResourceList(newchid), redis.Z{
 				Member: resp.NewFid,
@@ -437,7 +483,7 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 			}).Err()
 			if err != nil {
 				logx.GetLogger("study").Errorf("ClassServer|CopyClass|AddResourceToChapterError|%v", err)
-				break
+				continue
 			}
 			chInfo.ResourceList = append(chInfo.ResourceList, resource)
 		}
