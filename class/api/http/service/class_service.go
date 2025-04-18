@@ -13,6 +13,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+var lg = logx.GetLogger("study")
+
 type ClassService struct {
 	classServ *core2.ClassServer
 	ctx       context.Context
@@ -36,7 +38,7 @@ func (cls *ClassService) HandleCreateClass(ctx echo.Context) error {
 	var class *core2.Class
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&class); err != nil {
-		logx.GetLogger("study").Errorf("HandleCreateClass|ctx.Bind err:%v", err)
+		lg.Errorf("HandleCreateClass|ctx.Bind err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Param Invalid",
 		})
@@ -52,7 +54,7 @@ func (cls *ClassService) HandleCreateClass(ctx echo.Context) error {
 
 	err := cls.classServ.CreateClass(ctx.Request().Context(), class)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleCreateClass|CreateClass Error|%v", err)
+		lg.Errorf("HandleCreateClass|CreateClass Error|%v", err)
 		return err
 	}
 
@@ -62,7 +64,7 @@ func (cls *ClassService) HandleCreateClass(ctx echo.Context) error {
 func (cls *ClassService) HandleCopyClass(ctx echo.Context) error {
 	cid := ctx.Param("cid")
 	if len(cid) <= 0 {
-		logx.GetLogger("study").Errorf("HandleCopyClass|cid is empty")
+		lg.Errorf("HandleCopyClass|cid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Param Invalid",
 		})
@@ -70,12 +72,12 @@ func (cls *ClassService) HandleCopyClass(ctx echo.Context) error {
 
 	info, err := cls.classServ.CopyClass(ctx.Request().Context(), cid)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleCopyClass|CopyClass Error|%v", err)
+		lg.Errorf("HandleCopyClass|CopyClass Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "copy Class Error",
 		})
 	}
-	logx.GetLogger("study").Infof("HandleCopyClass|CopyClass Success|%s", common.ToStringWithoutError(info))
+	lg.Infof("HandleCopyClass|CopyClass Success|%s", common.ToStringWithoutError(info))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
 
@@ -83,13 +85,13 @@ func (cls *ClassService) HandleListTeacherClass(ctx echo.Context) error {
 	uid := ctx.Get("uid")
 	list, err := cls.classServ.QueryClassList(ctx.Request().Context(), uid.(string))
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleListTeacherClass|QueryClassList Error|%v", err)
+		lg.Errorf("HandleListTeacherClass|QueryClassList Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Query Class List Error",
 		})
 	}
 
-	logx.GetLogger("study").Infof("HandleListTeacherClass|QueryClassList Success|%s", common.ToStringWithoutError(list))
+	lg.Infof("HandleListTeacherClass|QueryClassList Success|%s", common.ToStringWithoutError(list))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
 func (cls *ClassService) HandleUpdateClass(ctx echo.Context) error {
@@ -97,14 +99,14 @@ func (cls *ClassService) HandleUpdateClass(ctx echo.Context) error {
 	decoder := json.NewDecoder(ctx.Request().Body)
 	err := decoder.Decode(&class)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleUpdateClass|ctx.Bind err:%v", err)
+		lg.Errorf("HandleUpdateClass|ctx.Bind err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Param Invalid",
 		})
 	}
 
 	if class.Cid == nil {
-		logx.GetLogger("study").Errorf("HandleUpdateClass|ctx.Bind err:%v", err)
+		lg.Errorf("HandleUpdateClass|ctx.Bind err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "classid can not be null",
 		})
@@ -112,10 +114,10 @@ func (cls *ClassService) HandleUpdateClass(ctx echo.Context) error {
 
 	err = cls.classServ.UpdateClass(ctx.Request().Context(), &class)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleUpdateClass|UpdateClass Error|%v", err)
+		lg.Errorf("HandleUpdateClass|UpdateClass Error|%v", err)
 		return err
 	}
-	logx.GetLogger("study").Infof("HandleUpdateClass|UpdateClass Success|%s", common.ToStringWithoutError(class))
+	lg.Infof("HandleUpdateClass|UpdateClass Success|%s", common.ToStringWithoutError(class))
 
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, class)
 }
@@ -125,13 +127,13 @@ func (cls *ClassService) HandleQueryTeacherDeletedClassList(ctx echo.Context) er
 
 	list, err := cls.classServ.QueryTeacherDeletedClassList(ctx.Request().Context(), uid)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleListTeacherClass|QueryClassList Error|%v", err)
+		lg.Errorf("HandleListTeacherClass|QueryClassList Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Query Class List Error",
 		})
 	}
 
-	logx.GetLogger("study").Infof("HandleListTeacherClass|QueryClassList Success|%s", common.ToStringWithoutError(list))
+	lg.Infof("HandleListTeacherClass|QueryClassList Success|%s", common.ToStringWithoutError(list))
 
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
@@ -139,7 +141,7 @@ func (cls *ClassService) HandleQueryTeacherDeletedClassList(ctx echo.Context) er
 func (cls *ClassService) HandlePutClassInTrash(ctx echo.Context) error {
 	cid := ctx.Param("cid")
 	if len(cid) <= 0 {
-		logx.GetLogger("study").Errorf("HandlePutClassInTrash|cid is empty")
+		lg.Errorf("HandlePutClassInTrash|cid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Param Invalid",
 		})
@@ -147,7 +149,7 @@ func (cls *ClassService) HandlePutClassInTrash(ctx echo.Context) error {
 
 	err := cls.classServ.MoveClassToTrash(ctx.Request().Context(), cid)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandlePutClassInTrash|PutClassInTrash Error|%v", err)
+		lg.Errorf("HandlePutClassInTrash|PutClassInTrash Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Put Class In Trash Error",
 		})
@@ -162,7 +164,7 @@ func (cls *ClassService) HandlePutClassInTrash(ctx echo.Context) error {
 func (cls *ClassService) HandleRecoverClass(ctx echo.Context) error {
 	cid := ctx.Param("cid")
 	if len(cid) <= 0 {
-		logx.GetLogger("study").Errorf("HandleRecoverClass|cid is empty")
+		lg.Errorf("HandleRecoverClass|cid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Param Invalid",
 		})
@@ -170,13 +172,13 @@ func (cls *ClassService) HandleRecoverClass(ctx echo.Context) error {
 
 	err := cls.classServ.RecoverClass(ctx.Request().Context(), cid)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleRecoverClass|RecoverClass Error|%v", err)
+		lg.Errorf("HandleRecoverClass|RecoverClass Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Recover Class Error",
 		})
 	}
 
-	logx.GetLogger("study").Infof("HandleRecoverClass|RecoverClass Success|%s", cid)
+	lg.Infof("HandleRecoverClass|RecoverClass Success|%s", cid)
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
 		"msg": "Recover Class Success",
 		"cid": cid,
@@ -186,7 +188,7 @@ func (cls *ClassService) HandleRecoverClass(ctx echo.Context) error {
 func (cls *ClassService) HandleDeleteClass(ctx echo.Context) error {
 	cid := ctx.Param("cid")
 	if len(cid) <= 0 {
-		logx.GetLogger("study").Errorf("HandleDeleteClass|cid is empty")
+		lg.Errorf("HandleDeleteClass|cid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "cid is empty",
 		})
@@ -194,13 +196,13 @@ func (cls *ClassService) HandleDeleteClass(ctx echo.Context) error {
 
 	err := cls.classServ.DeleteClassFromTrash(ctx.Request().Context(), cid)
 	if nil != err {
-		logx.GetLogger("study").Errorf("HandleDeleteClass|Delete Class Error|%v", err)
+		lg.Errorf("HandleDeleteClass|Delete Class Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Delete Class Error",
 		})
 	}
 
-	logx.GetLogger("study").Infof("HandleDeleteClass|Delete Class Success|%s", cid)
+	lg.Infof("HandleDeleteClass|Delete Class Success|%s", cid)
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, nil)
 }
 
@@ -209,7 +211,7 @@ func (cls *ClassService) HandleQueryClassInfo(ctx echo.Context) error {
 
 	info, err := cls.classServ.QueryClassInfo(ctx.Request().Context(), cid)
 	if nil != err {
-		logx.GetLogger("study").Errorf("HandleQueryClassInfo|Query Class Info Error|%v", err)
+		lg.Errorf("HandleQueryClassInfo|Query Class Info Error|%v", err)
 		return err
 	}
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
@@ -219,7 +221,7 @@ func (cls *ClassService) HandleCreateChapter(ctx echo.Context) error {
 	var chapter *core2.Chapter
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&chapter); err != nil {
-		logx.GetLogger("study").Errorf("HandleListUsers|ctx.Bind err:%v", err)
+		lg.Errorf("HandleListUsers|ctx.Bind err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
@@ -231,7 +233,7 @@ func (cls *ClassService) HandleCreateChapter(ctx echo.Context) error {
 
 	err := cls.classServ.CreateChapter(ctx.Request().Context(), chapter)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleCreateChapter|Create Chapter Error|%v", err)
+		lg.Errorf("HandleCreateChapter|Create Chapter Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Create Chapter Error",
 		})
@@ -244,7 +246,7 @@ func (cls *ClassService) HandleRenameChapter(ctx echo.Context) error {
 	var chapter *core2.Chapter
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&chapter); err != nil || chapter.ChapterName == nil {
-		logx.GetLogger("study").Errorf("HandleRenameChapter|ctx.Bind err:%v", err)
+		lg.Errorf("HandleRenameChapter|ctx.Bind err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
@@ -252,7 +254,7 @@ func (cls *ClassService) HandleRenameChapter(ctx echo.Context) error {
 
 	err := cls.classServ.UpdateChapter(ctx.Request().Context(), chapter)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleRenameChapter|Rename Chapter Error|%v", err)
+		lg.Errorf("HandleRenameChapter|Rename Chapter Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Rename Chapter Error",
 		})
@@ -265,19 +267,19 @@ func (cls *ClassService) HandleDeleteChapter(ctx echo.Context) error {
 	chid := ctx.Param("chid")
 	err := cls.classServ.DeleteChapter(ctx.Request().Context(), chid)
 	if nil != err {
-		logx.GetLogger("study").Errorf("HandleDeleteChapter|Delete Chapter Error|%v", err)
+		lg.Errorf("HandleDeleteChapter|Delete Chapter Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Delete Chapter Error",
 		})
 	}
-	logx.GetLogger("study").Infof("HandleDeleteChapter|Delete Chapter Success|%s", chid)
+	lg.Infof("HandleDeleteChapter|Delete Chapter Success|%s", chid)
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, nil)
 }
 
 func (cls *ClassService) HandleQueryClassChapterlist(ctx echo.Context) error {
 	cid := ctx.Param("cid")
 	if len(cid) <= 0 {
-		logx.GetLogger("study").Errorf("HandlerQueryClassChapterlist|cid is empty")
+		lg.Errorf("HandlerQueryClassChapterlist|cid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "cid is empty",
 		})
@@ -286,7 +288,7 @@ func (cls *ClassService) HandleQueryClassChapterlist(ctx echo.Context) error {
 	role := ctx.Get("role").(int)
 	list, err := cls.classServ.QueryChapterList(ctx.Request().Context(), cid, role)
 	if nil != err {
-		logx.GetLogger("study").Errorf("HandlerQueryClassChapterlist|QueryChapterList|Err|%v", err)
+		lg.Errorf("HandlerQueryClassChapterlist|QueryChapterList|Err|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "QueryChapterList Error",
 		})
@@ -299,22 +301,22 @@ func (cls *ClassService) HandleUploadResource(ctx echo.Context) error {
 	var resource *core2.Resource
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&resource); err != nil {
-		logx.GetLogger("study").Errorf("HandleUploadResource|Decode err:%v", err)
+		lg.Errorf("HandleUploadResource|Decode err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
 	}
 
-	logx.GetLogger("study").Errorf("HandleUploadResource|resource:%s", common.ToStringWithoutError(resource))
+	lg.Errorf("HandleUploadResource|resource:%s", common.ToStringWithoutError(resource))
 	resource.WithPublished(false).WithDownloadable(false)
 	err := cls.classServ.CreateResource(ctx.Request().Context(), resource)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleUploadResource|CreateUploadResource Error|%v", err)
+		lg.Errorf("HandleUploadResource|CreateUploadResource Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "CreateUploadResource Error",
 		})
 	}
-	logx.GetLogger("study").Infof("HandleUploadResource|CreateUploadResource|Succ|%s", common.ToStringWithoutError(resource))
+	lg.Infof("HandleUploadResource|CreateUploadResource|Succ|%s", common.ToStringWithoutError(resource))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, resource)
 }
 
@@ -322,7 +324,7 @@ func (cls *ClassService) HandleUpdateResource(ctx echo.Context) error {
 	var resource *core2.Resource
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&resource); err != nil {
-		logx.GetLogger("study").Errorf("HandleUploadResource|Decode err:%v", err)
+		lg.Errorf("HandleUploadResource|Decode err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
@@ -333,7 +335,7 @@ func (cls *ClassService) HandleUpdateResource(ctx echo.Context) error {
 			"msg": "UpdatePublishResource Error",
 		})
 	}
-	logx.GetLogger("study").Infof("HandleUpdateResource|UpdateResource|Succ|%s", common.ToStringWithoutError(info))
+	lg.Infof("HandleUpdateResource|UpdateResource|Succ|%s", common.ToStringWithoutError(info))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
 
@@ -341,12 +343,12 @@ func (cls *ClassService) HandleDeleteResource(ctx echo.Context) error {
 	fid := ctx.Param("fid")
 	info, err := cls.classServ.DeleteResource(ctx.Request().Context(), fid)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleDeleteResource|DeleteResource Error|%v", err)
+		lg.Errorf("HandleDeleteResource|DeleteResource Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "DeleteResource Error",
 		})
 	}
-	logx.GetLogger("study").Infof("HandleDeleteResource|DeleteResource|Succ|%s", common.ToStringWithoutError(info))
+	lg.Infof("HandleDeleteResource|DeleteResource|Succ|%s", common.ToStringWithoutError(info))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
 
@@ -354,7 +356,7 @@ func (cls *ClassService) HandleListReource(ctx echo.Context) error {
 	var list *core2.ResourceList
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&list); nil != err {
-		logx.GetLogger("study").Errorf("HandleQueryResourceInfo|Decode err:%v", err)
+		lg.Errorf("HandleQueryResourceInfo|Decode err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
@@ -363,12 +365,12 @@ func (cls *ClassService) HandleListReource(ctx echo.Context) error {
 	list.Limit = 1000
 	err := cls.classServ.QueryResourceList(ctx.Request().Context(), list)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleQueryResourceInfo|Query ResourceList Error|%v", err)
+		lg.Errorf("HandleQueryResourceInfo|Query ResourceList Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Query ResourceList Error",
 		})
 	}
-	logx.GetLogger("study").Infof("HandleQueryResourceInfo|Query ResourceList Success|%s", common.ToStringWithoutError(list))
+	lg.Infof("HandleQueryResourceInfo|Query ResourceList Success|%s", common.ToStringWithoutError(list))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
 
@@ -376,7 +378,7 @@ func (cls *ClassService) HandleImportStudentFromExcel(ctx echo.Context) error {
 	cid := ctx.FormValue("cid")
 	file, err := ctx.FormFile("file")
 	if err != nil || len(cid) <= 0 {
-		logx.GetLogger("study").Errorf("HandleImportStudentFromExcel|Decode err:%v", err)
+		lg.Errorf("HandleImportStudentFromExcel|Decode err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
@@ -385,7 +387,7 @@ func (cls *ClassService) HandleImportStudentFromExcel(ctx echo.Context) error {
 	filename := file.Filename
 	open, err := file.Open()
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleImportStudentFromExcel|Open err:%v", err)
+		lg.Errorf("HandleImportStudentFromExcel|Open err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Open File Error",
 		})
@@ -393,7 +395,7 @@ func (cls *ClassService) HandleImportStudentFromExcel(ctx echo.Context) error {
 
 	list, err := cls.classServ.ImportStudentFromExcel(ctx.Request().Context(), filename, cid, open)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleImportStudentFromExcel|ImportStudentFromExcel err:%v", err)
+		lg.Errorf("HandleImportStudentFromExcel|ImportStudentFromExcel err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "ImportStudentFromExcel Error",
 		})
@@ -405,7 +407,7 @@ func (cls *ClassService) HandleImportStudentFromExcel(ctx echo.Context) error {
 func (cls *ClassService) HandleUploadClassCover(ctx echo.Context) error {
 	file, err := ctx.FormFile("file")
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleUploadClassCover|Decode err:%v", err)
+		lg.Errorf("HandleUploadClassCover|Decode err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
@@ -415,14 +417,14 @@ func (cls *ClassService) HandleUploadClassCover(ctx echo.Context) error {
 	dirId := ctx.QueryParam("dir_id")
 	open, err := file.Open()
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleUploadClassCover|Open err:%v", err)
+		lg.Errorf("HandleUploadClassCover|Open err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Open File Error",
 		})
 	}
 	fid, err := cls.classServ.UploadClassCover(ctx.Request().Context(), md5, fileType, dirId, open)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleUploadClassCover|UploadClassCover err:%v", err)
+		lg.Errorf("HandleUploadClassCover|UploadClassCover err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "UploadClassCover Error",
 		})
@@ -433,11 +435,11 @@ func (cls *ClassService) HandleUploadClassCover(ctx echo.Context) error {
 }
 
 func (cls *ClassService) HandleCreateTask(ctx echo.Context) error {
-	logx.GetLogger("study").Infof("HandleCreateTask|Start|%s", common.ToStringWithoutError(ctx.Request().Body))
+	lg.Infof("HandleCreateTask|Start|%s", common.ToStringWithoutError(ctx.Request().Body))
 	var task core2.Task
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&task); err != nil {
-		logx.GetLogger("study").Errorf("HandleCreateTask|Decode err:%v", err)
+		lg.Errorf("HandleCreateTask|Decode err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
@@ -445,13 +447,13 @@ func (cls *ClassService) HandleCreateTask(ctx echo.Context) error {
 
 	err := cls.classServ.CreateTask(ctx.Request().Context(), &task)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleCreateTask|CreateTask err:%v", err)
+		lg.Errorf("HandleCreateTask|CreateTask err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "CreateTask Error",
 		})
 	}
 
-	logx.GetLogger("study").Infof("HandleCreateTask|CreateTask|Succ|%s", common.ToStringWithoutError(task))
+	lg.Infof("HandleCreateTask|CreateTask|Succ|%s", common.ToStringWithoutError(task))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, task)
 }
 
@@ -459,7 +461,7 @@ func (cls *ClassService) HandleListTask(ctx echo.Context) error {
 	var list core2.ListTask
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&list); err != nil {
-		logx.GetLogger("study").Errorf("HandleListTask|Decode err:%v", err)
+		lg.Errorf("HandleListTask|Decode err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
@@ -467,19 +469,19 @@ func (cls *ClassService) HandleListTask(ctx echo.Context) error {
 
 	err := cls.classServ.ListTask(ctx.Request().Context(), &list)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleListTask|ListTask err:%v", err)
+		lg.Errorf("HandleListTask|ListTask err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "ListTask Error",
 		})
 	}
-	logx.GetLogger("study").Infof("HandleListTask|ListTask|Succ|%s", common.ToStringWithoutError(list))
+	lg.Infof("HandleListTask|ListTask|Succ|%s", common.ToStringWithoutError(list))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
 
 func (cls *ClassService) HandleDeleteTask(ctx echo.Context) error {
 	tid := ctx.Param("tid")
 	if len(tid) <= 0 {
-		logx.GetLogger("study").Errorf("DeleteTask|tid is empty")
+		lg.Errorf("DeleteTask|tid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Param Invalid",
 		})
@@ -487,7 +489,7 @@ func (cls *ClassService) HandleDeleteTask(ctx echo.Context) error {
 
 	task, err := cls.classServ.DeleteTask(ctx.Request().Context(), tid)
 	if err != nil {
-		logx.GetLogger("study").Errorf("DeleteTask|DeleteTask err:%v", err)
+		lg.Errorf("DeleteTask|DeleteTask err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "DeleteTask Error",
 		})
@@ -498,19 +500,19 @@ func (cls *ClassService) HandleDeleteTask(ctx echo.Context) error {
 func (cls *ClassService) HandleQueryStudentList(ctx echo.Context) error {
 	cid := ctx.Param("cid")
 	if len(cid) <= 0 {
-		logx.GetLogger("study").Errorf("QueryStudentList|Param Invalid")
+		lg.Errorf("QueryStudentList|Param Invalid")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Param Invalid",
 		})
 	}
 	list, err := cls.classServ.QueryStudentList(ctx.Request().Context(), cid)
 	if err != nil {
-		logx.GetLogger("study").Errorf("QueryStudentList|QueryStudentList err:%v", err)
+		lg.Errorf("QueryStudentList|QueryStudentList err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "QueryStudentList err",
 		})
 	}
-	logx.GetLogger("study").Infof("QueryStudentList|QueryStudentList ok|%s", common.ToStringWithoutError(list))
+	lg.Infof("QueryStudentList|QueryStudentList ok|%s", common.ToStringWithoutError(list))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
 
@@ -524,21 +526,21 @@ func (cls *ClassService) HandleAddStudentToClass(ctx echo.Context) error {
 	var student addStudent
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&student); err != nil {
-		logx.GetLogger("study").Errorf("HandleAddStudentToClass|Decode err:%v", err)
+		lg.Errorf("HandleAddStudentToClass|Decode err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
 	}
-	logx.GetLogger("study").Infof("HandleAddStudentToClass|Params bind Success|%s", common.ToStringWithoutError(student))
+	lg.Infof("HandleAddStudentToClass|Params bind Success|%s", common.ToStringWithoutError(student))
 
 	err := cls.classServ.AddStudent(ctx.Request().Context(), student.Cid, student.Uid, student.Name)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleAddStudentToClass|AddStudent err:%v", err)
+		lg.Errorf("HandleAddStudentToClass|AddStudent err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "AddStudent Error",
 		})
 	}
-	logx.GetLogger("study").Infof("HandleAddStudentToClass|AddStudent|Succ|%s", common.ToStringWithoutError(student))
+	lg.Infof("HandleAddStudentToClass|AddStudent|Succ|%s", common.ToStringWithoutError(student))
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
 		"msg": "AddStudent Success",
 	})
@@ -548,15 +550,15 @@ func (cls *ClassService) HandleUpdateTask(ctx echo.Context) error {
 	var task core2.Task
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&task); err != nil {
-		logx.GetLogger("study").Errorf("HandleUpdateTask|Decode err:%v", err)
+		lg.Errorf("HandleUpdateTask|Decode err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
 	}
-	logx.GetLogger("study").Infof("HandleUpdateTask|Params bind Success|%s", common.ToStringWithoutError(task))
+	lg.Infof("HandleUpdateTask|Params bind Success|%s", common.ToStringWithoutError(task))
 	err := cls.classServ.UpdateTask(ctx.Request().Context(), &task)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleUpdateTask|UpdateTask err:%v", err)
+		lg.Errorf("HandleUpdateTask|UpdateTask err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "UpdateTask Error",
 		})
@@ -570,11 +572,32 @@ func (cls *ClassService) HandleListClass(ctx echo.Context) error {
 	uid := ctx.Get("uid").(string)
 	list, err := cls.classServ.ListStudentClass(ctx.Request().Context(), uid)
 	if err != nil {
-		logx.GetLogger("study").Errorf("HandleListClass|ListStudentClass err:%v", err)
+		lg.Errorf("HandleListClass|ListStudentClass err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "ListStudentClass Error",
 		})
 	}
 
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
+}
+
+func (cls *ClassService) HandleQueryTaskInfo(ctx echo.Context) error {
+	tid := ctx.Param("tid")
+	if len(tid) <= 0 {
+		lg.Errorf("HandleQueryTaskInfo|Param Invalid")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Param Invalid",
+		})
+	}
+	info, err := cls.classServ.QueryTaskInfo(ctx.Request().Context(), tid)
+	if err != nil {
+		lg.Errorf("HandleQueryTaskInfo|QueryTaskInfo err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "QueryTaskInfo Error",
+		})
+	}
+
+	lg.Infof("HandleQueryTaskInfo|QueryTaskInfo|Succ|%s", common.ToStringWithoutError(info))
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }

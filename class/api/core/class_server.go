@@ -17,6 +17,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+var lg = logx.GetLogger("study")
+
 type ClassServer struct {
 	ctx           context.Context
 	classDB       *redis.Client
@@ -44,7 +46,7 @@ func (cls *ClassServer) CreateClass(ctx context.Context, info *Class) error {
 	}, info.CreateTs, info.Marshal(), *info.Cid).Err()
 
 	if err != nil {
-		logx.GetLogger("study").Errorf("CreateClass|Create Class Error|%v", err)
+		lg.Errorf("CreateClass|Create Class Error|%v", err)
 		return err
 	}
 	return nil
@@ -54,14 +56,14 @@ func (cls *ClassServer) RecoverClass(ctx context.Context, cid string) error {
 	// 恢复课程
 	result, err := cls.classDB.Get(ctx, BuildClassInfo(cid)).Result()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|RecoverClass|GetClassInfoError|%v", err)
+		lg.Errorf("ClassServer|RecoverClass|GetClassInfoError|%v", err)
 		return err
 	}
 
 	var class *Class
 	err = json.Unmarshal([]byte(result), &class)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|RecoverClass|UnmarshalClassInfoError|%v", err)
+		lg.Errorf("ClassServer|RecoverClass|UnmarshalClassInfoError|%v", err)
 		return err
 	}
 	// 执行恢复操作
@@ -73,14 +75,14 @@ func (cls *ClassServer) RecoverClass(ctx context.Context, cid string) error {
 	}, cid, class.CreateTs).Err()
 
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|RecoverClass|RecoverClassError|%v", err)
+		lg.Errorf("ClassServer|RecoverClass|RecoverClassError|%v", err)
 	}
 
 	// 修改课程的删除状态
 	class.WithDeleted(false)
 	err = cls.classDB.Set(ctx, BuildClassInfo(cid), class.Marshal(), 0).Err()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|RecoverClass|UpdateClassInfoError|%v", err)
+		lg.Errorf("ClassServer|RecoverClass|UpdateClassInfoError|%v", err)
 		return err
 	}
 	return nil
@@ -91,14 +93,14 @@ func (cls *ClassServer) MoveClassToTrash(ctx context.Context, cid string) error 
 	// 修改课程的删除状态
 	result, err := cls.classDB.Get(ctx, BuildClassInfo(cid)).Result()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|MoveClassToTrash|GetClassInfoError|%v", err)
+		lg.Errorf("ClassServer|MoveClassToTrash|GetClassInfoError|%v", err)
 		return err
 	}
 
 	var class *Class
 	err = json.Unmarshal([]byte(result), &class)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|MoveClassToTrash|UnmarshalClassInfoError|%v", err)
+		lg.Errorf("ClassServer|MoveClassToTrash|UnmarshalClassInfoError|%v", err)
 		return err
 	}
 
@@ -110,13 +112,13 @@ func (cls *ClassServer) MoveClassToTrash(ctx context.Context, cid string) error 
 	}, cid, class.CreateTs).Err()
 
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|MoveClassToTrash|UpdateClassInfoError|%v", err)
+		lg.Errorf("ClassServer|MoveClassToTrash|UpdateClassInfoError|%v", err)
 		return err
 	}
 	class.WithDeleted(true)
 	err = cls.classDB.Set(ctx, BuildClassInfo(cid), class.Marshal(), 0).Err()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|MoveClassToTrash|UpdateClassInfoError|%v", err)
+		lg.Errorf("ClassServer|MoveClassToTrash|UpdateClassInfoError|%v", err)
 		return err
 	}
 	return nil
@@ -127,13 +129,13 @@ func (cls *ClassServer) UpdateClass(ctx context.Context, info *Class) error {
 	// 查询原始课程信息
 	result, err := cls.classDB.Get(ctx, BuildClassInfo(*info.Cid)).Result()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|UpdateClass|GetClassInfoError|%v", err)
+		lg.Errorf("ClassServer|UpdateClass|GetClassInfoError|%v", err)
 		return err
 	}
 
 	class, err := UnmarshalToClass([]byte(result))
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|UpdateClass|UnmarshalClassInfoError|%v", err)
+		lg.Errorf("ClassServer|UpdateClass|UnmarshalClassInfoError|%v", err)
 		return err
 	}
 
@@ -141,7 +143,7 @@ func (cls *ClassServer) UpdateClass(ctx context.Context, info *Class) error {
 
 	err = cls.classDB.Set(ctx, BuildClassInfo(*info.Cid), class.Marshal(), 0).Err()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|UpdateClass|UpdateClassInfoError|%v", err)
+		lg.Errorf("ClassServer|UpdateClass|UpdateClassInfoError|%v", err)
 		return err
 	}
 
@@ -152,17 +154,17 @@ func (cls *ClassServer) UpdateClass(ctx context.Context, info *Class) error {
 func (cls *ClassServer) QueryClassInfo(ctx context.Context, cid string) (*Class, error) {
 	result, err := cls.classDB.Get(ctx, BuildClassInfo(cid)).Result()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|QueryClassInfo|GetClassInfoError|%v", err)
+		lg.Errorf("ClassServer|QueryClassInfo|GetClassInfoError|%v", err)
 		return nil, err
 	}
 
 	var class Class
 	err = json.Unmarshal([]byte(result), &class)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|QueryClassInfo|UnmarshalClassInfoError|%v", err)
+		lg.Errorf("ClassServer|QueryClassInfo|UnmarshalClassInfoError|%v", err)
 		return nil, err
 	}
-	logx.GetLogger("study").Infof("ClassServer|QueryClassInfo|QueryClassInfoSuccess|%v", common.ToStringWithoutError(class))
+	lg.Infof("ClassServer|QueryClassInfo|QueryClassInfoSuccess|%v", common.ToStringWithoutError(class))
 	return &class, nil
 }
 
@@ -175,14 +177,14 @@ func (cls *ClassServer) CreateChapter(ctx context.Context, info *Chapter) error 
 	}).Err()
 
 	if err != nil {
-		logx.GetLogger("study").Errorf("ChapterServer|CreateChapter|AddChapterToClassError|%v", err)
+		lg.Errorf("ChapterServer|CreateChapter|AddChapterToClassError|%v", err)
 		return err
 	}
 
 	// 创建章节
 	err = cls.chapterServer.CreateChapter(ctx, info)
 	if err != nil {
-		logx.GetLogger("study").Errorf("CreateChapter|Create Chapter Error|%v", err)
+		lg.Errorf("CreateChapter|Create Chapter Error|%v", err)
 		return err
 	}
 
@@ -196,19 +198,19 @@ func (cls *ClassServer) UpdateChapter(ctx context.Context, info *Chapter) error 
 func (cls *ClassServer) DeleteChapter(ctx context.Context, chid string) error {
 	chapter, err := cls.chapterServer.QueryChapterInfo(ctx, chid, 3)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|DeleteChapter|QueryChapterInfoError|%v", err)
+		lg.Errorf("ClassServer|DeleteChapter|QueryChapterInfoError|%v", err)
 		return err
 	}
 	// 先从课程章节列表中删除
 	err = cls.classDB.ZRem(ctx, BuildClassChapterList(*chapter.SourceId), chapter.Chid).Err()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|DeleteChapter|DeleteChapterFromClassError|%v", err)
+		lg.Errorf("ClassServer|DeleteChapter|DeleteChapterFromClassError|%v", err)
 		return err
 	}
 
 	err = cls.chapterServer.DeleteChapter(ctx, *chapter.Chid)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|DeleteChapter|DeleteChapterError|%v", err)
+		lg.Errorf("ClassServer|DeleteChapter|DeleteChapterError|%v", err)
 		return err
 	}
 	return nil
@@ -217,7 +219,7 @@ func (cls *ClassServer) DeleteChapter(ctx context.Context, chid string) error {
 func (cls *ClassServer) QueryChapterList(ctx context.Context, cid string, role int) ([]*Chapter, error) {
 	chids, err := cls.classDB.ZRange(ctx, BuildClassChapterList(cid), 0, -1).Result()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|QueryChapterList|QueryChapterListError|%v", err)
+		lg.Errorf("ClassServer|QueryChapterList|QueryChapterListError|%v", err)
 		return nil, err
 	}
 
@@ -226,7 +228,7 @@ func (cls *ClassServer) QueryChapterList(ctx context.Context, cid string, role i
 	for _, chid := range chids {
 		info, err := cls.chapterServer.QueryChapterInfo(ctx, chid, role)
 		if err != nil {
-			logx.GetLogger("study").Errorf("ClassServer|QueryChapterList|QueryChapterInfoError|%v", err)
+			lg.Errorf("ClassServer|QueryChapterList|QueryChapterInfoError|%v", err)
 			return nil, err
 		}
 		list = append(list, info)
@@ -288,7 +290,7 @@ func (cls *ClassServer) updateClassInfo(oldClass, newClass *Class) *Class {
 	if newClass.ClassOutline != nil && len(*newClass.ClassOutline) > 0 {
 		oldClass.WithClassOutline(*newClass.ClassOutline)
 	}
-	logx.GetLogger("study").Infof("ClassServer|UpdateClass|UpdateClassInfoSuccess|%s", common.ToStringWithoutError(*oldClass))
+	lg.Infof("ClassServer|UpdateClass|UpdateClassInfoSuccess|%s", common.ToStringWithoutError(*oldClass))
 	return oldClass
 }
 
@@ -296,14 +298,14 @@ func (cls *ClassServer) QueryClassList(ctx context.Context, uid string) ([]*Clas
 	// 查询用户的课程列表
 	cids, err := cls.classDB.ZRange(ctx, BuildTeacherClassList(uid), 0, -1).Result()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|QueryClassList|QueryClassListError|%v", err)
+		lg.Errorf("ClassServer|QueryClassList|QueryClassListError|%v", err)
 		return nil, err
 	}
 	list := make([]*Class, 0, len(cids))
 	for _, id := range cids {
 		info, err := cls.QueryClassInfo(ctx, id)
 		if err != nil {
-			logx.GetLogger("study").Errorf("ClassServer|QueryClassList|QueryClassInfoError|%v", err)
+			lg.Errorf("ClassServer|QueryClassList|QueryClassInfoError|%v", err)
 			return nil, err
 		}
 		list = append(list, info)
@@ -314,7 +316,7 @@ func (cls *ClassServer) QueryClassList(ctx context.Context, uid string) ([]*Clas
 func (cls *ClassServer) QueryTeacherDeletedClassList(ctx context.Context, uid string) ([]*Class, error) {
 	cids, err := cls.classDB.ZRange(ctx, BuildTeacherClassDeletedList(uid), 0, -1).Result()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|QueryTeacherDeletedClassList|QueryTeacherDeletedClassListError|%v", err)
+		lg.Errorf("ClassServer|QueryTeacherDeletedClassList|QueryTeacherDeletedClassListError|%v", err)
 		return nil, err
 	}
 
@@ -323,7 +325,7 @@ func (cls *ClassServer) QueryTeacherDeletedClassList(ctx context.Context, uid st
 	for _, cid := range cids {
 		info, err := cls.QueryClassInfo(ctx, cid)
 		if err != nil {
-			logx.GetLogger("study").Errorf("ClassServer|QueryTeacherDeletedClassList|QueryTeacherDeletedClassListError|%v", err)
+			lg.Errorf("ClassServer|QueryTeacherDeletedClassList|QueryTeacherDeletedClassListError|%v", err)
 			return nil, err
 		}
 		list = append(list, info)
@@ -335,12 +337,12 @@ func (cls *ClassServer) DeleteClassFromTrash(ctx context.Context, cid string) er
 	// 先查询课程的信息
 	// class, err := cls.QueryClassInfo(ctx, cid)
 	// if err != nil {
-	// 	logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|QueryClassInfoError|%v", err)
+	// 	lg.Errorf("ClassServer|DeleteClassFromTrash|QueryClassInfoError|%v", err)
 	// 	return err
 	// }
 
 	// if !class.IsDeleted() {
-	// 	logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|ClassNotDeleted|%v", err)
+	// 	lg.Errorf("ClassServer|DeleteClassFromTrash|ClassNotDeleted|%v", err)
 	// 	return errors.New("class not deleted")
 	// }
 
@@ -351,47 +353,47 @@ func (cls *ClassServer) DeleteClassFromTrash(ctx context.Context, cid string) er
 	// }, cid).Err()
 
 	// if err != nil {
-	// 	logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromTrashError|%v", err)
+	// 	lg.Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromTrashError|%v", err)
 	// 	return err
 	// }
 
 	// return nil
 	info, err := cls.QueryClassInfo(ctx, cid)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|QueryClassInfoError|%v", err)
+		lg.Errorf("ClassServer|DeleteClassFromTrash|QueryClassInfoError|%v", err)
 		return nil
 	}
 
 	if !info.IsDeleted() {
-		logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|ClassNotDeleted")
+		lg.Errorf("ClassServer|DeleteClassFromTrash|ClassNotDeleted")
 		return errors.New("class not deleted")
 	}
 
 	// 删除课程
 	err = cls.classDB.ZRem(ctx, BuildAllClassList(), cid).Err()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromTrashError|%v", err)
+		lg.Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromTrashError|%v", err)
 		return nil
 	}
 
 	// 从教师课程列表下面删除
 	err = cls.classDB.ZRem(ctx, BuildTeacherClassDeletedList(*info.Teacher), cid).Err()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromTrashError|%v", err)
+		lg.Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromTrashError|%v", err)
 		return nil
 	}
 
 	// 删除课程的信息
 	err = cls.classDB.Del(ctx, BuildClassInfo(cid)).Err()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromTrashError|%v", err)
+		lg.Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromTrashError|%v", err)
 		return nil
 	}
 
 	for _, chater := range info.ChapterList {
 		err := cls.chapterServer.DeleteChapter(ctx, *chater.Chid)
 		if err != nil {
-			logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|DeleteChapterError|%v", err)
+			lg.Errorf("ClassServer|DeleteClassFromTrash|DeleteChapterError|%v", err)
 			continue
 		}
 	}
@@ -399,14 +401,14 @@ func (cls *ClassServer) DeleteClassFromTrash(ctx context.Context, cid string) er
 	//  TODO // 删除课程下面的所有学生
 	// list, err := cls.studentServer.QueryStudentList(ctx, cid)
 	// if err!=nil{
-	// 	logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|QueryStudentListError|%v", err)
+	// 	lg.Errorf("ClassServer|DeleteClassFromTrash|QueryStudentListError|%v", err)
 	// 	return nil
 	// }
 
 	// for _, student := range list {
 	// 	err:= cls.studentServer.DeleteClassFromStudentList(ctx, cid)
 	// 	if err!=nil{
-	// 		logx.GetLogger("study").Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromStudentListError|%v", err)
+	// 		lg.Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromStudentListError|%v", err)
 	// 		continue
 	// 	}
 	// }
@@ -418,14 +420,14 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 	// 上往下复制
 	result, err := cls.classDB.Get(ctx, BuildClassInfo(cid)).Result()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|CopyClass|GetClassInfoError|%v", err)
+		lg.Errorf("ClassServer|CopyClass|GetClassInfoError|%v", err)
 		return nil, err
 	}
 
 	var class *Class
 	err = json.Unmarshal([]byte(result), &class)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|CopyClass|UnmarshalClassInfoError|%v", err)
+		lg.Errorf("ClassServer|CopyClass|UnmarshalClassInfoError|%v", err)
 		return nil, err
 	}
 
@@ -436,7 +438,7 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 	// 重新写入redis中
 	err = cls.classDB.Set(ctx, BuildClassInfo(newCid), class.Marshal(), 0).Err()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|CopyClass|SetClassInfoError|%v", err)
+		lg.Errorf("ClassServer|CopyClass|SetClassInfoError|%v", err)
 		return nil, err
 	}
 
@@ -445,14 +447,14 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 		Score:  float64(time.Now().Unix()),
 	}).Err()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|CopyClass|AddClassToTeacherError|%v", err)
+		lg.Errorf("ClassServer|CopyClass|AddClassToTeacherError|%v", err)
 		return nil, err
 	}
 
 	// 复制章节，先查询到原本的章节列表
 	chapterList, err := cls.QueryChapterList(ctx, cid, 3)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|CopyClass|QueryChapterListError|%v", err)
+		lg.Errorf("ClassServer|CopyClass|QueryChapterListError|%v", err)
 		return nil, err
 	}
 
@@ -464,7 +466,7 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 		chInfo.WithChapterName(*chapter.ChapterName)
 		err = cls.CreateChapter(ctx, &chInfo)
 		if err != nil {
-			logx.GetLogger("study").Errorf("ClassServer|CopyClass|CreateChapterError|%v", err)
+			lg.Errorf("ClassServer|CopyClass|CreateChapterError|%v", err)
 			break
 		}
 		// 添加到课程对应的章节下面
@@ -473,7 +475,7 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 			Score:  float64(time.Now().Unix()),
 		}).Err()
 		if err != nil {
-			logx.GetLogger("study").Errorf("ClassServer|CopyClass|AddChapterToClassError|%v", err)
+			lg.Errorf("ClassServer|CopyClass|AddChapterToClassError|%v", err)
 			break
 		}
 		// 复制资源
@@ -482,7 +484,7 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 			cosClient := client.GetCosRpcClient(ctx)
 			resp, err := cosClient.CopyObject(ctx, &proto.CopyObjectRequest{Fid: *resource.Fid})
 			if err != nil {
-				logx.GetLogger("study").Errorf("ClassServer|CopyClass|CopyObjectError|%v", err)
+				lg.Errorf("ClassServer|CopyClass|CopyObjectError|%v", err)
 				continue
 			}
 			resource.WithFid(resp.NewFid)
@@ -490,14 +492,14 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 			// 存储资源的信息
 			err = cls.chapterServer.CreateResource(ctx, &resource)
 			if err != nil {
-				logx.GetLogger("study").Errorf("ClassServer|CopyClass|CreateResourceError|%v", err)
+				lg.Errorf("ClassServer|CopyClass|CreateResourceError|%v", err)
 				continue
 			}
 			chInfo.ResourceList = append(chInfo.ResourceList, resource)
 		}
 		class.ChapterList = append(class.ChapterList, chInfo)
 	}
-	logx.GetLogger("study").Infof("ClassServer|CopyClass|CopyClassSuccess|%s", common.ToStringWithoutError(class))
+	lg.Infof("ClassServer|CopyClass|CopyClassSuccess|%s", common.ToStringWithoutError(class))
 	return class, nil
 }
 
@@ -505,7 +507,7 @@ func (cls *ClassServer) ImportStudentFromExcel(ctx context.Context, filename, ci
 	userClient := client.GetUserRpcClient(ctx)
 	stream, err := userClient.BatchAddStudentToClass(ctx)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|ImportStudentFromExcel|BatchRegisterError|%v", err)
+		lg.Errorf("ClassServer|ImportStudentFromExcel|BatchRegisterError|%v", err)
 		return nil, err
 	}
 	buf := make([]byte, 1024*32)
@@ -517,7 +519,7 @@ func (cls *ClassServer) ImportStudentFromExcel(ctx context.Context, filename, ci
 			break
 		}
 		if err != nil {
-			logx.GetLogger("study").Errorf("ClassServer|ImportStudentFromExcel|ReadError|%v", err)
+			lg.Errorf("ClassServer|ImportStudentFromExcel|ReadError|%v", err)
 			return nil, err
 		}
 		chunk := &proto.FileChunk{
@@ -530,21 +532,21 @@ func (cls *ClassServer) ImportStudentFromExcel(ctx context.Context, filename, ci
 			firstChunk = false
 		}
 		if err = stream.Send(chunk); err != nil {
-			logx.GetLogger("study").Errorf("ClassServer|ImportStudentFromExcel|SendError|%v", err)
+			lg.Errorf("ClassServer|ImportStudentFromExcel|SendError|%v", err)
 			return nil, err
 		}
 	}
 
 	resp, err := stream.CloseAndRecv()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|ImportStudentFromExcel|CloseAndRecvError|%v", err)
+		lg.Errorf("ClassServer|ImportStudentFromExcel|CloseAndRecvError|%v", err)
 		return nil, err
 	}
 
 	for _, uid := range resp.Uids {
 		err := cls.AddStudentToClassList(ctx, uid, cid)
 		if err != nil {
-			logx.GetLogger("study").Errorf("ClassServer|ImportStudentFromExcel|AddStudentToClassListError|%v", err)
+			lg.Errorf("ClassServer|ImportStudentFromExcel|AddStudentToClassListError|%v", err)
 			continue
 		}
 	}
@@ -560,12 +562,12 @@ func (cls *ClassServer) AddStudent(ctx context.Context, cid string, uid string, 
 	})
 
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|AddStudentToClassList|AddStudentToClassError|%v", err)
+		lg.Errorf("ClassServer|AddStudentToClassList|AddStudentToClassError|%v", err)
 		return err
 	}
 
 	if !resp.Success {
-		logx.GetLogger("study").Errorf("ClassServer|AddStudentToClassList|AddStudentToClassError|")
+		lg.Errorf("ClassServer|AddStudentToClassList|AddStudentToClassError|")
 		return errors.New("add student to class error")
 	}
 
@@ -581,7 +583,7 @@ func (cls *ClassServer) UploadClassCover(ctx context.Context, md5, fileType, dir
 	cosClient := client.GetCosRpcClient(ctx)
 	stream, err := cosClient.UploadClassCover(ctx)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|UploadClassCover|UploadClassCoverError|%v", err)
+		lg.Errorf("ClassServer|UploadClassCover|UploadClassCoverError|%v", err)
 		return "", err
 	}
 	buf := make([]byte, 1024*1024)
@@ -592,7 +594,7 @@ func (cls *ClassServer) UploadClassCover(ctx context.Context, md5, fileType, dir
 			break
 		}
 		if err != nil {
-			logx.GetLogger("study").Errorf("ClassServer|UploadClassCover|ReadError|%v", err)
+			lg.Errorf("ClassServer|UploadClassCover|ReadError|%v", err)
 			return "", err
 		}
 
@@ -606,14 +608,14 @@ func (cls *ClassServer) UploadClassCover(ctx context.Context, md5, fileType, dir
 			firstChunk = false
 		}
 		if err := stream.Send(chunk); err != nil {
-			logx.GetLogger("study").Errorf("ClassServer|UploadClassCover|SendError|%v", err)
+			lg.Errorf("ClassServer|UploadClassCover|SendError|%v", err)
 			return "", err
 		}
 	}
 
 	recv, err := stream.CloseAndRecv()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|UploadClassCover|CloseAndRecvError|%v", err)
+		lg.Errorf("ClassServer|UploadClassCover|CloseAndRecvError|%v", err)
 		return "", err
 	}
 	return recv.Fid, nil
@@ -625,7 +627,7 @@ func (cls *ClassServer) CreateTask(ctx context.Context, task *Task) error {
 
 	err := cls.taskServer.CreateTask(ctx, task)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|CreateTask|CreateTaskError|%v", err)
+		lg.Errorf("ClassServer|CreateTask|CreateTaskError|%v", err)
 		return err
 	}
 	err = cls.classDB.ZAdd(ctx, BuildClassTaskList(task.Cid), redis.Z{
@@ -633,7 +635,7 @@ func (cls *ClassServer) CreateTask(ctx context.Context, task *Task) error {
 		Member: task.TaskId,
 	}).Err()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|CreateTask|AddTaskToClassError|%v", err)
+		lg.Errorf("ClassServer|CreateTask|AddTaskToClassError|%v", err)
 		return nil
 	}
 	return nil
@@ -649,7 +651,7 @@ func (cls *ClassServer) ListTask(ctx context.Context, list *ListTask) error {
 	if len(list.ReferId) > 0 {
 		score, err := cls.classDB.ZScore(ctx, BuildClassTaskList(list.Cid), list.ReferId).Result()
 		if err != nil {
-			logx.GetLogger("study").Errorf("ClassServer|ListTask|GetReferIdScoreError|%v", err)
+			lg.Errorf("ClassServer|ListTask|GetReferIdScoreError|%v", err)
 			return err
 		}
 		zrangeBy.Min = "(" + strconv.FormatInt(int64(score), 10)
@@ -657,13 +659,13 @@ func (cls *ClassServer) ListTask(ctx context.Context, list *ListTask) error {
 
 	taskIds, err := cls.classDB.ZRangeByScore(ctx, BuildClassTaskList(list.Cid), zrangeBy).Result()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|ListTask|GetTaskIdListError|%v", err)
+		lg.Errorf("ClassServer|ListTask|GetTaskIdListError|%v", err)
 		return err
 	}
 	for _, taskId := range taskIds {
 		task, err := cls.taskServer.QueryTaskInfo(ctx, taskId)
 		if err != nil {
-			logx.GetLogger("study").Errorf("ClassServer|ListTask|GetTaskInfoError|%v", err)
+			lg.Errorf("ClassServer|ListTask|GetTaskInfoError|%v", err)
 			return err
 		}
 		list.Tasks = append(list.Tasks, task)
@@ -674,19 +676,19 @@ func (cls *ClassServer) ListTask(ctx context.Context, list *ListTask) error {
 func (cls *ClassServer) DeleteTask(ctx context.Context, tid string) (*Task, error) {
 	info, err := cls.taskServer.QueryTaskInfo(ctx, tid)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|DeleteTask|GetTaskInfoError|%v", err)
+		lg.Errorf("ClassServer|DeleteTask|GetTaskInfoError|%v", err)
 		return nil, err
 	}
 
 	err = cls.taskServer.DeleteTask(ctx, tid)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|DeleteTask|DeleteTaskError|%v", err)
+		lg.Errorf("ClassServer|DeleteTask|DeleteTaskError|%v", err)
 		return nil, err
 	}
 	// 移除任务列表中的索引
 	err = cls.classDB.ZRem(ctx, BuildClassTaskList(info.Cid), tid).Err()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|DeleteTask|RemoveTaskFromClassError|%v", err)
+		lg.Errorf("ClassServer|DeleteTask|RemoveTaskFromClassError|%v", err)
 		return nil, err
 	}
 	// 调用cos删除iamge
@@ -695,7 +697,7 @@ func (cls *ClassServer) DeleteTask(ctx context.Context, tid string) (*Task, erro
 		Fids: info.TaskImageList,
 	})
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|DeleteTask|DeleteTaskImageError|%v", err)
+		lg.Errorf("ClassServer|DeleteTask|DeleteTaskImageError|%v", err)
 	}
 	return info, nil
 }
@@ -716,17 +718,22 @@ func (cls *ClassServer) ListStudentClass(ctx context.Context, uid string) ([]*Cl
 	client := client.GetUserRpcClient(ctx)
 	classids, err := client.GetStudentClassList(ctx, &proto.StudentIds{Uids: []string{uid}})
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|ListStudentClass|GetStudentClassListError|%v", err)
+		lg.Errorf("ClassServer|ListStudentClass|GetStudentClassListError|%v", err)
 		return nil, err
 	}
 	list := make([]*Class, 0)
 	for _, cid := range classids.Cids {
 		info, err := cls.QueryClassInfo(ctx, cid)
 		if err != nil {
-			logx.GetLogger("study").Errorf("ClassServer|ListStudentClass|QueryClassInfoError|%v", err)
+			lg.Errorf("ClassServer|ListStudentClass|QueryClassInfoError|%v", err)
 			continue
 		}
 		list = append(list, info)
 	}
 	return list, nil
+}
+
+func (cls *ClassServer) QueryTaskInfo(ctx context.Context, taskId string) (*Task, error) {
+
+	return cls.taskServer.QueryTaskInfo(ctx, taskId)
 }

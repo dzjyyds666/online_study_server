@@ -4,8 +4,6 @@ import (
 	"common/proto"
 	"common/rpc/client"
 	"context"
-	"time"
-
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
 )
@@ -23,11 +21,10 @@ func NewClassStudentServer(ctx context.Context, dsClient *redis.Client) *ClassSt
 }
 
 func (css *ClassStudentServer) AddStudentToClass(ctx context.Context, uid string, cid string) error {
-	// TODO rpc服务判断学生是否注册，如果注册过的话直接把学生添加到班级列表中，没有注册过的话，就先创建学生，再把学生添加到半截列表中
 	list := BuildClassStudentList(cid)
 	err := css.studentDB.ZAdd(ctx, list, redis.Z{
 		Member: uid,
-		Score:  float64(time.Now().Unix()),
+		Score:  0, // 学生学习的时长作为分数
 	}).Err()
 	if err != nil {
 		logx.GetLogger("study").Errorf("AddStudentToClass|Add Student To Class Error|%v", err)

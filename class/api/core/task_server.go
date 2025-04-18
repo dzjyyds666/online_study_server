@@ -33,6 +33,7 @@ func (ts *TaskServer) CreateTask(ctx context.Context, task *Task) error {
 
 func (ts *TaskServer) QueryTaskInfo(ctx context.Context, taskId string) (*Task, error) {
 	key := BuildTaskInfo(taskId)
+	lg.Infof("ClassServer|QueryTaskInfo|QueryTaskInfo|%v", key)
 	taskInfo, err := ts.classDB.Get(ctx, key).Result()
 	if err != nil {
 		logx.GetLogger("study").Errorf("ClassServer|QueryTaskInfo|GetTaskInfoError|%v", err)

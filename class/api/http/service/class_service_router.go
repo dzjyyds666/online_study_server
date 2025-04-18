@@ -31,7 +31,7 @@ func RegisterRouter(e *echo.Echo, cls *ClassService) {
 	teacher.Add("GET", "/resource/delete/:fid", cls.HandleDeleteResource, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
 	teacher.Add("POST", "/resource/update", cls.HandleUpdateResource, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
 	teacher.Add("POST", "/task/create", cls.HandleCreateTask, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
-	teacher.Add("POST", "/task/list", cls.HandleListTask, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
+
 	teacher.Add("GET", "/task/delete/:tid", cls.HandleDeleteTask, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
 	teacher.Add("POST", "/task/update", cls.HandleUpdateTask, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
 	teacher.Add("POST", "/student/import", cls.HandleImportStudentFromExcel, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
@@ -39,6 +39,8 @@ func RegisterRouter(e *echo.Echo, cls *ClassService) {
 	teacher.Add("POST", "/student/add", cls.HandleAddStudentToClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
 
 	student := globApiPrefix.Group("/stu")
+	student.Add("POST", "/task/list", cls.HandleListTask, mymiddleware.AuthMw(mymiddleware.UserRole.Student))
+	student.Add("GET", "/task/:tid", cls.HandleQueryTaskInfo, mymiddleware.AuthMw(mymiddleware.UserRole.Student))
 	student.Add("GET", "/list", cls.HandleListClass, mymiddleware.AuthMw(mymiddleware.UserRole.Student))
 	student.Add("GET", "/query/:cid", cls.HandleQueryClassInfo, mymiddleware.AuthMw(mymiddleware.UserRole.Student))
 	student.Add("GET", "/resource/list/:chid", cls.HandleListReource, mymiddleware.AuthMw(mymiddleware.UserRole.Student))
