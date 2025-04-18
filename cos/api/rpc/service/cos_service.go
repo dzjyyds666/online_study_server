@@ -102,6 +102,7 @@ func (cs *CosRpcServer) GetFileInfo(ctx context.Context, in *proto.ResourceInfo)
 
 func (cs *CosRpcServer) DeleteTaskImage(ctx context.Context, in *proto.ImageIds) (*proto.CosCommonResponse, error) {
 	fids := in.GetFids()
+	logx.GetLogger("study").Errorf("DeleteTaskImage|fids|%v", fids)
 	for _, fid := range fids {
 		err := cs.CosServer.DeleteFile(ctx, fid)
 		if err != nil {

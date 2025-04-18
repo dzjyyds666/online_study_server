@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/dzjyyds666/opensource/common"
+	"github.com/dzjyyds666/opensource/logx"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/google/uuid"
 	"io"
@@ -22,6 +24,7 @@ type CosFile struct {
 }
 
 func (cf *CosFile) MergeFilePath() string {
+	logx.GetLogger("study").Infof("MergeFilePath|%s", common.ToStringWithoutError(cf))
 	return fmt.Sprintf("/%s/%s/%s%s", *cf.DirectoryId, *cf.Fid, *cf.Fid, path.Ext(*cf.FileName))
 }
 

@@ -530,6 +530,10 @@ func (cfs *CosFileServer) CheckFile(ctx context.Context, fid string) (io.ReadClo
 
 func (cfs *CosFileServer) DeleteFile(ctx context.Context, fid string) error {
 	info, err := cfs.QueryCosFile(ctx, fid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("CheckFile|QueryCosFile Error|%v", err)
+		return err
+	}
 	key := info.MergeFilePath()
 	_, err = cfs.s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(cfs.bucket),

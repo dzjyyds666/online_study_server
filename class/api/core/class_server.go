@@ -486,19 +486,11 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 				continue
 			}
 			resource.WithFid(resp.NewFid)
+			resource.WithChid(newchid)
 			// 存储资源的信息
 			err = cls.chapterServer.CreateResource(ctx, &resource)
 			if err != nil {
 				logx.GetLogger("study").Errorf("ClassServer|CopyClass|CreateResourceError|%v", err)
-				continue
-			}
-			// 把资源添加到章节列表下
-			err = cls.classDB.ZAdd(ctx, BuildChapterResourceList(newchid), redis.Z{
-				Member: resp.NewFid,
-				Score:  float64(time.Now().Unix()),
-			}).Err()
-			if err != nil {
-				logx.GetLogger("study").Errorf("ClassServer|CopyClass|AddResourceToChapterError|%v", err)
 				continue
 			}
 			chInfo.ResourceList = append(chInfo.ResourceList, resource)
