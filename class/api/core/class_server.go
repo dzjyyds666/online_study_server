@@ -673,6 +673,10 @@ func (cls *ClassServer) ListTask(ctx context.Context, list *ListTask) error {
 	return nil
 }
 
+func (cls *ClassServer) ListOwnerTask(ctx context.Context, uid string) ([]*ListOwnerTask, error) {
+	return cls.taskServer.ListOwnerTask(ctx, uid)
+}
+
 func (cls *ClassServer) DeleteTask(ctx context.Context, tid string) (*Task, error) {
 	info, err := cls.taskServer.QueryTaskInfo(ctx, tid)
 	if err != nil {
@@ -736,4 +740,20 @@ func (cls *ClassServer) ListStudentClass(ctx context.Context, uid string) ([]*Cl
 func (cls *ClassServer) QueryTaskInfo(ctx context.Context, taskId string) (*Task, error) {
 
 	return cls.taskServer.QueryTaskInfo(ctx, taskId)
+}
+
+func (cls *ClassServer) TaskSubmit(ctx context.Context, task *SubmitTask) error {
+	return cls.taskServer.TaskSubmit(ctx, task)
+}
+
+func (cls *ClassServer) ListStudentTask(ctx context.Context, list *ListStudentList) error {
+	return cls.taskServer.ListStudentTask(ctx, list)
+}
+
+func (cls *ClassServer) GetTaskListNumber(ctx context.Context, taskId string) (int64, error) {
+	return cls.taskServer.GetTaskListNumber(ctx, taskId)
+}
+
+func (cls *ClassServer) UpdateStudentTask(ctx context.Context, task *SubmitTask) error {
+	return cls.taskServer.UpdateStudentTask(ctx, task)
 }

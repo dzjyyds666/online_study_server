@@ -4,6 +4,8 @@ import (
 	core2 "class/api/core"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/dzjyyds666/opensource/common"
@@ -478,6 +480,29 @@ func (cls *ClassService) HandleListTask(ctx echo.Context) error {
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
 
+func (cls *ClassService) HandleListOwnerTask(ctx echo.Context) error {
+	uid := ctx.Get("uid").(string)
+	if len(uid) <= 0 {
+		lg.Errorf("HandleListOwnerTask|uid is empty")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Param Invalid",
+		})
+	}
+
+	lg.Infof("HandleListOwnerTask|Start|%s", uid)
+
+	list, err := cls.classServ.ListOwnerTask(ctx.Request().Context(), uid)
+	if err != nil {
+		lg.Errorf("HandleListOwnerTask|ListOwnerTask err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "ListOwnerTask Error",
+		})
+	}
+
+	lg.Infof("HandleListOwnerTask|ListOwnerTask|Succ|%s", common.ToStringWithoutError(list))
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
+}
+
 func (cls *ClassService) HandleDeleteTask(ctx echo.Context) error {
 	tid := ctx.Param("tid")
 	if len(tid) <= 0 {
@@ -532,6 +557,9 @@ func (cls *ClassService) HandleAddStudentToClass(ctx echo.Context) error {
 		})
 	}
 	lg.Infof("HandleAddStudentToClass|Params bind Success|%s", common.ToStringWithoutError(student))
+	if len(student.Name) <= 0 {
+		student.Name = fmt.Sprintf("学生_%s", student.Uid[len(student.Uid)-4:])
+	}
 
 	err := cls.classServ.AddStudent(ctx.Request().Context(), student.Cid, student.Uid, student.Name)
 	if err != nil {
@@ -596,8 +624,108 @@ func (cls *ClassService) HandleQueryTaskInfo(ctx echo.Context) error {
 			"msg": "QueryTaskInfo Error",
 		})
 	}
-
 	lg.Infof("HandleQueryTaskInfo|QueryTaskInfo|Succ|%s", common.ToStringWithoutError(info))
 
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
+}
+
+func (cls *ClassService) HandleTaskSubmit(ctx echo.Context) error {
+	var task core2.SubmitTask
+	decoder := json.NewDecoder(ctx.Request().Body)
+	if err := decoder.Decode(&task); err != nil {
+		lg.Errorf("HandleTaskSubmit|Decode err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	uid := ctx.Get("uid").(string)
+	lg.Infof("HandleTaskSubmit|uid:%s", uid)
+	task.WithOwner(uid)
+
+	lg.Infof("HandleTaskSubmit|Params bind Success|%s", common.ToStringWithoutError(task))
+	err := cls.classServ.TaskSubmit(ctx.Request().Context(), &task)
+	if err != nil {
+		if errors.Is(err, core2.ErrTaskHasSubmit) {
+			lg.Errorf("HandleTaskSubmit|TaskSubmit|HasSubmit|%v", err)
+			return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError+1, echo.Map{
+				"msg": "HasSubmit",
+			})
+		}
+		lg.Errorf("HandleTaskSubmit|TaskSubmit err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "TaskSubmit Error",
+		})
+	}
+
+	lg.Infof("HandleTaskSubmit|TaskSubmit|Succ")
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"msg": "TaskSubmit Success",
+	})
+}
+
+func (cls *ClassService) HandleListStudentTask(ctx echo.Context) error {
+	var list core2.ListStudentList
+	decoder := json.NewDecoder(ctx.Request().Body)
+	if err := decoder.Decode(&list); err != nil {
+		lg.Errorf("HandleListStudentTask|Decode err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+	lg.Infof("HandleListStudentTask|Params bind Success|%s", common.ToStringWithoutError(list))
+	err := cls.classServ.ListStudentTask(ctx.Request().Context(), &list)
+	if err != nil {
+		lg.Errorf("HandleListStudentTask|ListStudentTask err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "ListStudentTask Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
+}
+
+func (cls *ClassService) HandleGetTaskStudentNumber(ctx echo.Context) error {
+	tid := ctx.Param("tid")
+	if len(tid) <= 0 {
+		lg.Errorf("HandleGetTaskStudentNumber|Param Invalid")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Param Invalid",
+		})
+	}
+	number, err := cls.classServ.GetTaskListNumber(ctx.Request().Context(), tid)
+	if err != nil {
+		lg.Errorf("HandleGetTaskStudentNumber|GetTaskListNumber err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "GetTaskListNumber Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"number": number,
+	})
+}
+
+func (cls *ClassService) HandleUpdateStudentTask(ctx echo.Context) error {
+	var task core2.SubmitTask
+	decoder := json.NewDecoder(ctx.Request().Body)
+	if err := decoder.Decode(&task); err != nil {
+		lg.Errorf("HandleUpdateStudentTask|Decode err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	lg.Infof("HandleUpdateStudentTask|Params bind Success|%s", common.ToStringWithoutError(task))
+
+	err := cls.classServ.UpdateStudentTask(ctx.Request().Context(), &task)
+	if err != nil {
+		lg.Errorf("HandleUpdateStudentTask|UpdateStudentTask err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "UpdateStudentTask Error",
+		})
+	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"msg": "UpdateStudentTask Success",
+	})
 }

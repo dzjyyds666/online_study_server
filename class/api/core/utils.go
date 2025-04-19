@@ -34,3 +34,7 @@ func NewFid() string {
 	u := uuid.New()
 	return "fi_" + u.String()
 }
+
+func NewStudentTaskId(length int) string {
+	return "st_" + GenerateRandomString(length)
+}
