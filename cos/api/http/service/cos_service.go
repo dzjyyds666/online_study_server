@@ -172,18 +172,6 @@ func (cs *CosService) HandleSingleUpload(ctx echo.Context) error {
 		})
 	}
 
-	//if strings.Contains(*info.FileType, "video") {
-	//	logx.GetLogger("study").Infof("HandleSingleUpload|video")
-	//	// 把视频fid推入队列中
-	//	err = cs.cosServer.PushVideoToLambdaQueue(ctx.Request().Context(), fid)
-	//	if err != nil {
-	//		logx.GetLogger("study").Errorf("HandleSingleUpload|PushVideoToQueue err:%v", err)
-	//		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-	//			"msg": "PushVideoToQueue Error",
-	//		})
-	//	}
-	//}
-
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
 

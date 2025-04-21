@@ -71,19 +71,19 @@ func (cs *CosRpcServer) UploadClassFile(stream proto.Cos_UploadClassCoverServer)
 	})
 }
 
-func (cs *CosRpcServer) AddVideoToLambdaQueue(ctx context.Context, in *proto.VideoInfo) (*proto.CosCommonResponse, error) {
-	// 把视频fid写入redis队列中
-	err := cs.CosServer.PushVideoToLambdaQueue(ctx, in.Fid)
-	if err != nil {
-		logx.GetLogger("study").Errorf("AddVideoToLambdaQueue|PushVideoToLambdaQueue Error|%v", err)
-		return &proto.CosCommonResponse{
-			Success: false,
-		}, err
-	}
-	return &proto.CosCommonResponse{
-		Success: true,
-	}, nil
-}
+//func (cs *CosRpcServer) AddVideoToLambdaQueue(ctx context.Context, in *proto.VideoInfo) (*proto.CosCommonResponse, error) {
+//	// 把视频fid写入redis队列中
+//	err := cs.CosServer.PushVideoToLambdaQueue(ctx, in.Fid)
+//	if err != nil {
+//		logx.GetLogger("study").Errorf("AddVideoToLambdaQueue|PushVideoToLambdaQueue Error|%v", err)
+//		return &proto.CosCommonResponse{
+//			Success: false,
+//		}, err
+//	}
+//	return &proto.CosCommonResponse{
+//		Success: true,
+//	}, nil
+//}
 
 func (cs *CosRpcServer) GetFileInfo(ctx context.Context, in *proto.ResourceInfo) (*proto.ResourceInfo, error) {
 	file, err := cs.CosServer.QueryCosFile(ctx, in.GetFid())
