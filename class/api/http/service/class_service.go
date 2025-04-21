@@ -22,7 +22,7 @@ type ClassService struct {
 	ctx       context.Context
 }
 
-func NewClassServer(ctx context.Context, dsClient *redis.Client) (*ClassService, error) {
+func NewClassService(ctx context.Context, dsClient *redis.Client) (*ClassService, error) {
 	return &ClassService{
 		classServ: core2.NewClassServer(ctx, dsClient),
 		ctx:       ctx,
