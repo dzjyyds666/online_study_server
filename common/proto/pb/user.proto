@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = ".;proto";
+
+service user{
+  rpc AddStudentToClass(AddStudentToClassRequest) returns (UserCommonResponse);
+  rpc BatchAddStudentToClass(stream FileChunk) returns(StudentIds);
+  rpc GetStudentsInfo(StudentIds) returns(StudentInfos);
+  rpc GetStudentClassList(StudentIds) returns(ClassCids);
+}
+
+message StudentInfos{
+  repeated StudentInfo infos = 1;
+}
+
+message StudentInfo{
+  string uid = 1;
+  string name = 2;
+  string college = 3;
+  string major = 4;
+  string avatar = 5;
+}
+
+message AddStudentToClassRequest{
+  string cid = 1;
+  string  uid = 2;
+  string  name = 3;
+}
+
+message UserCommonResponse{
+  bool success = 1;
+}
+
+message StudentIds{
+  repeated string uids = 1;
+}
+
+
+message ClassCids{
+  repeated string cids = 1;
+}
+
+message FileChunk{
+  bytes content = 1; // 文件内容
+  string  filename = 2; // 文件名
+  string  cid = 3; // 课程id
+}
+

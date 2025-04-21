@@ -18,6 +18,7 @@ type Config struct {
 	RpcPort *int    `json:"rpc_port"` // rpc服务端口
 	Host    *string `json:"host"`     // 服务器地址
 	Name    *string `json:"name"`     // 服务器名称
+	TmpDir  *string `json:"tmp_dir"`
 
 	Redis *Redis `json:"redis"`
 	S3    *S3    `json:"s3"`
@@ -56,6 +57,7 @@ func LoadConfigFromEtcd() error {
 		logx.GetLogger("study").Errorf("LoadConfigFromEtcd|client.Get err:%v", err)
 		return err
 	}
+
 	err = json.Unmarshal(cfg.Kvs[0].Value, &GloableConfig)
 	if nil != err {
 		logx.GetLogger("study").Errorf("LoadConfigFromEtcd|json.Unmarshal err:%v", err)
@@ -97,6 +99,5 @@ func RefreshEtcdConfig(path string) error {
 		return err
 	}
 
-	//logx.GetLogger("study").Infof("RefreshEtcdConfig|SUCC|GloableConfig|%v", console.ToStringWithoutError(GloableConfig))
 	return nil
 }

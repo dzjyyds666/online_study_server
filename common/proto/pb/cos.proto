@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = ".;proto";
+
+service Cos{
+  rpc DeleteObject(DeleteObjectRequest) returns (CosCommonResponse);
+  rpc CopyObject(CopyObjectRequest) returns(CopyObjectResponse);
+  rpc UploadClassCover(stream UploadClassCoverReq) returns(UploadClassCoverResp);
+  rpc AddVideoToLambdaQueue(VideoInfo) returns(CosCommonResponse);
+  rpc GetFileInfo(ResourceInfo) returns(ResourceInfo);
+  rpc DeleteTaskImage(ImageIds) returns(CosCommonResponse);
+}
+
+message ImageIds{
+  repeated string fids = 1;
+}
+
+message ResourceInfo{
+  string fid = 1;
+  string fileName = 2;
+  string fileType = 3;
+  int64 fileSize = 4;
+}
+
+message VideoInfo{
+  string  fid = 1;
+}
+
+message UploadClassCoverReq{
+  bytes content = 1;
+  string fileName = 2;
+  string fileType = 3;
+  int64 fileSize = 4;
+  string directoryId = 5;
+  string md5 = 6;
+}
+
+message UploadClassCoverResp{
+  string fid = 1;
+}
+
+message CopyObjectRequest{
+  string fid = 1;
+}
+
+message CopyObjectResponse {
+  string newFid = 1;
+}
+
+message DeleteObjectRequest {
+  repeated string fids = 1;
+}
+
+message CosCommonResponse {
+  bool success = 1;
+}
