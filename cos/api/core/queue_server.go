@@ -43,11 +43,11 @@ func NewLambdaQueueServer(ctx context.Context, hcli *http.Client, server *CosFil
 }
 
 func (lqs *LambdaQueueServer) Start(ctx context.Context) {
-	err := lqs.WatchQueue(ctx, buildVideoLambdaQueueKey())
-	if err != nil {
-		logx.GetLogger("study").Errorf("LambdaQueueServer|Start|WatchQueue Error|%v", err)
-		return
-	}
+	//err := lqs.WatchQueue(ctx, buildVideoLambdaQueueKey())
+	//if err != nil {
+	//	logx.GetLogger("study").Errorf("LambdaQueueServer|Start|WatchQueue Error|%v", err)
+	//	return
+	//}
 }
 
 func (lqs *LambdaQueueServer) WatchQueue(ctx context.Context, queueName string) error {
@@ -88,9 +88,8 @@ func (lqs *LambdaQueueServer) FormatVideo(ctx context.Context, fid string) error
 		logx.GetLogger("study").Errorf("LambdaQueueServer|FormatVideo|QueryCosFile Error|%v|%s", err, common.ToStringWithoutError(file))
 		return err
 	}
-	objectKey := file.MergeFilePath()
 	// 从客户端中拉取下来文件
-	r, err := lqs.cosServ.GetFile(ctx, lqs.bucket, objectKey)
+	r, err := lqs.cosServ.GetFile(ctx, lqs.bucket, file)
 	if err != nil {
 		logx.GetLogger("study").Errorf("LambdaQueueServer|FormatVideo|GetFile Error|%v|%s", err, common.ToStringWithoutError(file))
 		return err
