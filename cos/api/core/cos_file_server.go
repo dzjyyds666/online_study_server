@@ -376,7 +376,8 @@ func (cfs *CosFileServer) SingleUpload(ctx context.Context, bucket, fid string, 
 	}
 	if strings.Contains(*info.FileType, "video") {
 		go func() {
-			err = cfs.VideoProcessing(ctx, fid)
+			ctx1 := context.Background()
+			err = cfs.VideoProcessing(ctx1, fid)
 			if err != nil {
 				logx.GetLogger("study").Errorf("CompleteMultUpload|VideoProcessing Error|%v", err)
 			}
@@ -424,7 +425,8 @@ func (cfs *CosFileServer) CompleteMultUpload(ctx context.Context, bucket, fid st
 	logx.GetLogger("study").Infof("CompleteMultUpload|CompleteMultipartUpload Success")
 	if strings.Contains(*info.FileType, "video") {
 		go func() {
-			err = cfs.VideoProcessing(ctx, fid)
+			ctx1 := context.Background()
+			err = cfs.VideoProcessing(ctx1, fid)
 			if err != nil {
 				logx.GetLogger("study").Errorf("CompleteMultUpload|VideoProcessing Error|%v", err)
 			}
@@ -640,12 +642,12 @@ func (cfs *CosFileServer) VideoProcessing(ctx context.Context, fid string) error
 	}
 
 	// 调用 FFmpeg 进行转码
-	err = transcodeToHLS(filePath, "/tmp/ffmpeg/"+fid, resolutions)
+	err = cfs.transcodeToHLS(filePath, "/tmp/ffmpeg/"+fid, resolutions)
 	if err != nil {
 		logx.GetLogger("study").Errorf("VideoProcessing|TranscodeToHLS Error|%v", err)
 		return err
 	}
-	err = cfs.uploadHlsVideo(ctx, "/tmp/ffmpeg/"+fid+"/", resolutions, fid)
+	err = cfs.uploadHlsVideo(ctx, "/tmp/ffmpeg/"+fid+"/", resolutions, cosFile)
 	if err != nil {
 		logx.GetLogger("study").Errorf("VideoProcessing|uploadHlsVideo Error|%v", err)
 		return err
@@ -654,7 +656,7 @@ func (cfs *CosFileServer) VideoProcessing(ctx context.Context, fid string) error
 	return nil
 }
 
-func transcodeToHLS(inputPath, outputDir string, resolutions map[string]string) error {
+func (cfs *CosFileServer) transcodeToHLS(inputPath, outputDir string, resolutions map[string]string) error {
 	for res, _ := range resolutions {
 		err := createDirIfAbsent(outputDir + "/" + res)
 		if err != nil {
@@ -682,10 +684,43 @@ func transcodeToHLS(inputPath, outputDir string, resolutions map[string]string) 
 		}
 	}
 
+	//  生成 master.m3u8 播放列表
+	masterPath := filepath.Join(outputDir, "master.m3u8")
+	masterFile, err := os.Create(masterPath)
+	if err != nil {
+		return fmt.Errorf("无法创建 master.m3u8: %w", err)
+	}
+	defer masterFile.Close()
+
+	masterFile.WriteString("#EXTM3U\n\n")
+	for key, res := range resolutions {
+		bandwidth := estimateBandwidth(res) // 自定义函数估算带宽
+		masterFile.WriteString(fmt.Sprintf("#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%s\n", bandwidth, res))
+		masterFile.WriteString(fmt.Sprintf("%s/%s.m3u8\n\n", key, key))
+	}
+
 	return nil
 }
 
-func (cfs *CosFileServer) uploadHlsVideo(ctx context.Context, rootDir string, resolutions map[string]string, fid string) error {
+func estimateBandwidth(res string) int {
+	switch res {
+	case "1920x1080":
+		return 5000000
+	case "1280x720":
+		return 3000000
+	case "854x480":
+		return 1000000
+	case "640x360":
+		return 600000
+	case "426x240":
+		return 300000
+	default:
+		return 1500000 // 默认值
+	}
+}
+
+func (cfs *CosFileServer) uploadHlsVideo(ctx context.Context, rootDir string, resolutions map[string]string, info *CosFile) error {
+	// todo 上传文件的是否上传视频的master.m3u8文件
 	for key, _ := range resolutions {
 		filePath := filepath.Join(rootDir, key)
 		filepath.WalkDir(filePath, func(path string, d fs.DirEntry, err error) error {
@@ -699,10 +734,25 @@ func (cfs *CosFileServer) uploadHlsVideo(ctx context.Context, rootDir string, re
 					logx.GetLogger("study").Errorf("createDirIfAbsent|OpenFile|%v", err)
 					return err
 				}
+				defer file.Close()
 				// 构建key上传文件
+				objectKey := filepath.Join(*info.DirectoryId, *info.Fid, key, filepath.Base(file.Name()))
+				logx.GetLogger("study").Infof("createDirIfAbsent|createDirIfAbsent|%s", objectKey)
+				// 调用s3上传
+				_, err = cfs.s3Client.PutObject(ctx, &s3.PutObjectInput{
+					Bucket: aws.String(cfs.bucket),
+					Key:    aws.String(objectKey),
+					Body:   file,
+				})
+				if err != nil {
+					logx.GetLogger("study").Errorf("createDirIfAbsent|PutObject|%v", err)
+					return err
+				}
 			}
+			return nil
 		})
 	}
+	return nil
 }
 
 func createDirIfAbsent(dir string) error {
