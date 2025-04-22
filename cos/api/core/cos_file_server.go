@@ -523,14 +523,14 @@ func (cfs *CosFileServer) GetFile(ctx context.Context, bucket string, info *CosF
 	// 判断文件的类型
 	if strings.Contains(*info.FileType, "video") {
 		// fixme 先判断视频的m3u8文件是否存在
-		object, err := cfs.s3Client.HeadObject(ctx, &s3.HeadObjectInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(info.MergeVideoPath()),
-		})
-		if err != nil {
-			logx.GetLogger("study").Errorf("GetFile|HeadObject Error|%v", err)
-			return nil, err
-		}
+		//object, err := cfs.s3Client.HeadObject(ctx, &s3.HeadObjectInput{
+		//	Bucket: aws.String(bucket),
+		//	Key:    aws.String(info.MergeVideoPath()),
+		//})
+		//if err != nil {
+		//	logx.GetLogger("study").Errorf("GetFile|HeadObject Error|%v", err)
+		//	return nil, err
+		//}
 
 	}
 
