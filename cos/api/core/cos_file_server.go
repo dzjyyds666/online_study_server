@@ -519,20 +519,27 @@ func (cfs *CosFileServer) UploadClassCover(ctx context.Context, filename, dirId,
 //	return cfs.VideoProcessing(ctx, fid)
 //}
 
-func (cfs *CosFileServer) GetFile(ctx context.Context, bucket string, info *CosFile) (io.ReadCloser, error) {
+func (cfs *CosFileServer) GetFile(ctx context.Context, bucket string, info *CosFile) (io.ReadCloser, string, error) {
 	// 判断文件的类型
+	key := info.MergeFilePath()
+	fileType := *info.FileType
 	if strings.Contains(*info.FileType, "video") {
-		// fixme 先判断视频的m3u8文件是否存在
-		//object, err := cfs.s3Client.HeadObject(ctx, &s3.HeadObjectInput{
-		//	Bucket: aws.String(bucket),
-		//	Key:    aws.String(info.MergeVideoPath()),
-		//})
-		//if err != nil {
-		//	logx.GetLogger("study").Errorf("GetFile|HeadObject Error|%v", err)
-		//	return nil, err
-		//}
-
+		//  先判断视频的m3u8文件是否存在
+		object, _ := cfs.s3Client.HeadObject(ctx, &s3.HeadObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(info.MergeVideoPath()),
+		})
+		// 如果 object 为 nil，也可以认为文件不存在
+		if object == nil {
+			logx.GetLogger("study").Warnf("GetFile|HeadObject|File Not Found|Object is nil")
+		} else {
+			// 存在，使用m3u8文件
+			key = info.MergeVideoPath()
+			fileType = "application/x-mpegURL"
+		}
 	}
+
+	logx.GetLogger("study").Errorf("GetFile|GetObject|%s", key)
 
 	object, err := cfs.s3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
@@ -540,9 +547,9 @@ func (cfs *CosFileServer) GetFile(ctx context.Context, bucket string, info *CosF
 	})
 	if err != nil {
 		logx.GetLogger("study").Errorf("GetFile|GetObject Error|%v", err)
-		return nil, err
+		return nil, "", err
 	}
-	return object.Body, nil
+	return object.Body, fileType, nil
 }
 
 func (cfs *CosFileServer) CheckFile(ctx context.Context, fid string) (io.ReadCloser, *string, error) {
@@ -551,12 +558,12 @@ func (cfs *CosFileServer) CheckFile(ctx context.Context, fid string) (io.ReadClo
 		logx.GetLogger("study").Errorf("CheckFile|QueryCosFile Error|%v", err)
 		return nil, nil, err
 	}
-	r, err := cfs.GetFile(ctx, cfs.bucket, info)
+	r, filetype, err := cfs.GetFile(ctx, cfs.bucket, file)
 	if err != nil {
 		logx.GetLogger("study").Errorf("CheckFile|GetFile Error|%v", err)
 		return nil, nil, err
 	}
-	return r, file.FileType, nil
+	return r, &filetype, nil
 }
 
 func (cfs *CosFileServer) DeleteFile(ctx context.Context, fid string) error {
@@ -624,7 +631,7 @@ func (cfs *CosFileServer) VideoProcessing(ctx context.Context, fid string) error
 	}
 
 	// 获取文件流
-	file, err := cfs.GetFile(ctx, cfs.bucket, cosFile)
+	file, _, err := cfs.GetFile(ctx, cfs.bucket, cosFile)
 	if err != nil {
 		logx.GetLogger("study").Errorf("VideoProcessing|GetFile Error|%v", err)
 		return err
@@ -656,7 +663,7 @@ func (cfs *CosFileServer) VideoProcessing(ctx context.Context, fid string) error
 	}
 
 	// 调用 FFmpeg 进行转码
-	err = cfs.transcodeToHLS(filePath, "/tmp/ffmpeg/"+fid, resolutions)
+	err = cfs.transcodeToHLS(filePath, "/tmp/ffmpeg/"+fid, resolutions, *cosFile.DirectoryId, *cosFile.Fid)
 	if err != nil {
 		logx.GetLogger("study").Errorf("VideoProcessing|TranscodeToHLS Error|%v", err)
 		return err
@@ -670,7 +677,7 @@ func (cfs *CosFileServer) VideoProcessing(ctx context.Context, fid string) error
 	return nil
 }
 
-func (cfs *CosFileServer) transcodeToHLS(inputPath, outputDir string, resolutions map[string]string) error {
+func (cfs *CosFileServer) transcodeToHLS(inputPath, outputDir string, resolutions map[string]string, dirid, fid string) error {
 	for res, _ := range resolutions {
 		err := createDirIfAbsent(outputDir + "/" + res)
 		if err != nil {
@@ -710,9 +717,9 @@ func (cfs *CosFileServer) transcodeToHLS(inputPath, outputDir string, resolution
 	for key, res := range resolutions {
 		bandwidth := estimateBandwidth(res) // 自定义函数估算带宽
 		masterFile.WriteString(fmt.Sprintf("#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%s\n", bandwidth, res))
-		masterFile.WriteString(fmt.Sprintf("%s/%s.m3u8\n\n", key, key))
+		// fixme 需要替换为服务器地址
+		masterFile.WriteString(fmt.Sprintf("%s/%s/%s/%s/%s/%s.m3u8\n\n", "http://127.0.0.1:9000", cfs.bucket, dirid, fid, key, key))
 	}
-
 	return nil
 }
 

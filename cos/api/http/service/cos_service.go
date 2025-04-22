@@ -343,5 +343,10 @@ func (cs *CosService) HandleGetFile(ctx echo.Context) error {
 			"msg": "GetFile Error",
 		})
 	}
+	if ctx.Request().Method == "HEAD" {
+		logx.GetLogger("study").Errorf("HandleGetFile|HEAD|%s", *fileType)
+		ctx.Response().Header().Set("Content-Type", *fileType)
+		return ctx.NoContent(http.StatusOK)
+	}
 	return ctx.Stream(http.StatusOK, *fileType, r)
 }
