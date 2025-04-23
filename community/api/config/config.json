@@ -10,22 +10,10 @@
     "password": "rootroot",
     "database": "learnX"
   },
-  "redis": {
-    "host": "127.0.0.1",
-    "port": 6379,
-    "username": "root",
-    "password": "",
-    "db": 4
-  },
+  "redis": "redis://root@127.0.0.1:6379/4",
   "jwt": {
     "secret_key": "aaron519",
     "expire": 259200
   },
-  "mongo": {
-    "host": "127.0.0.1",
-    "port": 27017,
-    "username": "root",
-    "password": "rootroot",
-    "database": "learnX"
-  }
+  "mongo": "mongodb://root:rootroot@127.0.0.1:27017/learnX?authSource=admin"
 }

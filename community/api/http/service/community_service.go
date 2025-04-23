@@ -1,18 +1,18 @@
 package communityService
 
 import (
+	"community/api/core"
 	"context"
-	"github.com/redis/go-redis/v9"
 )
 
 type CommunityService struct {
-	ctx         context.Context
-	communityDb *redis.Client
+	ctx       context.Context
+	plateServ *core.PlateServer
 }
 
-func NewCommunityService(ctx context.Context, dsClient *redis.Client) *CommunityService {
+func NewCommunityService(ctx context.Context, plate *core.PlateServer) *CommunityService {
 	return &CommunityService{
-		ctx:         ctx,
-		communityDb: dsClient,
+		ctx:       ctx,
+		plateServ: plate,
 	}
 }

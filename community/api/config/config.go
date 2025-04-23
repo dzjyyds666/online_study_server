@@ -11,47 +11,31 @@ import (
 )
 
 // 全局配置
-var GloableConfig Config
+var GloableConfig *Config
 
 type Config struct {
-	Port    *int    `json:"port"`     // http服务端口
-	RpcPort *int    `json:"rpc_port"` // rpc服务端口
-	Host    *string `json:"host"`     // 服务器地址
-	Name    *string `json:"name"`     // 服务器名称
+	Port    int    `json:"port"`     // http服务端口
+	RpcPort int    `json:"rpc_port"` // rpc服务端口
+	Host    string `json:"host"`     // 服务器地址
+	Name    string `json:"name"`     // 服务器名称
 
-	Mysql Mysql `json:"mysql"`
-	Redis Redis `json:"redis"`
-	Jwt   Jwt   `json:"jwt"`
-	Mongo Mongo `json:"mongo"`
+	Mysql Mysql  `json:"mysql"`
+	Redis string `json:"redis"`
+	Jwt   Jwt    `json:"jwt"`
+	Mongo string `json:"mongo"`
 }
 
 type Mysql struct {
-	Host     *string `json:"host"`
-	Port     *int    `json:"port"`
-	Username *string `json:"username"`
-	Password *string `json:"password"`
-	Database *string `json:"database"`
-}
-
-type Redis struct {
-	Host     *string `json:"host"`
-	Port     *int    `json:"port"`
-	Username *string `json:"username"`
-	Password *string `json:"password"`
-	DB       *int    `json:"db"`
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Database string `json:"database"`
 }
 
 type Jwt struct {
-	Secretkey *string `json:"secret_key"`
-	Expire    *int    `json:"expire"`
-}
-
-type Mongo struct {
-	Host     *string `json:"host"`
-	Port     *int    `json:"port"`
-	Username *string `json:"username"`
-	Password *string `json:"password"`
-	DB       *string `json:"database"`
+	Secretkey string `json:"secret_key"`
+	Expire    int    `json:"expire"`
 }
 
 func LoadConfigFromEtcd() error {

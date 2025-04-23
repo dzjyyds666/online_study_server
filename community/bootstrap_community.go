@@ -2,20 +2,22 @@ package main
 
 import (
 	"community/api/config"
+	"community/api/core"
 	"community/api/http"
 	"community/api/rpc"
 	"context"
 	"flag"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 )
 
 func main() {
-	var configPath = flag.String("c", "/Users/zhijundu/code/GolandProjects/online_study_server/class/api/config/config.json", "config.json file path")
+	var configPath = flag.String("c", "./api/config/config.json", "config.json file path")
 	//var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\class\\api\\config\\config.json", "config.json file path")
 	err := config.RefreshEtcdConfig(*configPath)
 	if err != nil {
@@ -28,18 +30,26 @@ func main() {
 		panic(err)
 	}
 
-	// 连接redis
-	dsClient := redis.NewClient(&redis.Options{
-		Addr:     *config.GloableConfig.Redis.Host + ":" + strconv.Itoa(*config.GloableConfig.Redis.Port),
-		Username: *config.GloableConfig.Redis.Username,
-		Password: *config.GloableConfig.Redis.Password,
-		DB:       *config.GloableConfig.Redis.DB,
-	})
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go http.StartCommunityHttpServer(ctx, dsClient)
+	opt, err := redis.ParseURL(config.GloableConfig.Redis)
+	if err != nil {
+		panic(err)
+	}
+
+	// 连接redis
+	dsClient := redis.NewClient(opt)
+
+	// mongoDb
+	mgDb, err := mongo.Connect(ctx, options.Client().ApplyURI(config.GloableConfig.Mongo))
+	if err != nil {
+		panic(err)
+	}
+
+	plateServer := core.NewPlateServer(ctx, dsClient, mgDb)
+
+	go http.StartCommunityHttpServer(ctx, plateServer)
 
 	go rpc.StartCommunityRpcService(ctx)
 
