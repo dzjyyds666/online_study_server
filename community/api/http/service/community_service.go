@@ -2,6 +2,7 @@ package communityService
 
 import (
 	"community/api/core"
+	"community/api/middleware"
 	"context"
 	"encoding/json"
 	"github.com/dzjyyds666/opensource/httpx"
@@ -92,11 +93,76 @@ func (cs *CommunityService) HandlePublishArticle(ctx echo.Context) error {
 			"msg": "Params Invalid",
 		})
 	}
-
 	if err := cs.articleServ.CreateArticle(ctx.Request().Context(), &article); err != nil {
 		lg.Errorf("HandlePublishArticle|CreateArticle err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "CreateArticle Error",
 		})
 	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, article)
+}
+
+func (cs *CommunityService) HandleUpdateArticle(ctx echo.Context) error {
+	decoder := json.NewDecoder(ctx.Request().Body)
+	var article core.Article
+	if err := decoder.Decode(&article); err != nil {
+		lg.Errorf("HandleUpdateArticle|Decode err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+	if len(article.Status) > 0 {
+		// 判断当前的用户是不是管理员
+		role := ctx.Get("role").(int)
+		if role != middleware.UserRole.Admin {
+			return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpForbidden, echo.Map{
+				"msg": "No Permission",
+			})
+		}
+	}
+	if err := cs.articleServ.UpdateArticle(ctx.Request().Context(), &article); err != nil {
+		lg.Errorf("HandleUpdateArticle|UpdateArticle err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "UpdateArticle Error",
+		})
+	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, article)
+}
+
+func (cs *CommunityService) HandleDeleteArticle(ctx echo.Context) error {
+	aid := ctx.Param("aid")
+	if len(aid) <= 0 {
+		lg.Errorf("HandleDeleteArticle|Param Invalid")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+	if err := cs.articleServ.DeleteArticle(ctx.Request().Context(), aid); err != nil {
+		lg.Errorf("HandleDeleteArticle|DeleteArticle err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "DeleteArticle Error",
+		})
+	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"msg": "DeleteArticle Succ",
+	})
+}
+
+func (cs *CommunityService) HandleListArticle(ctx echo.Context) error {
+	var list core.ListArticle
+	decoder := json.NewDecoder(ctx.Request().Body)
+	if err := decoder.Decode(&list); err != nil {
+		lg.Errorf("HandleListArticle|Decode err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	if err := cs.articleServ.ListArticle(ctx.Request().Context(), &list, ctx.Get("role").(int)); err != nil {
+		lg.Errorf("HandleListArticle|ListArticle err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "ListArticle Error",
+		})
+	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }

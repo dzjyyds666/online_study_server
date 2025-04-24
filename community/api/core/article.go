@@ -2,42 +2,53 @@ package core
 
 import (
 	"fmt"
-	"net/url"
 )
-
-type tag string
-
-// 特殊前缀
-func (t tag) S() string {
-	return "learnX-" + string(t)
-}
-
-var Tags = struct {
-}{}
 
 const (
-	RedisPlateArticleListKey      = "class:plate:%s:article:list"       // 板块文章列表
-	RedisPlateArticleAuditListKey = "class:plate:%s:article:audit:list" // 待审核列表
+	RedisUserArticleListKey  = "user:%s:article:list"
+	RedisArticleAuditListKey = "article:audit:list"
+	RedisPlateArticleListKey = "plate:%s:article:list"
 )
 
-func buildPlateArticleAuditListKey(plateId string) string {
-	return fmt.Sprintf(RedisPlateArticleAuditListKey, plateId)
+func buildArticleAuditListKey() string {
+	return RedisArticleAuditListKey
+}
+
+func buildUserArticleListKey(userId string) string {
+	return fmt.Sprintf(RedisUserArticleListKey, userId)
 }
 
 func buildPlateArticleListKey(plateId string) string {
 	return fmt.Sprintf(RedisPlateArticleListKey, plateId)
 }
 
+type Status string
+
+var ArticleStatuses = struct {
+	Published Status
+	Audit     Status
+	Illegal   Status
+}{
+	Published: "published", // 已发布
+	Audit:     "audit",     // 审核中
+	Illegal:   "illegal",   // 违规
+}
+
 type Article struct {
-	Id          string     `json:"id" bson:"_id"`
-	Title       string     `json:"title" bson:"title"`
-	Content     string     `json:"content" bson:"content"`
-	Attachments []string   `bson:"attachments" json:"attachments"`
-	Author      string     `json:"author" bson:"author"`
-	CreateTs    int64      `json:"create" bson:"create_ts"`
-	UpdateTs    int64      `json:"update" bson:"update_ts"`
-	PlateId     string     `json:"plate_id" bson:"plate_id"`
-	Tags        url.Values `json:"tags" bson:"tags"`
+	Id          string   `json:"id" bson:"_id"`
+	Title       string   `json:"title" bson:"title"`
+	Content     string   `json:"content" bson:"content"`
+	Attachments []string `bson:"attachments" json:"attachments"`
+	Author      string   `json:"author" bson:"author"`
+	CreateTs    int64    `json:"create" bson:"create_ts"`
+	UpdateTs    int64    `json:"update" bson:"update_ts"`
+	PlateId     string   `json:"plate_id" bson:"plate_id"`
+	Status      Status   `json:"status" bson:"status"`
+}
+
+func (a *Article) WithStatus(status Status) *Article {
+	a.Status = status
+	return a
 }
 
 func (a *Article) WithId(id string) *Article {
@@ -78,4 +89,13 @@ func (a *Article) WithUpdateTs(ts int64) *Article {
 func (a *Article) WithPlateId(plateId string) *Article {
 	a.PlateId = plateId
 	return a
+}
+
+type ListArticle struct {
+	List     []*Article `json:"list"`
+	PageSize int64      `json:"page_size"`
+	PageNum  int64      `json:"page_num"`
+	PlateId  string     `json:"plate_id,omitempty"`
+	Uid      string     `json:"uid,omitempty"`
+	Audit    string     `json:"audit,omitempty"`
 }
