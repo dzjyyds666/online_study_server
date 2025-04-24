@@ -9,9 +9,9 @@ import (
 	"github.com/labstack/echo"
 )
 
-func StartCommunityHttpServer(ctx context.Context, plate *core.PlateServer) {
+func StartCommunityHttpServer(ctx context.Context, plate *core.PlateServer, article *core.ArticleServer) {
 	e := echo.New()
-	communityServer := communityService.NewCommunityService(ctx, plate)
+	communityServer := communityService.NewCommunityService(ctx, plate, article)
 	communityService.RegisterRouter(e, communityServer)
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%v", config.GloableConfig.Port)))
 	return

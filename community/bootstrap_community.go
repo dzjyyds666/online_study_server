@@ -37,19 +37,19 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	// 连接redis
 	dsClient := redis.NewClient(opt)
-
 	// mongoDb
 	mgDb, err := mongo.Connect(ctx, options.Client().ApplyURI(config.GloableConfig.Mongo))
 	if err != nil {
 		panic(err)
 	}
 
+	articleServer := core.NewArticleServer(ctx, dsClient, mgDb)
+
 	plateServer := core.NewPlateServer(ctx, dsClient, mgDb)
 
-	go http.StartCommunityHttpServer(ctx, plateServer)
+	go http.StartCommunityHttpServer(ctx, plateServer, articleServer)
 
 	go rpc.StartCommunityRpcService(ctx)
 

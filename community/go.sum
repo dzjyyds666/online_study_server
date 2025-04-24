@@ -15,6 +15,8 @@ github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumC
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/rVNCu3HqELle0jiPLLBs70cWOduZpkS1E78=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f/go.mod h1:cuUVRXasLTGF7a8hSLbxyZXjz+1KgoB3wDUb6vlszIc=
+github.com/dzjyyds666/opensource/common v0.0.0-20250329121256-8ac52f6728de h1:loxgURdnucHsBtIdy0XBJUy4liZ55GIoErhaPxYeXFk=
+github.com/dzjyyds666/opensource/common v0.0.0-20250329121256-8ac52f6728de/go.mod h1:36Y5X6mk3u1GcVDJCbSAfDGFWcwr9RNqefDoBGwUqfE=
 github.com/dzjyyds666/opensource/httpx v0.0.0-20250329121256-8ac52f6728de h1:7+Eocnv2WGe5JUKR/mfsbdGtYONJYKTEnWMRPL84BuY=
 github.com/dzjyyds666/opensource/httpx v0.0.0-20250329121256-8ac52f6728de/go.mod h1:peuPScjLUkWC4BHCtri5jEYWEib8vVI97AlwKAK6w4Y=
 github.com/dzjyyds666/opensource/logx v0.0.0-20250329121256-8ac52f6728de h1:9XElh7GUztm/ZVmJO/ASs11GlZvuUrqK66pykjuqo4U=

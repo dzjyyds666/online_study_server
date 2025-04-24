@@ -3,6 +3,7 @@ module community
 go 1.23.3
 
 require (
+	github.com/dzjyyds666/opensource/common v0.0.0-20250329121256-8ac52f6728de
 	github.com/dzjyyds666/opensource/httpx v0.0.0-20250329121256-8ac52f6728de
 	github.com/dzjyyds666/opensource/logx v0.0.0-20250329121256-8ac52f6728de
 	github.com/dzjyyds666/opensource/sdk v0.0.0-20250329121256-8ac52f6728de

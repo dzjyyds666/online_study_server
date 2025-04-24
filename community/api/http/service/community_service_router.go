@@ -3,7 +3,6 @@ package communityService
 import (
 	"community/api/middleware"
 	"encoding/json"
-	"github.com/dzjyyds666/opensource/httpx"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
 	"os"
@@ -13,9 +12,9 @@ import (
 
 func RegisterRouter(e *echo.Echo, cs *CommunityService) {
 	g := e.Group("/v1/community")
-	g.Add("GET", "/list", func(ctx echo.Context) error {
-		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, nil)
-	}, middleware.AuthMw(middleware.UserRole.Student))
+	g.Add("POST", "/plate/create", cs.HandleCreatePlate, middleware.AuthMw(middleware.UserRole.Admin))
+	g.Add("POST", "/plate/update", cs.HandleUpdatePlate, middleware.AuthMw(middleware.UserRole.Admin))
+	g.Add("GET", "/plate/list", cs.HandleListPlate, middleware.AuthMw(middleware.UserRole.Student))
 
 	RecordRouteToFile(FilterRouter(e.Routes()))
 }

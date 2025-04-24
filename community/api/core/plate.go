@@ -1,5 +1,22 @@
 package core
 
+import (
+	"encoding/json"
+	"errors"
+)
+
+const (
+	RedisPlateListKey = "class:plate:list" // 所有的板块的列表
+)
+
+func buildPlateListKey() string {
+	return RedisPlateListKey
+}
+
+var (
+	ErrNoMatchData = errors.New("no match data")
+)
+
 // 板块，社区中以板块为主要组成单位，板块中包含文章，文章中包含评论
 type Plate struct {
 	Id              string `json:"id,omitempty" bson:"_id,omitempty"`
@@ -38,4 +55,9 @@ func (p *Plate) WithArticleNumber(articleNumber int64) *Plate {
 func (p *Plate) WithSubscribeNumber(subscribeNumber int64) *Plate {
 	p.SubscribeNumber = subscribeNumber
 	return p
+}
+
+func (p *Plate) Marshal() (string, error) {
+	marshal, err := json.Marshal(p)
+	return string(marshal), err
 }
