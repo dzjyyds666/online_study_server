@@ -49,7 +49,9 @@ func main() {
 
 	plateServer := core.NewPlateServer(ctx, dsClient, mgDb)
 
-	go http.StartCommunityHttpServer(ctx, plateServer, articleServer)
+	commentServer := core.NewCommentServer(ctx, dsClient, mgDb)
+
+	go http.StartCommunityHttpServer(ctx, plateServer, articleServer, commentServer)
 
 	go rpc.StartCommunityRpcService(ctx)
 

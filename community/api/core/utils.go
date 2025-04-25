@@ -22,3 +22,7 @@ func newPlateId(length int) string {
 func newArticleId(length int) string {
 	return "AI_" + GenerateRandomString(length)
 }
+
+func newCommentId(length int) string {
+	return "CMI_" + GenerateRandomString(length)
+}

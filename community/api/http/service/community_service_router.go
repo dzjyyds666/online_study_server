@@ -19,6 +19,9 @@ func RegisterRouter(e *echo.Echo, cs *CommunityService) {
 	g.Add("POST", "/article/update", cs.HandleUpdateArticle, middleware.AuthMw(middleware.UserRole.Admin))
 	g.Add("GET", "/article/delete/:aid", cs.HandleDeleteArticle, middleware.AuthMw(middleware.UserRole.Student))
 	g.Add("GET", "/article/list", cs.HandleListArticle, middleware.AuthMw(middleware.UserRole.Student))
+
+	g.Add("POST", "/comment/create", cs.HandleCreateComment, middleware.AuthMw(middleware.UserRole.Student))
+
 	RecordRouteToFile(FilterRouter(e.Routes()))
 }
 

@@ -16,13 +16,15 @@ type CommunityService struct {
 	ctx         context.Context
 	plateServ   *core.PlateServer
 	articleServ *core.ArticleServer
+	commentServ *core.CommentServer
 }
 
-func NewCommunityService(ctx context.Context, plate *core.PlateServer, article *core.ArticleServer) *CommunityService {
+func NewCommunityService(ctx context.Context, plate *core.PlateServer, article *core.ArticleServer, comment *core.CommentServer) *CommunityService {
 	return &CommunityService{
 		ctx:         ctx,
 		plateServ:   plate,
 		articleServ: article,
+		commentServ: comment,
 	}
 }
 
@@ -165,4 +167,24 @@ func (cs *CommunityService) HandleListArticle(ctx echo.Context) error {
 		})
 	}
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
+}
+
+func (cs *CommunityService) HandleCreateComment(ctx echo.Context) error {
+	var comment core.Comment
+	decoder := json.NewDecoder(ctx.Request().Body)
+	if err := decoder.Decode(&comment); err != nil {
+		lg.Errorf("HandleCreateComment|Decode err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	if err := cs.commentServ.CreateComment(ctx.Request().Context(), &comment); err != nil {
+		lg.Errorf("HandleCreateComment|CreateComment err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "CreateComment Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, comment)
 }
