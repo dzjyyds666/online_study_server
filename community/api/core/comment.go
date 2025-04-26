@@ -72,8 +72,6 @@ func (c *Comment) WithReplies(replies []string) *Comment {
 
 type ListComment struct {
 	List      []*Comment `json:"list"`
-	PageNum   int64      `json:"page_num"`
-	PageSize  int64      `json:"page_size"`
 	Uid       string     `json:"uid,omitempty"`
 	ArticleId string     `json:"article_id,omitempty"`
 }

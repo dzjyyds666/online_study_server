@@ -96,3 +96,14 @@ func (p *PlateServer) ListPlate(ctx context.Context) ([]*Plate, error) {
 	}
 	return plates, nil
 }
+
+func (p *PlateServer) QueryPlateInfo(ctx context.Context, pid string) (*Plate, error) {
+	var plate Plate
+	err := p.plateMgDb.FindOne(ctx, bson.M{"_id": pid}).Decode(&plate)
+	if err != nil {
+		lg.Errorf("QueryPlateInfo|FindOne err:%v", err)
+		return nil, err
+	}
+	lg.Infof("QueryPlateInfo|QueryPlateInfoSuccess|%v", common.ToStringWithoutError(&plate))
+	return &plate, nil
+}

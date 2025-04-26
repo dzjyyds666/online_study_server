@@ -52,6 +52,11 @@ func main() {
 		return reverseProxy("http://127.0.0.1:19003")
 	})
 
+	communityGroup := e.Group("/v1/community")
+	communityGroup.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return reverseProxy("http://127.0.0.1:19004")
+	})
+
 	// 监听端口
 	e.Logger.Fatal(e.Start(":19000"))
 }

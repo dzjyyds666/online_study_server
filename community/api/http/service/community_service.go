@@ -188,3 +188,56 @@ func (cs *CommunityService) HandleCreateComment(ctx echo.Context) error {
 
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, comment)
 }
+
+func (cs *CommunityService) HandleListComment(ctx echo.Context) error {
+	var list core.ListComment
+	decoder := json.NewDecoder(ctx.Request().Body)
+	if err := decoder.Decode(&list); err != nil {
+		lg.Errorf("HandleListComment|Decode err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	err := cs.commentServ.GetCommentList(ctx.Request().Context(), &list)
+	if err != nil {
+		lg.Errorf("HandleListComment|GetCommentList err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "GetCommentList Error",
+		})
+	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
+}
+
+func (cs *CommunityService) HandleDeleteComment(ctx echo.Context) error {
+	cmid := ctx.Param("cmid")
+	if len(cmid) <= 0 {
+		lg.Errorf("HandleDeleteComment|Param Invalid")
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	err := cs.commentServ.DeleteComment(ctx.Request().Context(), cmid)
+	if err != nil {
+		lg.Errorf("HandleDeleteComment|DeleteComment err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "DeleteComment Error",
+		})
+	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"msg": "DeleteComment Succ",
+	})
+}
+
+func (cs *CommunityService) HandleGetPlateInfo(ctx echo.Context) error {
+	pid := ctx.Param("pid")
+	info, err := cs.plateServ.QueryPlateInfo(ctx.Request().Context(), pid)
+	if err != nil {
+		lg.Errorf("HandleGetPlateInfo|QueryPlateInfo err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "QueryPlateInfo Error",
+		})
+	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
+}
