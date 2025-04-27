@@ -40,8 +40,8 @@ type Article struct {
 	Content     string   `json:"content" bson:"content"`
 	Attachments []string `bson:"attachments" json:"attachments"`
 	Author      string   `json:"author" bson:"author"`
-	CreateTs    int64    `json:"create" bson:"create_ts"`
-	UpdateTs    int64    `json:"update" bson:"update_ts"`
+	CreateTs    int64    `json:"create_ts" bson:"create_ts"`
+	UpdateTs    int64    `json:"update_ts" bson:"update_ts"`
 	PlateId     string   `json:"plate_id" bson:"plate_id"`
 	Status      Status   `json:"status" bson:"status"`
 }
@@ -92,10 +92,8 @@ func (a *Article) WithPlateId(plateId string) *Article {
 }
 
 type ListArticle struct {
-	List     []*Article `json:"list"`
-	PageSize int64      `json:"page_size"`
-	PageNum  int64      `json:"page_num"`
-	PlateId  string     `json:"plate_id,omitempty"`
-	Uid      string     `json:"uid,omitempty"`
-	Audit    string     `json:"audit,omitempty"`
+	List    []*Article `json:"list"`
+	PlateId string     `json:"plate_id,omitempty"`
+	Uid     string     `json:"uid,omitempty"`
+	Audit   bool       `json:"audit,omitempty"`
 }

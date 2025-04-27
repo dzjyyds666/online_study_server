@@ -6,8 +6,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"math"
-	"strconv"
 	"time"
 )
 
@@ -117,17 +115,11 @@ func (as *ArticleServer) DeleteArticle(ctx context.Context, articleId string) er
 	return nil
 }
 
-func (as *ArticleServer) ListArticle(ctx context.Context, list *ListArticle, role int) error {
+func (as *ArticleServer) ListArticle(ctx context.Context, list *ListArticle) error {
 	articleIds := make([]string, 0)
-	zrangeBy := &redis.ZRangeBy{
-		Min:    "0",
-		Max:    strconv.FormatInt(math.MaxInt64, 10),
-		Offset: (list.PageNum - 1) * list.PageSize,
-		Count:  list.PageSize,
-	}
 	if len(list.PlateId) > 0 {
 		// 查询板块下的文章
-		result, err := as.rsDb.ZRangeByScore(ctx, buildPlateArticleListKey(list.PlateId), zrangeBy).Result()
+		result, err := as.rsDb.ZRange(ctx, buildPlateArticleListKey(list.PlateId), 0, -1).Result()
 		if err != nil {
 			lg.Errorf("ListArticle|ZRangeByScore Error|%v", err)
 			return err
@@ -135,15 +127,15 @@ func (as *ArticleServer) ListArticle(ctx context.Context, list *ListArticle, rol
 		articleIds = result
 	} else if len(list.Uid) > 0 {
 		// 查询用户下的文章
-		result, err := as.rsDb.ZRangeByScore(ctx, buildUserArticleListKey(list.Uid), zrangeBy).Result()
+		result, err := as.rsDb.ZRange(ctx, buildUserArticleListKey(list.Uid), 0, -1).Result()
 		if err != nil {
 			lg.Errorf("ListArticle|ZRangeByScore Error|%v", err)
 			return err
 		}
 		articleIds = result
-	} else {
+	} else if list.Audit == true {
 		// 查询审核中的文章
-		result, err := as.rsDb.ZRangeByScore(ctx, buildArticleAuditListKey(), zrangeBy).Result()
+		result, err := as.rsDb.ZRange(ctx, buildArticleAuditListKey(), 0, -1).Result()
 		if err != nil {
 			lg.Errorf("ListArticle|ZRangeByScore Error|%v", err)
 			return err

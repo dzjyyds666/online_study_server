@@ -160,7 +160,7 @@ func (cs *CommunityService) HandleListArticle(ctx echo.Context) error {
 		})
 	}
 
-	if err := cs.articleServ.ListArticle(ctx.Request().Context(), &list, ctx.Get("role").(int)); err != nil {
+	if err := cs.articleServ.ListArticle(ctx.Request().Context(), &list); err != nil {
 		lg.Errorf("HandleListArticle|ListArticle err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "ListArticle Error",
