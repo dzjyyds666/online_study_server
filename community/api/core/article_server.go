@@ -58,18 +58,35 @@ func (as *ArticleServer) CreateArticle(ctx context.Context, article *Article) er
 }
 
 func (as *ArticleServer) UpdateArticle(ctx context.Context, article *Article) error {
+	// 查询当前article信息
+	info, err := as.QueryArticleInfo(ctx, article.Id)
+	if err != nil {
+		lg.Errorf("UpdateArticle|QueryArticleInfo Error|%v", err)
+		return err
+	}
+	lg.Infof("UpdateArticle|QueryArticleInfo|%v", common.ToStringWithoutError(info))
 	if len(article.Status) > 0 {
 		// 更新状态，
 		switch article.Status {
 		case ArticleStatuses.Published:
 			// 从审核队列中取消，移动到对应的plate列表下面
 			key := buildArticleAuditListKey()
-			err := as.rsDb.ZRem(ctx, key, article.Id).Err()
+			err = as.rsDb.ZRem(ctx, key, article.Id).Err()
 			if err != nil {
 				lg.Errorf("UpdateArticle|ZRem Error|%v", err)
 				return err
 			}
-			err = as.rsDb.ZAdd(ctx, buildPlateArticleListKey(article.PlateId), redis.Z{
+
+			err := as.rsDb.ZAdd(ctx, buildArticleListKey(), redis.Z{
+				Member: article.Id,
+				Score:  float64(article.CreateTs),
+			}).Err()
+			if err != nil {
+				lg.Errorf("UpdateArticle|ZAdd Error|%v", err)
+				return err
+			}
+
+			err = as.rsDb.ZAdd(ctx, buildPlateArticleListKey(info.PlateId), redis.Z{
 				Member: article.Id,
 				Score:  float64(article.CreateTs),
 			}).Err()
@@ -88,12 +105,23 @@ func (as *ArticleServer) UpdateArticle(ctx context.Context, article *Article) er
 		}
 	}
 
+	if len(article.Content) > 0 {
+		info.Content = article.Content
+	}
+	if len(article.Status) > 0 {
+		info.Status = article.Status
+	}
+	if len(article.Title) > 0 {
+		info.Title = article.Title
+	}
+
+	info.UpdateTs = time.Now().Unix()
 	filter := bson.M{
 		"_id": article.Id,
 	}
 
 	update := bson.M{
-		"$set": article,
+		"$set": info,
 	}
 
 	result, err := as.articleMgDb.UpdateOne(ctx, filter, update)
@@ -141,6 +169,14 @@ func (as *ArticleServer) ListArticle(ctx context.Context, list *ListArticle) err
 			return err
 		}
 		articleIds = result
+	} else if list.New == true {
+		// 获取zset的最后10个内容
+		result, err := as.rsDb.ZRevRange(ctx, buildArticleListKey(), 0, 9).Result()
+		if err != nil {
+			lg.Errorf("ListArticle|ZRevRange Error|%v", err)
+			return err
+		}
+		articleIds = result
 	}
 	list.List = make([]*Article, 0, len(articleIds))
 	for _, articleId := range articleIds {
@@ -155,4 +191,16 @@ func (as *ArticleServer) ListArticle(ctx context.Context, list *ListArticle) err
 		list.List = append(list.List, &article)
 	}
 	return nil
+}
+
+func (as *ArticleServer) QueryArticleInfo(ctx context.Context, aid string) (*Article, error) {
+	var article Article
+	err := as.articleMgDb.FindOne(ctx, bson.M{
+		"_id": aid,
+	}).Decode(&article)
+	if err != nil {
+		lg.Errorf("QueryArticleInfo|FindOne Error|%v", err)
+		return nil, err
+	}
+	return &article, nil
 }

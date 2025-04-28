@@ -95,6 +95,10 @@ func (cs *CommunityService) HandlePublishArticle(ctx echo.Context) error {
 			"msg": "Params Invalid",
 		})
 	}
+
+	uid := ctx.Get("uid").(string)
+	article.WithAuthor(uid)
+
 	if err := cs.articleServ.CreateArticle(ctx.Request().Context(), &article); err != nil {
 		lg.Errorf("HandlePublishArticle|CreateArticle err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{

@@ -8,6 +8,7 @@ const (
 	RedisUserArticleListKey  = "user:%s:article:list"
 	RedisArticleAuditListKey = "article:audit:list"
 	RedisPlateArticleListKey = "plate:%s:article:list"
+	RedisArticleList         = "article:list"
 )
 
 func buildArticleAuditListKey() string {
@@ -20,6 +21,10 @@ func buildUserArticleListKey(userId string) string {
 
 func buildPlateArticleListKey(plateId string) string {
 	return fmt.Sprintf(RedisPlateArticleListKey, plateId)
+}
+
+func buildArticleListKey() string {
+	return RedisArticleList
 }
 
 type Status string
@@ -96,4 +101,5 @@ type ListArticle struct {
 	PlateId string     `json:"plate_id,omitempty"`
 	Uid     string     `json:"uid,omitempty"`
 	Audit   bool       `json:"audit,omitempty"`
+	New     bool       `json:"new,omitempty"`
 }
