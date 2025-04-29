@@ -1,6 +1,8 @@
 package core
 
 import (
+	"common/proto"
+	"common/rpc/client"
 	"context"
 	"github.com/dzjyyds666/opensource/common"
 	"github.com/redis/go-redis/v9"
@@ -188,6 +190,23 @@ func (as *ArticleServer) ListArticle(ctx context.Context, list *ListArticle) err
 			lg.Errorf("ListArticle|Find Error|%v", err)
 			return err
 		}
+		// 获取文章的作者信息
+		userClient := client.GetUserRpcClient(ctx)
+		resp, err := userClient.GetUserInfo(ctx, &proto.Uid{Uid: article.Author})
+		if err != nil {
+			lg.Errorf("ListArticle|GetUserInfo Error|%v", err)
+			return err
+		}
+		article.AuthorName = resp.Username
+
+		key := buildArticleCommentListKey(article.Id)
+
+		result, err := as.rsDb.ZCard(ctx, key).Result()
+		if err != nil {
+			lg.Errorf("ListArticle|ZCard Error|%v", err)
+			return err
+		}
+		article.CommunityCount = result
 		list.List = append(list.List, &article)
 	}
 	return nil
@@ -202,5 +221,22 @@ func (as *ArticleServer) QueryArticleInfo(ctx context.Context, aid string) (*Art
 		lg.Errorf("QueryArticleInfo|FindOne Error|%v", err)
 		return nil, err
 	}
+
+	userClient := client.GetUserRpcClient(ctx)
+	info, err := userClient.GetUserInfo(ctx, &proto.Uid{Uid: article.Author})
+	if err != nil {
+		lg.Errorf("QueryArticleInfo|GetUserInfo Error|%v", err)
+		return nil, err
+	}
+	article.AuthorName = info.Username
+
+	key := buildArticleCommentListKey(article.Id)
+	result, err := as.rsDb.ZCard(ctx, key).Result()
+	if err != nil {
+		lg.Errorf("QueryArticleInfo|ZCard Error|%v", err)
+		return nil, err
+	}
+
+	article.CommunityCount = result
 	return &article, nil
 }

@@ -1,7 +1,10 @@
 package core
 
 import (
+	"common/proto"
+	"common/rpc/client"
 	"context"
+	"github.com/dzjyyds666/opensource/common"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -84,8 +87,19 @@ func (cs *CommentServer) GetCommentList(ctx context.Context, list *ListComment) 
 			lg.Errorf("GetCommentList|FindOne Error|%v|%s", err, commentId)
 			return err
 		}
+
+		user := client.GetUserRpcClient(ctx)
+		info, err := user.GetUserInfo(ctx, &proto.Uid{Uid: comment.Author})
+		if err != nil {
+			lg.Errorf("GetCommentList|GetUserInfo Error|%v|%s", err, commentId)
+			return err
+		}
+
+		comment.AuthorName = info.Username
 		list.List = append(list.List, &comment)
 	}
+
+	lg.Infof("GetCommentList|GetCommentList|%v", common.ToStringWithoutError(list))
 
 	return nil
 }

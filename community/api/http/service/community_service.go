@@ -5,6 +5,7 @@ import (
 	"community/api/middleware"
 	"context"
 	"encoding/json"
+	"github.com/dzjyyds666/opensource/common"
 	"github.com/dzjyyds666/opensource/httpx"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
@@ -183,6 +184,8 @@ func (cs *CommunityService) HandleCreateComment(ctx echo.Context) error {
 		})
 	}
 
+	uid := ctx.Get("uid").(string)
+	comment.WithAuthor(uid)
 	if err := cs.commentServ.CreateComment(ctx.Request().Context(), &comment); err != nil {
 		lg.Errorf("HandleCreateComment|CreateComment err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -243,5 +246,20 @@ func (cs *CommunityService) HandleGetPlateInfo(ctx echo.Context) error {
 			"msg": "QueryPlateInfo Error",
 		})
 	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
+}
+
+func (cs *CommunityService) HandleQueryArticleInfo(ctx echo.Context) error {
+	aid := ctx.Param("aid")
+	info, err := cs.articleServ.QueryArticleInfo(ctx.Request().Context(), aid)
+	if err != nil {
+		lg.Errorf("HandleQueryArticleInfo|QueryArticleInfo err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "QueryArticleInfo Error",
+		})
+	}
+
+	lg.Infof("HandleQueryArticleInfo|QueryArticleInfo|Succ|%s", common.ToStringWithoutError(info))
+
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }

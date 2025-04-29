@@ -88,3 +88,17 @@ func (us *UserRpcServer) GetStudentClassList(ctx context.Context, in *proto.Stud
 		Cids: cids,
 	}, nil
 }
+
+func (us *UserRpcServer) GetUserInfo(ctx context.Context, in *proto.Uid) (*proto.UserInfo, error) {
+	info, err := us.UserServer.QueryUserInfo(ctx, in.Uid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("GetUserInfo|QueryUserInfo|err:%v", err)
+		return nil, err
+	}
+
+	return &proto.UserInfo{
+		Uid:      info.Uid,
+		Username: info.Name,
+		Avatar:   info.Avatar,
+	}, nil
+}

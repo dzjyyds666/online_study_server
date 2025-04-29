@@ -40,15 +40,17 @@ var ArticleStatuses = struct {
 }
 
 type Article struct {
-	Id          string   `json:"id" bson:"_id"`
-	Title       string   `json:"title" bson:"title"`
-	Content     string   `json:"content" bson:"content"`
-	Attachments []string `bson:"attachments" json:"attachments"`
-	Author      string   `json:"author" bson:"author"`
-	CreateTs    int64    `json:"create_ts" bson:"create_ts"`
-	UpdateTs    int64    `json:"update_ts" bson:"update_ts"`
-	PlateId     string   `json:"plate_id" bson:"plate_id"`
-	Status      Status   `json:"status" bson:"status"`
+	Id             string   `json:"id" bson:"_id"`
+	Title          string   `json:"title" bson:"title"`
+	Content        string   `json:"content" bson:"content"`
+	Attachments    []string `bson:"attachments" json:"attachments"`
+	Author         string   `json:"author" bson:"author"`
+	AuthorName     string   `json:"author_name,omitempty"`
+	CommunityCount int64    `json:"community_count,omitempty"`
+	CreateTs       int64    `json:"create_ts" bson:"create_ts"`
+	UpdateTs       int64    `json:"update_ts" bson:"update_ts"`
+	PlateId        string   `json:"plate_id" bson:"plate_id"`
+	Status         Status   `json:"status" bson:"status"`
 }
 
 func (a *Article) WithStatus(status Status) *Article {
