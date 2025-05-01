@@ -12,6 +12,7 @@ require (
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/redis/go-redis/v9 v9.7.1
 	go.etcd.io/etcd/client/v3 v3.5.19
+	go.mongodb.org/mongo-driver v1.17.3
 	golang.org/x/net v0.37.0
 	golang.org/x/sync v0.12.0
 )
@@ -27,12 +28,19 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
+	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mojocn/base64Captcha v1.3.8 // indirect
+	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
+	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
+	github.com/xdg-go/scram v1.1.2 // indirect
+	github.com/xdg-go/stringprep v1.0.4 // indirect
+	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.19 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.19 // indirect
 	go.uber.org/atomic v1.7.0 // indirect

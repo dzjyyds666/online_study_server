@@ -227,7 +227,7 @@ func (cfs *CosFileServer) QueryFilePrepareInfo(ctx context.Context, fid string) 
 //		return
 //	}
 //	init.WithStatus(status)
-//	err = cfs.cosDB.Set(ctx, key, init.Marshal(), 0).Err()
+//	err = cfs.cosDB.Set(ctx, key, init.ToJsonWithoutErr(), 0).Err()
 //	if err != nil {
 //		logx.GetLogger("study").Errorf("UpdateInitStatus|Set Error|%v", err)
 //		return

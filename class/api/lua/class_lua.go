@@ -2,16 +2,11 @@ package lua
 
 // 创建课程的脚本
 const CreateClassScript = `
-	local classInfoKey = KEYS[1]
-	local teacherClassListKey = KEYS[2]
-	local classListKey = KEYS[3]
+	local teacherClassListKey = KEYS[1]
+	local classListKey = KEYS[2]
 
 	local score = ARGV[1]
-	local rawData = ARGV[2]
-	local cid = ARGV[3]
-
-	-- 设置classInfoKey的值
-	redis.call("SET",classInfoKey,rawData)
+	local cid = ARGV[2]
 	
 	-- 将cid添加到classListKey的ZSET中，使用score作为分数
 	redis.call("ZAdd",classListKey,score,cid)

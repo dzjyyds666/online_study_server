@@ -7,6 +7,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"io"
 	"math"
 	"strconv"
@@ -25,25 +27,33 @@ type ClassServer struct {
 	chapterServer *ChapterServer      // 章节服务
 	taskServer    *TaskServer         // 作业
 	studentServer *ClassStudentServer // 学生服务
+	mongoCli      *mongo.Collection   // 持久化数据
 }
 
-func NewClassServer(ctx context.Context, dsClient *redis.Client) *ClassServer {
+func NewClassServer(ctx context.Context, dsClient *redis.Client, mgCli *mongo.Client) *ClassServer {
 	return &ClassServer{
 		ctx:           ctx,
 		classDB:       dsClient,
-		chapterServer: NewChapterServer(ctx, dsClient),
-		taskServer:    NewTaskServer(ctx, dsClient),
+		mongoCli:      mgCli.Database("learnX").Collection("class"),
+		chapterServer: NewChapterServer(ctx, dsClient, mgCli),
+		taskServer:    NewTaskServer(ctx, dsClient, mgCli),
 		studentServer: NewClassStudentServer(ctx, dsClient),
 	}
 }
 
 func (cls *ClassServer) CreateClass(ctx context.Context, info *Class) error {
+	// 先把class存入到mongo中
+	_, err := cls.mongoCli.InsertOne(ctx, info)
+	if err != nil {
+		lg.Errorf("ClassServer|SaveClassInfoError|%v", err)
+		return err
+	}
+
 	// 使用lua脚本创建文件夹
-	err := cls.classDB.Eval(ctx, lua.CreateClassScript, []string{
-		BuildClassInfo(*info.Cid),
+	err = cls.classDB.Eval(ctx, lua.CreateClassScript, []string{
 		BuildTeacherClassList(*info.Teacher),
 		BuildAllClassList(),
-	}, info.CreateTs, info.Marshal(), *info.Cid).Err()
+	}, info.CreateTs, *info.Cid).Err()
 
 	if err != nil {
 		lg.Errorf("CreateClass|Create Class Error|%v", err)
@@ -53,19 +63,13 @@ func (cls *ClassServer) CreateClass(ctx context.Context, info *Class) error {
 }
 
 func (cls *ClassServer) RecoverClass(ctx context.Context, cid string) error {
-	// 恢复课程
-	result, err := cls.classDB.Get(ctx, BuildClassInfo(cid)).Result()
+
+	class, err := cls.QueryClassInfo(ctx, cid)
 	if err != nil {
-		lg.Errorf("ClassServer|RecoverClass|GetClassInfoError|%v", err)
+		lg.Errorf("ClassServer|RecoverClass|Error|%v", err)
 		return err
 	}
 
-	var class *Class
-	err = json.Unmarshal([]byte(result), &class)
-	if err != nil {
-		lg.Errorf("ClassServer|RecoverClass|UnmarshalClassInfoError|%v", err)
-		return err
-	}
 	// 执行恢复操作
 	err = cls.classDB.Eval(ctx, lua.RecoverClass, []string{
 		BuildTeacherClassList(*class.Teacher),
@@ -76,13 +80,15 @@ func (cls *ClassServer) RecoverClass(ctx context.Context, cid string) error {
 
 	if err != nil {
 		lg.Errorf("ClassServer|RecoverClass|RecoverClassError|%v", err)
+		return err
 	}
 
-	// 修改课程的删除状态
-	class.WithDeleted(false)
-	err = cls.classDB.Set(ctx, BuildClassInfo(cid), class.Marshal(), 0).Err()
+	_, err = cls.mongoCli.UpdateByID(ctx, cid, bson.M{
+		"deleted": false,
+	})
+
 	if err != nil {
-		lg.Errorf("ClassServer|RecoverClass|UpdateClassInfoError|%v", err)
+		lg.Errorf("ClassServer|RecoverClass|Error|%v", err)
 		return err
 	}
 	return nil
@@ -116,7 +122,7 @@ func (cls *ClassServer) MoveClassToTrash(ctx context.Context, cid string) error 
 		return err
 	}
 	class.WithDeleted(true)
-	err = cls.classDB.Set(ctx, BuildClassInfo(cid), class.Marshal(), 0).Err()
+	err = cls.classDB.Set(ctx, BuildClassInfo(cid), class.ToJsonWithoutErr(), 0).Err()
 	if err != nil {
 		lg.Errorf("ClassServer|MoveClassToTrash|UpdateClassInfoError|%v", err)
 		return err
@@ -141,7 +147,7 @@ func (cls *ClassServer) UpdateClass(ctx context.Context, info *Class) error {
 
 	cls.updateClassInfo(class, info)
 
-	err = cls.classDB.Set(ctx, BuildClassInfo(*info.Cid), class.Marshal(), 0).Err()
+	err = cls.classDB.Set(ctx, BuildClassInfo(*info.Cid), class.ToJsonWithoutErr(), 0).Err()
 	if err != nil {
 		lg.Errorf("ClassServer|UpdateClass|UpdateClassInfoError|%v", err)
 		return err
@@ -152,16 +158,10 @@ func (cls *ClassServer) UpdateClass(ctx context.Context, info *Class) error {
 }
 
 func (cls *ClassServer) QueryClassInfo(ctx context.Context, cid string) (*Class, error) {
-	result, err := cls.classDB.Get(ctx, BuildClassInfo(cid)).Result()
-	if err != nil {
-		lg.Errorf("ClassServer|QueryClassInfo|GetClassInfoError|%v", err)
-		return nil, err
-	}
-
 	var class Class
-	err = json.Unmarshal([]byte(result), &class)
+	err := cls.mongoCli.FindOne(ctx, bson.M{"_id": cid}).Decode(&class)
 	if err != nil {
-		lg.Errorf("ClassServer|QueryClassInfo|UnmarshalClassInfoError|%v", err)
+		lg.Errorf("ClassServer|QueryClassInfo|Error|%v", err)
 		return nil, err
 	}
 	lg.Infof("ClassServer|QueryClassInfo|QueryClassInfoSuccess|%v", common.ToStringWithoutError(class))
@@ -436,7 +436,7 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 	class.WithCid(newCid)
 
 	// 重新写入redis中
-	err = cls.classDB.Set(ctx, BuildClassInfo(newCid), class.Marshal(), 0).Err()
+	err = cls.classDB.Set(ctx, BuildClassInfo(newCid), class.ToJsonWithoutErr(), 0).Err()
 	if err != nil {
 		lg.Errorf("ClassServer|CopyClass|SetClassInfoError|%v", err)
 		return nil, err

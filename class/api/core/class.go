@@ -5,23 +5,23 @@ import (
 )
 
 type Class struct {
-	Cid            *string   `json:"cid,omitempty"`
-	ClassName      *string   `json:"class_name,omitempty"`
-	ClassDesc      *string   `json:"class_desc,omitempty"`
-	ClassType      *string   `json:"class_type,omitempty"`
-	CreateTs       *int64    `json:"create_ts,omitempty"`
-	Teacher        *string   `json:"teacher,omitempty"`
-	Archive        *bool     `json:"archive,omitempty"`
-	Deleted        *bool     `json:"deleted,omitempty"`
-	StudyClassName *string   `json:"study_class_name,omitempty"`
-	ChapterList    []Chapter `json:"chapter_list,omitempty"`
+	Cid            *string   `json:"cid,omitempty" bson:"_id,omitempty"`
+	ClassName      *string   `json:"class_name,omitempty" bson:"class_name,omitempty"`
+	ClassDesc      *string   `json:"class_desc,omitempty" bson:"class_desc,omitempty"`
+	ClassType      *string   `json:"class_type,omitempty" bson:"class_type,omitempty"`
+	CreateTs       *int64    `json:"create_ts,omitempty" bson:"create_ts,omitempty"`
+	Teacher        *string   `json:"teacher,omitempty" bson:"teacher,omitempty"`
+	Archive        *bool     `json:"archive,omitempty" bson:"archive,omitempty"`
+	Deleted        *bool     `json:"deleted,omitempty" bson:"deleted,omitempty"`
+	StudyClassName *string   `json:"study_class_name,omitempty" bson:"study_class_name,omitempty"`
+	ChapterList    []Chapter `json:"chapter_list,omitempty" bson:"chapter_list,omitempty"`
 
-	Cover           *string `json:"cover,omitempty"`
-	ClassScore      *string `json:"class_score,omitempty"`       // 学分
-	ClassTime       *string `json:"class_time,omitempty"`        // 学时
-	ClassCollege    *string `json:"class_college,omitempty"`     // 学院
-	ClassSchoolTerm *string `json:"class_school_term,omitempty"` // 学期
-	ClassOutline    *string `json:"class_outline,omitempty"`     // 课程大纲
+	Cover           *string `json:"cover,omitempty" bson:"cover,omitempty"`
+	ClassScore      *string `json:"class_score,omitempty" bson:"class_score,omitempty"`             // 学分
+	ClassTime       *string `json:"class_time,omitempty" bson:"class_time,omitempty"`               // 学时
+	ClassCollege    *string `json:"class_college,omitempty" bson:"class_college,omitempty"`         // 学院
+	ClassSchoolTerm *string `json:"class_school_term,omitempty" bson:"class_school_term,omitempty"` // 学期
+	ClassOutline    *string `json:"class_outline,omitempty" bson:"class_outline"`                   // 课程大纲
 }
 
 func (ci *Class) WithCid(id string) *Class {
@@ -99,7 +99,7 @@ func (ci *Class) WithStudyClass(name string) *Class {
 	return ci
 }
 
-func (ci *Class) Marshal() string {
+func (ci *Class) ToJsonWithoutErr() string {
 	marshal, _ := json.Marshal(ci)
 	return string(marshal)
 }

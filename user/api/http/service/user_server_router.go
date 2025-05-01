@@ -66,7 +66,7 @@ func RecordRouteToFile(routes []*echo.Route) {
 
 	data, err := json.Marshal(recordRoute)
 	if err != nil {
-		logx.GetLogger("study").Errorf("RecordRouteToFile|JSON Marshal Error|%v", err)
+		logx.GetLogger("study").Errorf("RecordRouteToFile|JSON ToJsonWithoutErr Error|%v", err)
 	}
 	err = os.WriteFile("router.json", data, 0644)
 	if err != nil {

@@ -8,12 +8,13 @@ import (
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
 	"github.com/redis/go-redis/v9"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func StartClassHttpServer(ctx context.Context, ds *redis.Client) error {
+func StartClassHttpServer(ctx context.Context, ds *redis.Client, mongo *mongo.Client) error {
 
 	e := echo.New()
-	userServer, err := classHttpService.NewClassService(ctx, ds)
+	userServer, err := classHttpService.NewClassService(ctx, ds, mongo)
 	if err != nil {
 		logx.GetLogger("study").Errorf("UserServer|StartError|NewUserServer|err:%v", err)
 		return err

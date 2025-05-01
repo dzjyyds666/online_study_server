@@ -4,6 +4,7 @@ import (
 	"class/api/middleware"
 	"context"
 	"encoding/json"
+	"go.mongodb.org/mongo-driver/mongo"
 	"time"
 
 	"github.com/dzjyyds666/opensource/logx"
@@ -13,14 +14,16 @@ import (
 type ChapterServer struct {
 	ctx          context.Context
 	chapterDB    *redis.Client
+	mgCLi        *mongo.Collection
 	resourceServ *ResourceServer
 }
 
-func NewChapterServer(ctx context.Context, dsClient *redis.Client) *ChapterServer {
+func NewChapterServer(ctx context.Context, dsClient *redis.Client, mongoCli *mongo.Client) *ChapterServer {
 
 	server := NewResourceServer(ctx, dsClient)
 	return &ChapterServer{
 		ctx:          ctx,
+		mgCLi:        mongoCli.Database("learnX").Collection("chapter"),
 		chapterDB:    dsClient,
 		resourceServ: server,
 	}

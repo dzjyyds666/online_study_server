@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/dzjyyds666/opensource/common"
+	"go.mongodb.org/mongo-driver/mongo"
 	"math"
 	"strconv"
 	"time"
@@ -18,12 +19,14 @@ import (
 type TaskServer struct {
 	classDB *redis.Client
 	ctx     context.Context
+	mgCli   *mongo.Collection
 }
 
-func NewTaskServer(ctx context.Context, classDB *redis.Client) *TaskServer {
+func NewTaskServer(ctx context.Context, classDB *redis.Client, mongoCLi *mongo.Client) *TaskServer {
 	return &TaskServer{
 		ctx:     ctx,
 		classDB: classDB,
+		mgCli:   mongoCLi.Database("learnX").Collection("task"),
 	}
 }
 

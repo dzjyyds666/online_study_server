@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go.mongodb.org/mongo-driver/mongo"
 	"time"
 
 	"github.com/dzjyyds666/opensource/common"
@@ -22,9 +23,9 @@ type ClassService struct {
 	ctx       context.Context
 }
 
-func NewClassService(ctx context.Context, dsClient *redis.Client) (*ClassService, error) {
+func NewClassService(ctx context.Context, dsClient *redis.Client, client *mongo.Client) (*ClassService, error) {
 	return &ClassService{
-		classServ: core2.NewClassServer(ctx, dsClient),
+		classServ: core2.NewClassServer(ctx, dsClient, client),
 		ctx:       ctx,
 	}, nil
 }
