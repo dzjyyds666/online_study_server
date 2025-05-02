@@ -332,14 +332,16 @@ func (cls *ClassService) HandleUpdateResource(ctx echo.Context) error {
 			"msg": "Params Invalid",
 		})
 	}
-	info, err := cls.classServ.UpdateResource(ctx.Request().Context(), resource)
+	err := cls.classServ.UpdateResource(ctx.Request().Context(), resource)
 	if err != nil {
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "UpdatePublishResource Error",
 		})
 	}
-	lg.Infof("HandleUpdateResource|UpdateResource|Succ|%s", common.ToStringWithoutError(info))
-	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
+	lg.Infof("HandleUpdateResource|UpdateResource|Succ|%s", common.ToStringWithoutError(resource))
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"msg": "UpdateResource Success",
+	})
 }
 
 func (cls *ClassService) HandleDeleteResource(ctx echo.Context) error {

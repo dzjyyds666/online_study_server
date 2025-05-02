@@ -7,12 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/dzjyyds666/opensource/common"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"math"
 	"strconv"
 	"time"
 
-	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -31,38 +31,37 @@ func NewTaskServer(ctx context.Context, classDB *redis.Client, mongoCLi *mongo.C
 }
 
 func (ts *TaskServer) CreateTask(ctx context.Context, task *Task) error {
-	key := BuildTaskInfo(task.TaskId)
-	err := ts.classDB.Set(ctx, key, task.Marshal(), 0).Err()
+	one, err := ts.mgCli.InsertOne(ctx, task)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|CreateTask|SetTaskInfoError|%v", err)
+		lg.Errorf("ClassServer|CreateTask|CreateTaskError|%v", err)
 		return err
 	}
-	return err
+	if one.InsertedID == nil {
+		lg.Errorf("ClassServer|CreateTask|Insert Info Exist")
+		return nil
+	}
+	return nil
 }
 
 func (ts *TaskServer) QueryTaskInfo(ctx context.Context, taskId string) (*Task, error) {
-	key := BuildTaskInfo(taskId)
-	lg.Infof("ClassServer|QueryTaskInfo|QueryTaskInfo|%v", key)
-	taskInfo, err := ts.classDB.Get(ctx, key).Result()
+	var task Task
+	err := ts.mgCli.FindOne(ctx, bson.M{"_id": taskId}).Decode(&task)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|QueryTaskInfo|GetTaskInfoError|%v", err)
+		lg.Errorf("ClassServer|QueryTaskInfo|QueryTaskInfoError|%v", err)
 		return nil, err
 	}
-	var info *Task
-	err = json.Unmarshal([]byte(taskInfo), &info)
-	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|QueryTaskInfo|UnmarshalTaskInfoError|%v", err)
-		return nil, err
-	}
-	return info, nil
+	return &task, nil
 }
 
 func (ts *TaskServer) DeleteTask(ctx context.Context, taskId string) error {
-	key := BuildTaskInfo(taskId)
-	err := ts.classDB.Del(ctx, key).Err()
+	one, err := ts.mgCli.DeleteOne(ctx, bson.M{"_id": taskId})
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|DeleteTask|DeleteTaskError|%v", err)
+		lg.Errorf("ClassServer|DeleteTask|DeleteTaskError|%v", err)
 		return err
+	}
+	if one.DeletedCount == 0 {
+		lg.Errorf("ClassServer|DeleteTask|No Such Task")
+		return nil
 	}
 	return nil
 }
@@ -72,11 +71,16 @@ func (ts *TaskServer) UpdateTask(ctx context.Context, task *Task) error {
 	if len(task.TaskId) <= 0 || len(task.Cid) <= 0 || len(task.TaskName) <= 0 || len(task.TaskContent) <= 0 {
 		return errors.New("params error")
 	}
-	key := BuildTaskInfo(task.TaskId)
-	err := ts.classDB.Set(ctx, key, task.Marshal(), 0).Err()
+	id, err := ts.mgCli.UpdateByID(ctx, task.TaskId, bson.M{
+		"$set": task,
+	})
 	if err != nil {
-		logx.GetLogger("study").Errorf("ClassServer|CreateTask|SetTaskInfoError|%v", err)
+		lg.Errorf("ClassServer|UpdateTask|UpdateTaskError|%v", err)
 		return err
+	}
+	if id.ModifiedCount == 0 {
+		lg.Errorf("ClassServer|UpdateTask|Update Task Error|%v", err)
+		return errors.New("updateError")
 	}
 	return nil
 }

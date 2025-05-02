@@ -3,11 +3,11 @@ package core
 import "encoding/json"
 
 type Task struct {
-	TaskId        string   `json:"task_id"`
-	TaskName      string   `json:"task_name"`
-	TaskContent   string   `json:"task_content"`
-	TaskImageList []string `json:"task_image_list"` // 存储任务的图片列表
-	Cid           string   `json:"cid"`
+	TaskId         string   `json:"task_id" bson:"_id"`
+	TaskName       string   `json:"task_name" bson:"task_name"`
+	TaskContent    string   `json:"task_content" bson:"task_content"`
+	AttachemntList []string `json:"attachemnt_list" bson:"attachemnt_list,omitempty"` // 存储任务的图片列表
+	Cid            string   `json:"cid" bson:"cid"`
 }
 
 func (t *Task) WithId(id string) *Task {
@@ -30,11 +30,11 @@ func (t *Task) WithContent(content string) *Task {
 	return t
 }
 
-func (t *Task) WithImageList(image string) *Task {
-	if t.TaskImageList == nil {
-		t.TaskImageList = make([]string, 0)
+func (t *Task) WithAttchmentList(attachment string) *Task {
+	if t.AttachemntList == nil {
+		t.AttachemntList = make([]string, 0)
 	}
-	t.TaskImageList = append(t.TaskImageList, image)
+	t.AttachemntList = append(t.AttachemntList, attachment)
 	return t
 }
 

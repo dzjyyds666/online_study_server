@@ -3,7 +3,7 @@ package core
 import (
 	"class/api/middleware"
 	"context"
-	"encoding/json"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"time"
 
@@ -20,7 +20,7 @@ type ChapterServer struct {
 
 func NewChapterServer(ctx context.Context, dsClient *redis.Client, mongoCli *mongo.Client) *ChapterServer {
 
-	server := NewResourceServer(ctx, dsClient)
+	server := NewResourceServer(ctx, dsClient, mongoCli)
 	return &ChapterServer{
 		ctx:          ctx,
 		mgCLi:        mongoCli.Database("learnX").Collection("chapter"),
@@ -34,33 +34,28 @@ func (cs *ChapterServer) QueryResourceList(ctx context.Context, list *ResourceLi
 }
 
 func (cs *ChapterServer) CreateChapter(ctx context.Context, info *Chapter) error {
-	rawData := info.Marshal()
-	err := cs.chapterDB.Set(ctx, BuildChapterInfo(*info.Chid), rawData, 0).Err()
+	one, err := cs.mgCLi.InsertOne(ctx, info)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ChapterServer|CreateChapter|CreateChapterError|%v", err)
+		lg.Errorf("ChapterServer|CreateChapter|CreateChapterError|%v", err)
+		return err
+	}
+	if one.InsertedID == nil {
+		lg.Errorf("CreateChapter|Insert Chapter Error|%v", err)
 		return err
 	}
 	return nil
 }
 
 func (cs *ChapterServer) UpdateChapter(ctx context.Context, info *Chapter) error {
-	// 查询章节的信息
-	result, err := cs.chapterDB.Get(ctx, BuildChapterInfo(*info.Chid)).Result()
+	id, err := cs.mgCLi.UpdateByID(ctx, info.Chid, bson.M{
+		"$set": info,
+	})
 	if err != nil {
-		logx.GetLogger("study").Errorf("ChapterServer|UpdateChapter|GetChapterInfoError|%v", err)
+		lg.Errorf("UpdateChapter|Update Chapter Error|%v", err)
 		return err
 	}
-	var oldInfo *Chapter
-	err = json.Unmarshal([]byte(result), oldInfo)
-	if err != nil {
-		logx.GetLogger("study").Errorf("ChapterServer|UpdateChapter|UnmarshalChapterInfoError|%v", err)
-		return err
-	}
-
-	oldInfo.ChapterName = info.ChapterName
-	err = cs.chapterDB.Set(ctx, BuildChapterInfo(*info.Chid), oldInfo.Marshal(), 0).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("ChapterServer|UpdateChapter|UpdateChapterInfoError|%v", err)
+	if id.ModifiedCount == 0 {
+		lg.Errorf("UpdateChapter|Update Chapter Error|%v", err)
 		return err
 	}
 	return nil
@@ -74,12 +69,16 @@ func (cs *ChapterServer) DeleteChapter(ctx context.Context, chid string) error {
 		return err
 	}
 	// 先删除章节的信息
-	chapterKey := BuildChapterInfo(chid)
-
-	err = cs.chapterDB.Del(ctx, chapterKey).Err()
+	one, err := cs.mgCLi.DeleteOne(ctx, bson.M{
+		"_id": chid,
+	})
 	if err != nil {
-		logx.GetLogger("study").Errorf("ChapterServer|DeleteChapter|DeleteChapterInfoError|%v", err)
+		lg.Errorf("DeleteChapter|Delete Chapter Error|%v", err)
 		return err
+	}
+	if one.DeletedCount == 0 {
+		lg.Errorf("DeleteChapter|No Such Chapter")
+		return nil
 	}
 	// 删除章节下面所有的资源信息
 	resourceListKey := BuildChapterResourceList(chid)
@@ -123,17 +122,12 @@ func (cs *ChapterServer) DeleteResource(ctx context.Context, fid string) (*Resou
 }
 
 func (cs *ChapterServer) QueryChapterInfo(ctx context.Context, chid string, role int) (*Chapter, error) {
-	key := BuildChapterInfo(chid)
-	result, err := cs.chapterDB.Get(ctx, key).Result()
-	if err != nil {
-		logx.GetLogger("study").Errorf("ChapterServer|QueryChapterInfo|QueryChapterInfoError|%v", err)
-		return nil, err
-	}
-
 	var info Chapter
-	err = json.Unmarshal([]byte(result), &info)
+	err := cs.mgCLi.FindOne(ctx, bson.M{
+		"_id": chid,
+	}).Decode(&info)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ChapterServer|QueryChapterInfo|UnmarshalChapterInfoError|%v", err)
+		lg.Errorf("QueryChapterInfo|QueryChapterInfoError|%v", err)
 		return nil, err
 	}
 
@@ -179,6 +173,6 @@ func (cs *ChapterServer) CreateResource(ctx context.Context, info *Resource) err
 	return nil
 }
 
-func (cs *ChapterServer) UpdateResource(ctx context.Context, info *Resource) (*Resource, error) {
+func (cs *ChapterServer) UpdateResource(ctx context.Context, info *Resource) error {
 	return cs.resourceServ.UpdateResource(ctx, info)
 }

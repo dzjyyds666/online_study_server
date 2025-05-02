@@ -5,13 +5,10 @@ import (
 	"common/proto"
 	"common/rpc/client"
 	"context"
-	"encoding/json"
 	"errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"io"
-	"math"
-	"strconv"
 	"time"
 
 	"github.com/dzjyyds666/opensource/common"
@@ -63,8 +60,16 @@ func (cls *ClassServer) CreateClass(ctx context.Context, info *Class) error {
 }
 
 func (cls *ClassServer) RecoverClass(ctx context.Context, cid string) error {
-
 	class, err := cls.QueryClassInfo(ctx, cid)
+	if err != nil {
+		lg.Errorf("ClassServer|RecoverClass|Error|%v", err)
+		return err
+	}
+
+	_, err = cls.mongoCli.UpdateByID(ctx, cid, bson.M{
+		"deleted": false,
+	})
+
 	if err != nil {
 		lg.Errorf("ClassServer|RecoverClass|Error|%v", err)
 		return err
@@ -82,31 +87,20 @@ func (cls *ClassServer) RecoverClass(ctx context.Context, cid string) error {
 		lg.Errorf("ClassServer|RecoverClass|RecoverClassError|%v", err)
 		return err
 	}
-
-	_, err = cls.mongoCli.UpdateByID(ctx, cid, bson.M{
-		"deleted": false,
-	})
-
-	if err != nil {
-		lg.Errorf("ClassServer|RecoverClass|Error|%v", err)
-		return err
-	}
 	return nil
 }
 
 // 把课程移动到回收站
 func (cls *ClassServer) MoveClassToTrash(ctx context.Context, cid string) error {
 	// 修改课程的删除状态
-	result, err := cls.classDB.Get(ctx, BuildClassInfo(cid)).Result()
-	if err != nil {
-		lg.Errorf("ClassServer|MoveClassToTrash|GetClassInfoError|%v", err)
-		return err
-	}
+	class, err := cls.QueryClassInfo(ctx, cid)
 
-	var class *Class
-	err = json.Unmarshal([]byte(result), &class)
+	// 更新class的删除状态
+	_, err = cls.mongoCli.UpdateByID(ctx, cid, bson.M{
+		"deleted": true,
+	})
 	if err != nil {
-		lg.Errorf("ClassServer|MoveClassToTrash|UnmarshalClassInfoError|%v", err)
+		lg.Errorf("ClassServer|MoveClassToTrash|UpdateClassInfoError|%v", err)
 		return err
 	}
 
@@ -121,40 +115,25 @@ func (cls *ClassServer) MoveClassToTrash(ctx context.Context, cid string) error 
 		lg.Errorf("ClassServer|MoveClassToTrash|UpdateClassInfoError|%v", err)
 		return err
 	}
-	class.WithDeleted(true)
-	err = cls.classDB.Set(ctx, BuildClassInfo(cid), class.ToJsonWithoutErr(), 0).Err()
-	if err != nil {
-		lg.Errorf("ClassServer|MoveClassToTrash|UpdateClassInfoError|%v", err)
-		return err
-	}
 	return nil
 }
 
 // 更新课程信息
 func (cls *ClassServer) UpdateClass(ctx context.Context, info *Class) error {
-	// 查询原始课程信息
-	result, err := cls.classDB.Get(ctx, BuildClassInfo(*info.Cid)).Result()
-	if err != nil {
-		lg.Errorf("ClassServer|UpdateClass|GetClassInfoError|%v", err)
-		return err
-	}
+	// 更新课程的信息
+	id, err := cls.mongoCli.UpdateByID(ctx, info.Cid, bson.M{
+		"$set": info,
+	})
 
-	class, err := UnmarshalToClass([]byte(result))
-	if err != nil {
-		lg.Errorf("ClassServer|UpdateClass|UnmarshalClassInfoError|%v", err)
-		return err
-	}
-
-	cls.updateClassInfo(class, info)
-
-	err = cls.classDB.Set(ctx, BuildClassInfo(*info.Cid), class.ToJsonWithoutErr(), 0).Err()
 	if err != nil {
 		lg.Errorf("ClassServer|UpdateClass|UpdateClassInfoError|%v", err)
 		return err
 	}
-
+	if id.ModifiedCount == 0 {
+		lg.Errorf("ClassServer|UpdateClass|UpdateClassInfoError|%v", err)
+		return errors.New("更新失败")
+	}
 	return nil
-
 }
 
 func (cls *ClassServer) QueryClassInfo(ctx context.Context, cid string) (*Class, error) {
@@ -240,58 +219,12 @@ func (cls *ClassServer) CreateResource(ctx context.Context, resource *Resource) 
 	return cls.chapterServer.CreateResource(ctx, resource)
 }
 
-func (cls *ClassServer) UpdateResource(ctx context.Context, resource *Resource) (*Resource, error) {
+func (cls *ClassServer) UpdateResource(ctx context.Context, resource *Resource) error {
 	return cls.chapterServer.UpdateResource(ctx, resource)
 }
 
 func (cls *ClassServer) DeleteResource(ctx context.Context, fid string) (*Resource, error) {
 	return cls.chapterServer.DeleteResource(ctx, fid)
-}
-
-func (cls *ClassServer) updateClassInfo(oldClass, newClass *Class) *Class {
-	if newClass.Cover != nil && len(*newClass.Cover) > 0 {
-		oldClass.WithCover(*newClass.Cover)
-	}
-	if newClass.ClassName != nil && len(*newClass.ClassName) > 0 {
-		oldClass.WithClassName(*newClass.ClassName)
-	}
-	if newClass.ClassDesc != nil && len(*newClass.ClassDesc) > 0 {
-		oldClass.WithClassDesc(*newClass.ClassDesc)
-	}
-
-	if newClass.ClassType != nil && len(*newClass.ClassType) > 0 {
-		oldClass.WithClassType(*newClass.ClassType)
-	}
-
-	if newClass.Archive != nil {
-		oldClass.WithArchive(*newClass.Archive)
-	}
-
-	if newClass.Deleted != nil {
-		oldClass.WithDeleted(*newClass.Deleted)
-	}
-
-	if newClass.ClassScore != nil && len(*newClass.ClassScore) > 0 {
-		oldClass.WithClassScore(*newClass.ClassScore)
-	}
-
-	if newClass.ClassTime != nil && len(*newClass.ClassTime) > 0 {
-		oldClass.WithClassTime(*newClass.ClassTime)
-	}
-
-	if newClass.ClassCollege != nil && len(*newClass.ClassCollege) > 0 {
-		oldClass.WithClassCollege(*newClass.ClassCollege)
-	}
-
-	if newClass.ClassSchoolTerm != nil && len(*newClass.ClassSchoolTerm) > 0 {
-		oldClass.WithClassSchoolTerm(*newClass.ClassSchoolTerm)
-	}
-
-	if newClass.ClassOutline != nil && len(*newClass.ClassOutline) > 0 {
-		oldClass.WithClassOutline(*newClass.ClassOutline)
-	}
-	lg.Infof("ClassServer|UpdateClass|UpdateClassInfoSuccess|%s", common.ToStringWithoutError(*oldClass))
-	return oldClass
 }
 
 func (cls *ClassServer) QueryClassList(ctx context.Context, uid string) ([]*Class, error) {
@@ -335,29 +268,6 @@ func (cls *ClassServer) QueryTeacherDeletedClassList(ctx context.Context, uid st
 
 func (cls *ClassServer) DeleteClassFromTrash(ctx context.Context, cid string) error {
 	// 先查询课程的信息
-	// class, err := cls.QueryClassInfo(ctx, cid)
-	// if err != nil {
-	// 	lg.Errorf("ClassServer|DeleteClassFromTrash|QueryClassInfoError|%v", err)
-	// 	return err
-	// }
-
-	// if !class.IsDeleted() {
-	// 	lg.Errorf("ClassServer|DeleteClassFromTrash|ClassNotDeleted|%v", err)
-	// 	return errors.New("class not deleted")
-	// }
-
-	// err = cls.classDB.Eval(ctx, lua.DeleteClass, []string{
-	// 	BuildTeacherClassDeletedList(*class.Teacher),
-	// 	BuildClassDeletedList(),
-	// 	BuildClassInfo(cid),
-	// }, cid).Err()
-
-	// if err != nil {
-	// 	lg.Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromTrashError|%v", err)
-	// 	return err
-	// }
-
-	// return nil
 	info, err := cls.QueryClassInfo(ctx, cid)
 	if err != nil {
 		lg.Errorf("ClassServer|DeleteClassFromTrash|QueryClassInfoError|%v", err)
@@ -383,11 +293,13 @@ func (cls *ClassServer) DeleteClassFromTrash(ctx context.Context, cid string) er
 		return nil
 	}
 
-	// 删除课程的信息
-	err = cls.classDB.Del(ctx, BuildClassInfo(cid)).Err()
+	one, err := cls.mongoCli.DeleteOne(ctx, bson.M{"_id": cid})
 	if err != nil {
-		lg.Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromTrashError|%v", err)
-		return nil
+		lg.Errorf("ClassServer|DeleteClassFromTrash|DeleteClassError|%v", err)
+		return err
+	}
+	if one.DeletedCount == 0 {
+		lg.Errorf("ClassServer|DeleteClassFromTrash|DeleteClassError|%v", err)
 	}
 
 	for _, chater := range info.ChapterList {
@@ -398,7 +310,7 @@ func (cls *ClassServer) DeleteClassFromTrash(ctx context.Context, cid string) er
 		}
 	}
 
-	//  TODO // 删除课程下面的所有学生
+	//  TODO  删除课程下面的所有学生，需要调用rpc代码
 	// list, err := cls.studentServer.QueryStudentList(ctx, cid)
 	// if err!=nil{
 	// 	lg.Errorf("ClassServer|DeleteClassFromTrash|QueryStudentListError|%v", err)
@@ -412,33 +324,24 @@ func (cls *ClassServer) DeleteClassFromTrash(ctx context.Context, cid string) er
 	// 		continue
 	// 	}
 	// }
-
 	return nil
 }
 
 func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, error) {
 	// 上往下复制
-	result, err := cls.classDB.Get(ctx, BuildClassInfo(cid)).Result()
-	if err != nil {
-		lg.Errorf("ClassServer|CopyClass|GetClassInfoError|%v", err)
-		return nil, err
-	}
-
-	var class *Class
-	err = json.Unmarshal([]byte(result), &class)
-	if err != nil {
-		lg.Errorf("ClassServer|CopyClass|UnmarshalClassInfoError|%v", err)
-		return nil, err
-	}
+	class, err := cls.QueryClassInfo(ctx, cid)
 
 	// 生成新的课程
 	newCid := NewClassId(8)
 	class.WithCid(newCid)
 
-	// 重新写入redis中
-	err = cls.classDB.Set(ctx, BuildClassInfo(newCid), class.ToJsonWithoutErr(), 0).Err()
+	one, err := cls.mongoCli.InsertOne(ctx, class)
 	if err != nil {
-		lg.Errorf("ClassServer|CopyClass|SetClassInfoError|%v", err)
+		lg.Errorf("ClassServer|CopyClass|InsertOneError|%v", err)
+		return nil, err
+	}
+	if one.InsertedID == nil {
+		lg.Errorf("ClassServer|CopyClass|InsertOneError|%v", err)
 		return nil, err
 	}
 
@@ -642,22 +545,8 @@ func (cls *ClassServer) CreateTask(ctx context.Context, task *Task) error {
 }
 
 func (cls *ClassServer) ListTask(ctx context.Context, list *ListTask) error {
-	zrangeBy := &redis.ZRangeBy{
-		Min:    "0",
-		Max:    strconv.FormatInt(math.MaxInt64, 10),
-		Count:  list.Limit,
-		Offset: 0,
-	}
-	if len(list.ReferId) > 0 {
-		score, err := cls.classDB.ZScore(ctx, BuildClassTaskList(list.Cid), list.ReferId).Result()
-		if err != nil {
-			lg.Errorf("ClassServer|ListTask|GetReferIdScoreError|%v", err)
-			return err
-		}
-		zrangeBy.Min = "(" + strconv.FormatInt(int64(score), 10)
-	}
 
-	taskIds, err := cls.classDB.ZRangeByScore(ctx, BuildClassTaskList(list.Cid), zrangeBy).Result()
+	taskIds, err := cls.classDB.ZRange(ctx, BuildClassTaskList(list.Cid), 0, -1).Result()
 	if err != nil {
 		lg.Errorf("ClassServer|ListTask|GetTaskIdListError|%v", err)
 		return err
@@ -673,6 +562,7 @@ func (cls *ClassServer) ListTask(ctx context.Context, list *ListTask) error {
 	return nil
 }
 
+// hack 这里有问题
 func (cls *ClassServer) ListOwnerTask(ctx context.Context, uid string) ([]*ListOwnerTask, error) {
 	return cls.taskServer.ListOwnerTask(ctx, uid)
 }
@@ -698,7 +588,7 @@ func (cls *ClassServer) DeleteTask(ctx context.Context, tid string) (*Task, erro
 	// 调用cos删除iamge
 	cosClient := client.GetCosRpcClient(ctx)
 	_, err = cosClient.DeleteTaskImage(ctx, &proto.ImageIds{
-		Fids: info.TaskImageList,
+		Fids: info.AttachemntList,
 	})
 	if err != nil {
 		lg.Errorf("ClassServer|DeleteTask|DeleteTaskImageError|%v", err)

@@ -19,11 +19,11 @@ func BuildResourceKey(fid string) string {
 }
 
 type Resource struct {
-	Fid          *string             `json:"fid,omitempty"`
-	Published    *bool               `json:"published"`
-	Downloadable *bool               `json:"downloadable"` // 是否可以下载
-	Chid         *string             `json:"chid,omitempty"`
-	FileInfo     *proto.ResourceInfo `json:"file_info"` // 文件信息
+	Fid          *string             `json:"fid,omitempty" bson:"_id"`
+	Published    *bool               `json:"published" bson:"published"`
+	Downloadable *bool               `json:"downloadable" bson:"downloadable"` // 是否可以下载
+	Chid         *string             `json:"chid,omitempty" bson:"chid"`
+	FileInfo     *proto.ResourceInfo `json:"file_info,omitempty" bson:"fileInfo,omitempty"` // 文件信息
 }
 
 func (r *Resource) WithFileInfo(info *proto.ResourceInfo) *Resource {

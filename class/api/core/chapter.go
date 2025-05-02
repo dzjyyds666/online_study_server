@@ -6,10 +6,10 @@ import (
 
 // 章节
 type Chapter struct {
-	Chid         *string    `json:"chid,omitempty"`
-	ChapterName  *string    `json:"chapter_name,omitempty"`
-	SourceId     *string    `json:"source_id,omitempty"`
-	ResourceList []Resource `json:"resource_list,omitempty"`
+	Chid         *string    `json:"chid,omitempty" bson:"_id"`
+	ChapterName  *string    `json:"chapter_name,omitempty" bson:"chapter_name"`
+	SourceId     *string    `json:"source_id,omitempty" bson:"source_id"`
+	ResourceList []Resource `json:"resource_list,omitempty" `
 }
 
 type ChapterList struct {

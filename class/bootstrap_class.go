@@ -6,20 +6,19 @@ import (
 	"class/api/rpc"
 	"context"
 	"flag"
-	"strconv"
-
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/sync/errgroup"
 )
 
 func main() {
-	//var configPath = flag.String("c", "/Users/zhijundu/code/GolandProjects/online_study_server/class/api/config/config.json", "config.json file path")
-	var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\class\\api\\config\\config.json", "config.json file path")
+	var configPath = flag.String("c", "/Users/zhijundu/code/GolandProjects/online_study_server/class/api/config/config.json", "config.json file path")
+	//var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\class\\api\\config\\config.json", "config.json file path")
 	err := config.RefreshEtcdConfig(*configPath)
 	if err != nil {
-		logx.GetLogger("study").Errorf("main|RefreshEtcdConfig|err:%v", err)
-		return
+		panic(err)
 	}
 
 	err = config.LoadConfigFromEtcd()
@@ -27,20 +26,24 @@ func main() {
 		panic(err)
 	}
 
-	// 连接redis
-	dsClient := redis.NewClient(&redis.Options{
-		Addr:     *config.GloableConfig.Redis.Host + ":" + strconv.Itoa(*config.GloableConfig.Redis.Port),
-		Username: *config.GloableConfig.Redis.Username,
-		Password: *config.GloableConfig.Redis.Password,
-		DB:       *config.GloableConfig.Redis.DB,
-	})
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	url, err := redis.ParseURL(config.GloableConfig.Redis)
+	if err != nil {
+		panic(err)
+	}
+
+	dsClient := redis.NewClient(url)
+	//连接mongodb
+	mgDb, err := mongo.Connect(ctx, options.Client().ApplyURI(config.GloableConfig.Mongo))
+	if err != nil {
+		panic(err)
+	}
+
 	var g errgroup.Group
 	g.Go(func() error {
-		err := http.StartClassHttpServer(ctx, dsClient)
+		err := http.StartClassHttpServer(ctx, dsClient, mgDb)
 		if nil != err {
 			logx.GetLogger("study").Errorf("main|StartApiServer|err:%v", err)
 			cancel()

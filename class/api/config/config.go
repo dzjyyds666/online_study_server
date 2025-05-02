@@ -19,10 +19,10 @@ type Config struct {
 	Host    *string `json:"host"`     // 服务器地址
 	Name    *string `json:"name"`     // 服务器名称
 
-	Mysql Mysql `json:"mysql"`
-	Redis Redis `json:"redis"`
-	Jwt   Jwt   `json:"jwt"`
-	Mongo Mongo `json:"mongo"`
+	Mysql Mysql  `json:"mysql"`
+	Redis string `json:"redis"`
+	Jwt   Jwt    `json:"jwt"`
+	Mongo string `json:"mongo"`
 }
 
 type Mysql struct {
@@ -33,25 +33,9 @@ type Mysql struct {
 	Database *string `json:"database"`
 }
 
-type Redis struct {
-	Host     *string `json:"host"`
-	Port     *int    `json:"port"`
-	Username *string `json:"username"`
-	Password *string `json:"password"`
-	DB       *int    `json:"db"`
-}
-
 type Jwt struct {
 	Secretkey *string `json:"secret_key"`
 	Expire    *int    `json:"expire"`
-}
-
-type Mongo struct {
-	Host     *string `json:"host"`
-	Port     *int    `json:"port"`
-	Username *string `json:"username"`
-	Password *string `json:"password"`
-	DB       *string `json:"database"`
 }
 
 func LoadConfigFromEtcd() error {

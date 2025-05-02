@@ -3,7 +3,8 @@ package core
 import (
 	"common/proto"
 	"common/rpc/client"
-	"encoding/json"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
@@ -13,12 +14,14 @@ import (
 type ResourceServer struct {
 	resourceDB *redis.Client
 	ctx        context.Context
+	mgCli      *mongo.Collection
 }
 
-func NewResourceServer(ctx context.Context, dsClient *redis.Client) *ResourceServer {
+func NewResourceServer(ctx context.Context, dsClient *redis.Client, mgCli *mongo.Client) *ResourceServer {
 	return &ResourceServer{
 		resourceDB: dsClient,
 		ctx:        ctx,
+		mgCli:      mgCli.Database("learnX").Collection("resource"),
 	}
 }
 
@@ -40,34 +43,37 @@ func (rs *ResourceServer) QueryResourceList(ctx context.Context, list *ResourceL
 }
 
 func (rs *ResourceServer) CreateResource(ctx context.Context, info *Resource) error {
-	// 先存储资源的信息
-	data := info.Marshal()
-	err := rs.resourceDB.Set(ctx, BuildResourceInfo(*info.Fid), data, 0).Err()
+	one, err := rs.mgCli.InsertOne(ctx, info)
 	if err != nil {
-		logx.GetLogger("study").Infof("ResourceServer|CreateResource|Set Resource Error|%v", err)
+		lg.Errorf("ResourceServer|CreateResource|CreateResource Error|%v", err)
 		return err
+	}
+	if one.InsertedID == nil {
+		lg.Errorf("ResourceServer|CreateResource|Insert Info Exist")
+		return nil
 	}
 	return nil
 }
 
 func (rs *ResourceServer) DeleteResource(ctx context.Context, fid string) error {
 	// 删除章节的info
-	err := rs.resourceDB.Del(ctx, BuildResourceInfo(fid)).Err()
+	one, err := rs.mgCli.DeleteOne(ctx, bson.M{
+		"_id": fid,
+	})
 	if err != nil {
-		logx.GetLogger("study").Errorf("ResourceServer|DeleteResource|Delete Resource Error|%v", err)
+		lg.Errorf("ResourceServer|DeleteResource|DeleteOne Error|%v", err)
 		return err
 	}
-	// 调用rpc删除cos的资源
+
+	if one.DeletedCount == 0 {
+		lg.Errorf("ResourceServer|DeleteResource|No Such Resource")
+		return nil
+	}
+	// todo 调用rpc删除cos的资源
 	return nil
 }
 
 func (rs *ResourceServer) QueryResourceInfo(ctx context.Context, fid string) (*Resource, error) {
-	key := BuildResourceInfo(fid)
-	result, err := rs.resourceDB.Get(ctx, key).Result()
-	if err != nil {
-		logx.GetLogger("study").Errorf("ResourceServer|QueryResourceInfo|Get Resource Info Error|%v", err)
-		return nil, err
-	}
 
 	cosRpcClient := client.GetCosRpcClient(ctx)
 	info, err := cosRpcClient.GetFileInfo(ctx, &proto.ResourceInfo{
@@ -79,9 +85,11 @@ func (rs *ResourceServer) QueryResourceInfo(ctx context.Context, fid string) (*R
 	}
 
 	var resource Resource
-	err = json.Unmarshal([]byte(result), &resource)
+	err = rs.mgCli.FindOne(ctx, bson.M{
+		"_id": fid,
+	}).Decode(&resource)
 	if err != nil {
-		logx.GetLogger("study").Errorf("ResourceServer|QueryResourceInfo|Unmarshal Resource Info Error|%v", err)
+		lg.Errorf("ResourceServer|QueryResourceInfo|FindOne Error|%v", err)
 		return nil, err
 	}
 	resource.WithFileInfo(info)
@@ -89,27 +97,17 @@ func (rs *ResourceServer) QueryResourceInfo(ctx context.Context, fid string) (*R
 }
 
 // 更新资源的状态
-func (rs *ResourceServer) UpdateResource(ctx context.Context, info *Resource) (*Resource, error) {
-	// 更新resource的状态
-	// 获取资源的信息
-	resourceInfo, err := rs.QueryResourceInfo(ctx, *info.Fid)
-	if err != nil {
-		logx.GetLogger("study").Errorf("ResourceServer|UpdateResource|Query Resource Info Error|%v", err)
-		return nil, err
-	}
-	if info.Downloadable != nil {
-		resourceInfo.Downloadable = info.Downloadable
-	}
+func (rs *ResourceServer) UpdateResource(ctx context.Context, info *Resource) error {
+	id, err := rs.mgCli.UpdateByID(ctx, info.Fid, bson.M{
+		"$set": info,
+	})
 
-	if info.Published != nil {
-		resourceInfo.Published = info.Published
-	}
-
-	data := resourceInfo.Marshal()
-	err = rs.resourceDB.Set(ctx, BuildResourceInfo(*info.Fid), data, 0).Err()
 	if err != nil {
-		logx.GetLogger("study").Errorf("ResourceServer|UpdateResource|Set Resource Info Error|%v", err)
-		return nil, err
+		lg.Errorf("ResourceServer|UpdateResource|Update Resource Error|%v", err)
+		return err
 	}
-	return resourceInfo, nil
+	if id.ModifiedCount == 0 {
+		lg.Errorf("ResourceServer|UpdateResource|Update resource fail")
+	}
+	return nil
 }
