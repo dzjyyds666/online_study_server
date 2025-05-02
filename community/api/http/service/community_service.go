@@ -5,6 +5,7 @@ import (
 	"community/api/middleware"
 	"context"
 	"encoding/json"
+	"github.com/dzjyyds666/opensource/common"
 	"github.com/dzjyyds666/opensource/httpx"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
@@ -95,6 +96,10 @@ func (cs *CommunityService) HandlePublishArticle(ctx echo.Context) error {
 			"msg": "Params Invalid",
 		})
 	}
+
+	uid := ctx.Get("uid").(string)
+	article.WithAuthor(uid)
+
 	if err := cs.articleServ.CreateArticle(ctx.Request().Context(), &article); err != nil {
 		lg.Errorf("HandlePublishArticle|CreateArticle err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -160,7 +165,7 @@ func (cs *CommunityService) HandleListArticle(ctx echo.Context) error {
 		})
 	}
 
-	if err := cs.articleServ.ListArticle(ctx.Request().Context(), &list, ctx.Get("role").(int)); err != nil {
+	if err := cs.articleServ.ListArticle(ctx.Request().Context(), &list); err != nil {
 		lg.Errorf("HandleListArticle|ListArticle err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "ListArticle Error",
@@ -179,6 +184,8 @@ func (cs *CommunityService) HandleCreateComment(ctx echo.Context) error {
 		})
 	}
 
+	uid := ctx.Get("uid").(string)
+	comment.WithAuthor(uid)
 	if err := cs.commentServ.CreateComment(ctx.Request().Context(), &comment); err != nil {
 		lg.Errorf("HandleCreateComment|CreateComment err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
@@ -239,5 +246,20 @@ func (cs *CommunityService) HandleGetPlateInfo(ctx echo.Context) error {
 			"msg": "QueryPlateInfo Error",
 		})
 	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
+}
+
+func (cs *CommunityService) HandleQueryArticleInfo(ctx echo.Context) error {
+	aid := ctx.Param("aid")
+	info, err := cs.articleServ.QueryArticleInfo(ctx.Request().Context(), aid)
+	if err != nil {
+		lg.Errorf("HandleQueryArticleInfo|QueryArticleInfo err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "QueryArticleInfo Error",
+		})
+	}
+
+	lg.Infof("HandleQueryArticleInfo|QueryArticleInfo|Succ|%s", common.ToStringWithoutError(info))
+
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }

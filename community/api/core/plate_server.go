@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"github.com/dzjyyds666/opensource/common"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/redis/go-redis/v9"
@@ -84,13 +85,17 @@ func (p *PlateServer) ListPlate(ctx context.Context) ([]*Plate, error) {
 		lg.Errorf("ListPlate|ZRange err:%v", err)
 		return nil, err
 	}
+	lg.Infof("ListPlate|ZRangeSuccess|%v", common.ToStringWithoutError(result))
 	plates := make([]*Plate, 0)
 	for _, id := range result {
 		plate := &Plate{}
 		err = p.plateMgDb.FindOne(ctx, bson.M{"_id": id}).Decode(plate)
-		if err != nil {
+		if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 			lg.Errorf("ListPlate|FindOne err:%v", err)
 			return nil, err
+		} else if errors.Is(err, mongo.ErrNoDocuments) {
+			lg.Errorf("ListPlate|No Data Match|%v", common.ToStringWithoutError(plate))
+			continue
 		}
 		plates = append(plates, plate)
 	}

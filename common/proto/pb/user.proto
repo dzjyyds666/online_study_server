@@ -9,6 +9,17 @@ service user{
   rpc BatchAddStudentToClass(stream FileChunk) returns(StudentIds);
   rpc GetStudentsInfo(StudentIds) returns(StudentInfos);
   rpc GetStudentClassList(StudentIds) returns(ClassCids);
+  rpc GetUserInfo(Uid) returns(UserInfo);
+}
+
+message Uid{
+  string uid = 1;
+}
+
+message UserInfo{
+  string uid = 1;
+  string username = 2;
+  string avatar = 3;
 }
 
 message StudentInfos{

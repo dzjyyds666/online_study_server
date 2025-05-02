@@ -1,13 +1,13 @@
 package core
 
 import (
+	"common/proto"
+	"common/rpc/client"
 	"context"
 	"github.com/dzjyyds666/opensource/common"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"math"
-	"strconv"
 	"time"
 )
 
@@ -60,18 +60,35 @@ func (as *ArticleServer) CreateArticle(ctx context.Context, article *Article) er
 }
 
 func (as *ArticleServer) UpdateArticle(ctx context.Context, article *Article) error {
+	// 查询当前article信息
+	info, err := as.QueryArticleInfo(ctx, article.Id)
+	if err != nil {
+		lg.Errorf("UpdateArticle|QueryArticleInfo Error|%v", err)
+		return err
+	}
+	lg.Infof("UpdateArticle|QueryArticleInfo|%v", common.ToStringWithoutError(info))
 	if len(article.Status) > 0 {
 		// 更新状态，
 		switch article.Status {
 		case ArticleStatuses.Published:
 			// 从审核队列中取消，移动到对应的plate列表下面
 			key := buildArticleAuditListKey()
-			err := as.rsDb.ZRem(ctx, key, article.Id).Err()
+			err = as.rsDb.ZRem(ctx, key, article.Id).Err()
 			if err != nil {
 				lg.Errorf("UpdateArticle|ZRem Error|%v", err)
 				return err
 			}
-			err = as.rsDb.ZAdd(ctx, buildPlateArticleListKey(article.PlateId), redis.Z{
+
+			err := as.rsDb.ZAdd(ctx, buildArticleListKey(), redis.Z{
+				Member: article.Id,
+				Score:  float64(article.CreateTs),
+			}).Err()
+			if err != nil {
+				lg.Errorf("UpdateArticle|ZAdd Error|%v", err)
+				return err
+			}
+
+			err = as.rsDb.ZAdd(ctx, buildPlateArticleListKey(info.PlateId), redis.Z{
 				Member: article.Id,
 				Score:  float64(article.CreateTs),
 			}).Err()
@@ -90,12 +107,23 @@ func (as *ArticleServer) UpdateArticle(ctx context.Context, article *Article) er
 		}
 	}
 
+	if len(article.Content) > 0 {
+		info.Content = article.Content
+	}
+	if len(article.Status) > 0 {
+		info.Status = article.Status
+	}
+	if len(article.Title) > 0 {
+		info.Title = article.Title
+	}
+
+	info.UpdateTs = time.Now().Unix()
 	filter := bson.M{
 		"_id": article.Id,
 	}
 
 	update := bson.M{
-		"$set": article,
+		"$set": info,
 	}
 
 	result, err := as.articleMgDb.UpdateOne(ctx, filter, update)
@@ -117,17 +145,11 @@ func (as *ArticleServer) DeleteArticle(ctx context.Context, articleId string) er
 	return nil
 }
 
-func (as *ArticleServer) ListArticle(ctx context.Context, list *ListArticle, role int) error {
+func (as *ArticleServer) ListArticle(ctx context.Context, list *ListArticle) error {
 	articleIds := make([]string, 0)
-	zrangeBy := &redis.ZRangeBy{
-		Min:    "0",
-		Max:    strconv.FormatInt(math.MaxInt64, 10),
-		Offset: (list.PageNum - 1) * list.PageSize,
-		Count:  list.PageSize,
-	}
 	if len(list.PlateId) > 0 {
 		// 查询板块下的文章
-		result, err := as.rsDb.ZRangeByScore(ctx, buildPlateArticleListKey(list.PlateId), zrangeBy).Result()
+		result, err := as.rsDb.ZRange(ctx, buildPlateArticleListKey(list.PlateId), 0, -1).Result()
 		if err != nil {
 			lg.Errorf("ListArticle|ZRangeByScore Error|%v", err)
 			return err
@@ -135,17 +157,25 @@ func (as *ArticleServer) ListArticle(ctx context.Context, list *ListArticle, rol
 		articleIds = result
 	} else if len(list.Uid) > 0 {
 		// 查询用户下的文章
-		result, err := as.rsDb.ZRangeByScore(ctx, buildUserArticleListKey(list.Uid), zrangeBy).Result()
+		result, err := as.rsDb.ZRange(ctx, buildUserArticleListKey(list.Uid), 0, -1).Result()
 		if err != nil {
 			lg.Errorf("ListArticle|ZRangeByScore Error|%v", err)
 			return err
 		}
 		articleIds = result
-	} else {
+	} else if list.Audit == true {
 		// 查询审核中的文章
-		result, err := as.rsDb.ZRangeByScore(ctx, buildArticleAuditListKey(), zrangeBy).Result()
+		result, err := as.rsDb.ZRange(ctx, buildArticleAuditListKey(), 0, -1).Result()
 		if err != nil {
 			lg.Errorf("ListArticle|ZRangeByScore Error|%v", err)
+			return err
+		}
+		articleIds = result
+	} else if list.New == true {
+		// 获取zset的最后10个内容
+		result, err := as.rsDb.ZRevRange(ctx, buildArticleListKey(), 0, 9).Result()
+		if err != nil {
+			lg.Errorf("ListArticle|ZRevRange Error|%v", err)
 			return err
 		}
 		articleIds = result
@@ -160,7 +190,53 @@ func (as *ArticleServer) ListArticle(ctx context.Context, list *ListArticle, rol
 			lg.Errorf("ListArticle|Find Error|%v", err)
 			return err
 		}
+		// 获取文章的作者信息
+		userClient := client.GetUserRpcClient(ctx)
+		resp, err := userClient.GetUserInfo(ctx, &proto.Uid{Uid: article.Author})
+		if err != nil {
+			lg.Errorf("ListArticle|GetUserInfo Error|%v", err)
+			return err
+		}
+		article.AuthorName = resp.Username
+
+		key := buildArticleCommentListKey(article.Id)
+
+		result, err := as.rsDb.ZCard(ctx, key).Result()
+		if err != nil {
+			lg.Errorf("ListArticle|ZCard Error|%v", err)
+			return err
+		}
+		article.CommunityCount = result
 		list.List = append(list.List, &article)
 	}
 	return nil
+}
+
+func (as *ArticleServer) QueryArticleInfo(ctx context.Context, aid string) (*Article, error) {
+	var article Article
+	err := as.articleMgDb.FindOne(ctx, bson.M{
+		"_id": aid,
+	}).Decode(&article)
+	if err != nil {
+		lg.Errorf("QueryArticleInfo|FindOne Error|%v", err)
+		return nil, err
+	}
+
+	userClient := client.GetUserRpcClient(ctx)
+	info, err := userClient.GetUserInfo(ctx, &proto.Uid{Uid: article.Author})
+	if err != nil {
+		lg.Errorf("QueryArticleInfo|GetUserInfo Error|%v", err)
+		return nil, err
+	}
+	article.AuthorName = info.Username
+
+	key := buildArticleCommentListKey(article.Id)
+	result, err := as.rsDb.ZCard(ctx, key).Result()
+	if err != nil {
+		lg.Errorf("QueryArticleInfo|ZCard Error|%v", err)
+		return nil, err
+	}
+
+	article.CommunityCount = result
+	return &article, nil
 }

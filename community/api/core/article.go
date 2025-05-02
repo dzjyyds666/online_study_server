@@ -8,6 +8,7 @@ const (
 	RedisUserArticleListKey  = "user:%s:article:list"
 	RedisArticleAuditListKey = "article:audit:list"
 	RedisPlateArticleListKey = "plate:%s:article:list"
+	RedisArticleList         = "article:list"
 )
 
 func buildArticleAuditListKey() string {
@@ -20,6 +21,10 @@ func buildUserArticleListKey(userId string) string {
 
 func buildPlateArticleListKey(plateId string) string {
 	return fmt.Sprintf(RedisPlateArticleListKey, plateId)
+}
+
+func buildArticleListKey() string {
+	return RedisArticleList
 }
 
 type Status string
@@ -35,15 +40,17 @@ var ArticleStatuses = struct {
 }
 
 type Article struct {
-	Id          string   `json:"id" bson:"_id"`
-	Title       string   `json:"title" bson:"title"`
-	Content     string   `json:"content" bson:"content"`
-	Attachments []string `bson:"attachments" json:"attachments"`
-	Author      string   `json:"author" bson:"author"`
-	CreateTs    int64    `json:"create" bson:"create_ts"`
-	UpdateTs    int64    `json:"update" bson:"update_ts"`
-	PlateId     string   `json:"plate_id" bson:"plate_id"`
-	Status      Status   `json:"status" bson:"status"`
+	Id             string   `json:"id" bson:"_id"`
+	Title          string   `json:"title" bson:"title"`
+	Content        string   `json:"content" bson:"content"`
+	Attachments    []string `bson:"attachments" json:"attachments"`
+	Author         string   `json:"author" bson:"author"`
+	AuthorName     string   `json:"author_name,omitempty"`
+	CommunityCount int64    `json:"community_count,omitempty"`
+	CreateTs       int64    `json:"create_ts" bson:"create_ts"`
+	UpdateTs       int64    `json:"update_ts" bson:"update_ts"`
+	PlateId        string   `json:"plate_id" bson:"plate_id"`
+	Status         Status   `json:"status" bson:"status"`
 }
 
 func (a *Article) WithStatus(status Status) *Article {
@@ -92,10 +99,9 @@ func (a *Article) WithPlateId(plateId string) *Article {
 }
 
 type ListArticle struct {
-	List     []*Article `json:"list"`
-	PageSize int64      `json:"page_size"`
-	PageNum  int64      `json:"page_num"`
-	PlateId  string     `json:"plate_id,omitempty"`
-	Uid      string     `json:"uid,omitempty"`
-	Audit    string     `json:"audit,omitempty"`
+	List    []*Article `json:"list"`
+	PlateId string     `json:"plate_id,omitempty"`
+	Uid     string     `json:"uid,omitempty"`
+	Audit   bool       `json:"audit,omitempty"`
+	New     bool       `json:"new,omitempty"`
 }
