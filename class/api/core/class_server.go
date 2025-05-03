@@ -48,9 +48,9 @@ func (cls *ClassServer) CreateClass(ctx context.Context, info *Class) error {
 
 	// 使用lua脚本创建文件夹
 	err = cls.classDB.Eval(ctx, lua.CreateClassScript, []string{
-		BuildTeacherClassList(*info.Teacher),
+		BuildTeacherClassList(info.Teacher),
 		BuildAllClassList(),
-	}, info.CreateTs, *info.Cid).Err()
+	}, info.CreateTs, info.Cid).Err()
 
 	if err != nil {
 		lg.Errorf("CreateClass|Create Class Error|%v", err)
@@ -77,8 +77,8 @@ func (cls *ClassServer) RecoverClass(ctx context.Context, cid string) error {
 
 	// 执行恢复操作
 	err = cls.classDB.Eval(ctx, lua.RecoverClass, []string{
-		BuildTeacherClassList(*class.Teacher),
-		BuildTeacherClassDeletedList(*class.Teacher),
+		BuildTeacherClassList(class.Teacher),
+		BuildTeacherClassDeletedList(class.Teacher),
 		BuildAllClassList(),
 		BuildClassDeletedList(),
 	}, cid, class.CreateTs).Err()
@@ -97,7 +97,9 @@ func (cls *ClassServer) MoveClassToTrash(ctx context.Context, cid string) error 
 
 	// 更新class的删除状态
 	_, err = cls.mongoCli.UpdateByID(ctx, cid, bson.M{
-		"deleted": true,
+		"$set": bson.M{
+			"deleted": true,
+		},
 	})
 	if err != nil {
 		lg.Errorf("ClassServer|MoveClassToTrash|UpdateClassInfoError|%v", err)
@@ -105,8 +107,8 @@ func (cls *ClassServer) MoveClassToTrash(ctx context.Context, cid string) error 
 	}
 
 	err = cls.classDB.Eval(ctx, lua.MoveClassToTrash, []string{
-		BuildTeacherClassList(*class.Teacher),
-		BuildTeacherClassDeletedList(*class.Teacher),
+		BuildTeacherClassList(class.Teacher),
+		BuildTeacherClassDeletedList(class.Teacher),
 		BuildAllClassList(),
 		BuildClassDeletedList(),
 	}, cid, class.CreateTs).Err()
@@ -287,7 +289,7 @@ func (cls *ClassServer) DeleteClassFromTrash(ctx context.Context, cid string) er
 	}
 
 	// 从教师课程列表下面删除
-	err = cls.classDB.ZRem(ctx, BuildTeacherClassDeletedList(*info.Teacher), cid).Err()
+	err = cls.classDB.ZRem(ctx, BuildTeacherClassDeletedList(info.Teacher), cid).Err()
 	if err != nil {
 		lg.Errorf("ClassServer|DeleteClassFromTrash|DeleteClassFromTrashError|%v", err)
 		return nil
@@ -345,7 +347,7 @@ func (cls *ClassServer) CopyClass(ctx context.Context, cid string) (*Class, erro
 		return nil, err
 	}
 
-	err = cls.classDB.ZAdd(ctx, BuildTeacherClassList(*class.Teacher), redis.Z{
+	err = cls.classDB.ZAdd(ctx, BuildTeacherClassList(class.Teacher), redis.Z{
 		Member: newCid,
 		Score:  float64(time.Now().Unix()),
 	}).Err()
@@ -628,7 +630,6 @@ func (cls *ClassServer) ListStudentClass(ctx context.Context, uid string) ([]*Cl
 }
 
 func (cls *ClassServer) QueryTaskInfo(ctx context.Context, taskId string) (*Task, error) {
-
 	return cls.taskServer.QueryTaskInfo(ctx, taskId)
 }
 
@@ -636,7 +637,7 @@ func (cls *ClassServer) TaskSubmit(ctx context.Context, task *SubmitTask) error 
 	return cls.taskServer.TaskSubmit(ctx, task)
 }
 
-func (cls *ClassServer) ListStudentTask(ctx context.Context, list *ListStudentList) error {
+func (cls *ClassServer) ListStudentTask(ctx context.Context, list *ListStudentTask) error {
 	return cls.taskServer.ListStudentTask(ctx, list)
 }
 

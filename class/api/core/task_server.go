@@ -94,16 +94,16 @@ func (ts *TaskServer) HasSubmit(ctx context.Context, taskId string, uid string) 
 		}
 		return false, err
 	}
+
 	return true, nil
 }
 
 func (ts *TaskServer) TaskSubmit(ctx context.Context, task *SubmitTask) error {
 	// 生成taskid
-
-	submit, err2 := ts.HasSubmit(ctx, task.TaskId, task.Owner)
-	if err2 != nil {
-		lg.Errorf("ClassServer|TaskSubmit|HasSubmitError|%v", err2)
-		return err2
+	submit, err := ts.HasSubmit(ctx, task.TaskId, task.Owner)
+	if err != nil {
+		lg.Errorf("ClassServer|TaskSubmit|HasSubmitError|%v", err)
+		return err
 	}
 
 	if submit {
@@ -111,20 +111,19 @@ func (ts *TaskServer) TaskSubmit(ctx context.Context, task *SubmitTask) error {
 	}
 
 	task.WithId(NewStudentTaskId(8)).WithViewing(false)
-	raw, err := task.Marshal()
+	one, err := ts.mgCli.InsertOne(ctx, task)
 	if err != nil {
-		lg.Errorf("ClassServer|TaskSubmit|MarshalError|%v", err)
+		lg.Errorf("ClassServer|TaskSubmit|CreateTaskError|%v", err)
 		return err
 	}
-	// 存入task的信息
-	key := BuildStudentTaskInfoKey(task.Id)
-	err = ts.classDB.Set(ctx, key, raw, 0).Err()
-	if err != nil {
-		lg.Errorf("ClassServer|TaskSubmit|SetTaskInfoError|%v", err)
-		return err
+
+	if one.InsertedID == nil {
+		lg.Errorf("ClassServer|TaskSubmit|Insert Info Exist")
+		return nil
 	}
+
 	// 把作业信息存储到作业提交的学生列表下面
-	key = BuildTaskStudentTaskListKey(task.TaskId)
+	key := BuildTaskStudentTaskListKey(task.TaskId)
 	err = ts.classDB.ZAdd(ctx, key, redis.Z{
 		Member: task.Id,
 		Score:  float64(time.Now().Unix()),
@@ -161,7 +160,7 @@ func (ts *TaskServer) GetTaskListNumber(ctx context.Context, taskId string) (int
 	return result, err2
 }
 
-func (ts *TaskServer) ListStudentTask(ctx context.Context, list *ListStudentList) error {
+func (ts *TaskServer) ListStudentTask(ctx context.Context, list *ListStudentTask) error {
 	zrangeBy := &redis.ZRangeBy{
 		Min:    "(0",
 		Max:    strconv.FormatInt(math.MaxInt64, 10),
@@ -190,17 +189,12 @@ func (ts *TaskServer) ListStudentTask(ctx context.Context, list *ListStudentList
 }
 
 func (ts *TaskServer) QueryStudentTask(ctx context.Context, taskId string) (*SubmitTask, error) {
-	key := BuildStudentTaskInfoKey(taskId)
-	result, err := ts.classDB.Get(ctx, key).Result()
-	if err != nil {
-		return nil, err
-	}
-	var st SubmitTask
-	err = json.Unmarshal([]byte(result), &st)
-	if err != nil {
-		return nil, err
-	}
 
+	var st SubmitTask
+	err := ts.mgCli.FindOne(ctx, bson.M{"_id": taskId}).Decode(&st)
+	if err != nil {
+		return nil, err
+	}
 	// 学生的信息
 	rpcClient := client.GetUserRpcClient(ctx)
 	info, err := rpcClient.GetStudentsInfo(ctx, &proto.StudentIds{Uids: []string{st.Owner}})
@@ -213,25 +207,18 @@ func (ts *TaskServer) QueryStudentTask(ctx context.Context, taskId string) (*Sub
 }
 
 func (ts *TaskServer) UpdateStudentTask(ctx context.Context, task *SubmitTask) error {
-	key := BuildStudentTaskInfoKey(task.Id)
-	result, err := ts.classDB.Get(ctx, key).Result()
+	id, err := ts.mgCli.UpdateByID(ctx, task.Id, bson.M{
+		"$set": task,
+	})
 	if err != nil {
+		lg.Errorf("ClassServer|UpdateStudentTask|UpdateStudentTaskError|%v", err)
 		return err
 	}
-
-	var st SubmitTask
-	err = json.Unmarshal([]byte(result), &st)
-	if err != nil {
-		return err
+	if id.ModifiedCount == 0 {
+		lg.Errorf("ClassServer|UpdateStudentTask|UpdateStudentTaskError|%v", err)
+		return errors.New("updateError")
 	}
-	st.WithAnnotate(task.Annotate)
-	st.WithLevel(task.Level)
-	st.WithViewing(true)
-	raw, err := st.Marshal()
-	if err != nil {
-		return err
-	}
-	return ts.classDB.Set(ctx, key, raw, 0).Err()
+	return nil
 }
 
 func (ts *TaskServer) ListOwnerTask(ctx context.Context, uid string) ([]*ListOwnerTask, error) {

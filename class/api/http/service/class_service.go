@@ -53,7 +53,7 @@ func (cls *ClassService) HandleCreateClass(ctx echo.Context) error {
 		WithCreateTs(time.Now().Unix()).
 		WithDeleted(false).
 		WithArchive(false).
-		WithTeacher(tuid.(string)).WithStudyClass(*class.ClassName + "教学班")
+		WithTeacher(tuid.(string)).WithStudyClass(class.ClassName + "教学班")
 
 	err := cls.classServ.CreateClass(ctx.Request().Context(), class)
 	if err != nil {
@@ -108,7 +108,7 @@ func (cls *ClassService) HandleUpdateClass(ctx echo.Context) error {
 		})
 	}
 
-	if class.Cid == nil {
+	if len(class.Cid) < 0 {
 		lg.Errorf("HandleUpdateClass|ctx.Bind err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "classid can not be null",
@@ -668,7 +668,7 @@ func (cls *ClassService) HandleTaskSubmit(ctx echo.Context) error {
 }
 
 func (cls *ClassService) HandleListStudentTask(ctx echo.Context) error {
-	var list core2.ListStudentList
+	var list core2.ListStudentTask
 	decoder := json.NewDecoder(ctx.Request().Body)
 	if err := decoder.Decode(&list); err != nil {
 		lg.Errorf("HandleListStudentTask|Decode err:%v", err)

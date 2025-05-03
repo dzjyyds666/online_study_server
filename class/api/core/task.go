@@ -2,6 +2,7 @@ package core
 
 import "encoding/json"
 
+// 老师提交的作业信息
 type Task struct {
 	TaskId         string   `json:"task_id" bson:"_id"`
 	TaskName       string   `json:"task_name" bson:"task_name"`
@@ -50,16 +51,17 @@ type ListTask struct {
 	Cid     string  `json:"cid"`
 }
 
+// 学生提交的作业信息，包括一些状态
 type SubmitTask struct {
-	Id            string   `json:"id"`
-	Content       string   `json:"content"`
-	TaskId        string   `json:"task_id"`
-	TaskImageList []string `json:"task_image_list"` // 存储任务的图片列表
-	Owner         string   `json:"owner"`
-	OwnerName     string   `json:"owner_name"`
-	Viewing       bool     `json:"viewing"`  // 老师是否查看
-	Annotate      string   `json:"annotate"` // 老师的批注
-	Level         string   `json:"level"`    // 提交任务的等级
+	Id             string   `json:"id" bson:"_id"`
+	Content        string   `json:"content" bson:"content"`
+	TaskId         string   `json:"task_id" bson:"task_id"`
+	AttachmentList []string `json:"attachment_list,omitempty" bson:"attachment-list,omitempty"` // 存储任务的图片列表
+	Owner          string   `json:"owner" bson:"owner"`
+	OwnerName      string   `json:"owner_name,omitempty" bson:"owner_name,omitempty"`
+	Viewing        bool     `json:"viewing" bson:"viewing"`   // 老师是否查看
+	Annotate       string   `json:"annotate" bson:"annotate"` // 老师的批注
+	Level          string   `json:"level" bson:"level"`       // 提交任务的等级
 }
 
 func (st *SubmitTask) WithId(id string) *SubmitTask {
@@ -96,11 +98,11 @@ func (st *SubmitTask) WithOwner(owner string) *SubmitTask {
 	return st
 }
 
-func (st *SubmitTask) WithImageList(image string) *SubmitTask {
-	if st.TaskImageList == nil {
-		st.TaskImageList = make([]string, 0)
+func (st *SubmitTask) WithAttachmentList(resource string) *SubmitTask {
+	if st.AttachmentList == nil {
+		st.AttachmentList = make([]string, 0)
 	}
-	st.TaskImageList = append(st.TaskImageList, image)
+	st.AttachmentList = append(st.AttachmentList, resource)
 	return st
 }
 
@@ -109,7 +111,7 @@ func (st *SubmitTask) Marshal() (string, error) {
 	return string(marshal), err
 }
 
-type ListStudentList struct {
+type ListStudentTask struct {
 	Tasks  []*SubmitTask `json:"tasks"`
 	Page   int64         `json:"page"`
 	Limit  int64         `json:"limit"`
