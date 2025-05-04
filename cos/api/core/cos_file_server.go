@@ -7,9 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"os/exec"
 	"path"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -370,6 +374,15 @@ func (cfs *CosFileServer) SingleUpload(ctx context.Context, bucket, fid string, 
 		logx.GetLogger("study").Errorf("SingleUpload|CompleteFileIndex Error|%v", err)
 		return nil, err
 	}
+	if strings.Contains(*info.FileType, "video") {
+		go func() {
+			ctx1 := context.Background()
+			err = cfs.VideoProcessing(ctx1, fid)
+			if err != nil {
+				logx.GetLogger("study").Errorf("CompleteMultUpload|VideoProcessing Error|%v", err)
+			}
+		}()
+	}
 	return info, nil
 }
 
@@ -410,6 +423,15 @@ func (cfs *CosFileServer) CompleteMultUpload(ctx context.Context, bucket, fid st
 		return nil, err
 	}
 	logx.GetLogger("study").Infof("CompleteMultUpload|CompleteMultipartUpload Success")
+	if strings.Contains(*info.FileType, "video") {
+		go func() {
+			ctx1 := context.Background()
+			err = cfs.VideoProcessing(ctx1, fid)
+			if err != nil {
+				logx.GetLogger("study").Errorf("CompleteMultUpload|VideoProcessing Error|%v", err)
+			}
+		}()
+	}
 	return info, nil
 }
 
@@ -493,25 +515,41 @@ func (cfs *CosFileServer) UploadClassCover(ctx context.Context, filename, dirId,
 	return *file.Fid, nil
 }
 
-func (cfs *CosFileServer) PushVideoToLambdaQueue(ctx context.Context, fid string) error {
-	err := cfs.cosDB.LPush(ctx, buildVideoLambdaQueueKey(), fid).Err()
-	if err != nil {
-		logx.GetLogger("study").Errorf("PushVideoToLambdaQueue|LPush Error|%v", err)
-		return err
-	}
-	return nil
-}
+//func (cfs *CosFileServer) PushVideoToLambdaQueue(ctx context.Context, fid string) error {
+//	return cfs.VideoProcessing(ctx, fid)
+//}
 
-func (cfs *CosFileServer) GetFile(ctx context.Context, bucket, key string) (io.ReadCloser, error) {
+func (cfs *CosFileServer) GetFile(ctx context.Context, bucket string, info *CosFile) (io.ReadCloser, string, error) {
+	// 判断文件的类型
+	key := info.MergeFilePath()
+	fileType := *info.FileType
+	if strings.Contains(*info.FileType, "video") {
+		//  先判断视频的m3u8文件是否存在
+		object, _ := cfs.s3Client.HeadObject(ctx, &s3.HeadObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(info.MergeVideoPath()),
+		})
+		// 如果 object 为 nil，也可以认为文件不存在
+		if object == nil {
+			logx.GetLogger("study").Warnf("GetFile|HeadObject|File Not Found|Object is nil")
+		} else {
+			// 存在，使用m3u8文件
+			key = info.MergeVideoPath()
+			fileType = "application/x-mpegURL"
+		}
+	}
+
+	logx.GetLogger("study").Errorf("GetFile|GetObject|%s", key)
+
 	object, err := cfs.s3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
 	if err != nil {
 		logx.GetLogger("study").Errorf("GetFile|GetObject Error|%v", err)
-		return nil, err
+		return nil, "", err
 	}
-	return object.Body, nil
+	return object.Body, fileType, nil
 }
 
 func (cfs *CosFileServer) CheckFile(ctx context.Context, fid string) (io.ReadCloser, *string, error) {
@@ -520,12 +558,12 @@ func (cfs *CosFileServer) CheckFile(ctx context.Context, fid string) (io.ReadClo
 		logx.GetLogger("study").Errorf("CheckFile|QueryCosFile Error|%v", err)
 		return nil, nil, err
 	}
-	r, err := cfs.GetFile(ctx, cfs.bucket, file.MergeFilePath())
+	r, filetype, err := cfs.GetFile(ctx, cfs.bucket, file)
 	if err != nil {
 		logx.GetLogger("study").Errorf("CheckFile|GetFile Error|%v", err)
 		return nil, nil, err
 	}
-	return r, file.FileType, nil
+	return r, &filetype, nil
 }
 
 func (cfs *CosFileServer) DeleteFile(ctx context.Context, fid string) error {
@@ -582,4 +620,198 @@ func (cfs *CosFileServer) CopyObject(ctx context.Context, fid string) (string, e
 		return "", err
 	}
 	return *info.Fid, nil
+}
+
+func (cfs *CosFileServer) VideoProcessing(ctx context.Context, fid string) error {
+	// 查询 MinIO 文件元信息
+	cosFile, err := cfs.QueryCosFile(ctx, fid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("VideoProcessing|QueryCosFile Error|%v", err)
+		return err
+	}
+
+	// 获取文件流
+	file, _, err := cfs.GetFile(ctx, cfs.bucket, cosFile)
+	if err != nil {
+		logx.GetLogger("study").Errorf("VideoProcessing|GetFile Error|%v", err)
+		return err
+	}
+	defer file.Close()
+
+	// 创建临时保存路径
+	filePath := "/tmp/ffmpeg/" + fid + path.Ext(*cosFile.FileName)
+	outFile, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		logx.GetLogger("study").Errorf("VideoProcessing|OpenFile Error|%v", err)
+		return err
+	}
+	defer outFile.Close() // 确保写入完自动关闭
+
+	// 直接使用 io.Copy 是更高效和稳定的方式
+	written, err := io.Copy(outFile, file)
+	if err != nil {
+		logx.GetLogger("study").Errorf("VideoProcessing|Copy Error|%v", err)
+		return err
+	}
+	logx.GetLogger("study").Infof("VideoProcessing|File written|Size: %d bytes", written)
+
+	resolutions := map[string]string{
+		"360p":  "640x360",
+		"480p":  "854x480",
+		"720p":  "1280x720",
+		"1080p": "1920x1080",
+	}
+
+	// 调用 FFmpeg 进行转码
+	err = cfs.transcodeToHLS(filePath, "/tmp/ffmpeg/"+fid, resolutions, *cosFile.DirectoryId, *cosFile.Fid)
+	if err != nil {
+		logx.GetLogger("study").Errorf("VideoProcessing|TranscodeToHLS Error|%v", err)
+		return err
+	}
+	err = cfs.uploadHlsVideo(ctx, "/tmp/ffmpeg/"+fid+"/", cosFile)
+	if err != nil {
+		logx.GetLogger("study").Errorf("VideoProcessing|uploadHlsVideo Error|%v", err)
+		return err
+	}
+	// 处理完之后，把文件文件上传到minio中
+	return nil
+}
+
+func (cfs *CosFileServer) transcodeToHLS(inputPath, outputDir string, resolutions map[string]string, dirid, fid string) error {
+	for res, _ := range resolutions {
+		err := createDirIfAbsent(outputDir + "/" + res)
+		if err != nil {
+			return err
+		}
+	}
+
+	for key, res := range resolutions {
+		outPath := filepath.Join(outputDir, key)
+		os.MkdirAll(outPath, 0755)
+		cmd := exec.Command("ffmpeg",
+			"-i", inputPath,
+			"-vf", "scale="+res,
+			"-c:a", "aac", "-ar", "48000", "-b:a", "128k",
+			"-c:v", "h264", "-profile:v", "main", "-crf", "20", "-g", "48",
+			"-hls_time", "6", "-hls_playlist_type", "vod",
+			"-f", "hls", filepath.Join(outPath, key+".m3u8"),
+		)
+
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("转码 %s 失败: %w", key, err)
+		}
+	}
+
+	//  生成 master.m3u8 播放列表
+	masterPath := filepath.Join(outputDir, "master.m3u8")
+	masterFile, err := os.Create(masterPath)
+	if err != nil {
+		return fmt.Errorf("无法创建 master.m3u8: %w", err)
+	}
+	defer masterFile.Close()
+
+	masterFile.WriteString("#EXTM3U\n\n")
+	for key, res := range resolutions {
+		bandwidth := estimateBandwidth(res) // 自定义函数估算带宽
+		masterFile.WriteString(fmt.Sprintf("#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%s\n", bandwidth, res))
+		// fixme 需要替换为服务器地址
+		masterFile.WriteString(fmt.Sprintf("%s/%s/%s/%s/%s/%s.m3u8\n\n", "http://127.0.0.1:9000", cfs.bucket, dirid, fid, key, key))
+	}
+	return nil
+}
+
+func estimateBandwidth(res string) int {
+	switch res {
+	case "1920x1080":
+		return 5000000
+	case "1280x720":
+		return 3000000
+	case "854x480":
+		return 1000000
+	case "640x360":
+		return 600000
+	case "426x240":
+		return 300000
+	default:
+		return 1500000 // 默认值
+	}
+}
+
+func (cfs *CosFileServer) uploadHlsVideo(ctx context.Context, rootDir string, info *CosFile) error {
+	// todo 上传文件的是否上传视频的master.m3u8文件
+	//for key, _ := range resolutions {
+	//	filePath := filepath.Join(rootDir, key)
+	//	filepath.WalkDir(filePath, func(path string, d fs.DirEntry, err error) error {
+	//		if err != nil {
+	//			logx.GetLogger("study").Errorf("createDirIfAbsent|WalkDir|%v", err)
+	//			return err
+	//		}
+	//		if !d.IsDir() {
+	//			file, err := os.OpenFile(path, os.O_RDONLY, 0666)
+	//			if err != nil {
+	//				logx.GetLogger("study").Errorf("createDirIfAbsent|OpenFile|%v", err)
+	//				return err
+	//			}
+	//			defer file.Close()
+	//			// 构建key上传文件
+	//			objectKey := filepath.Join(*info.DirectoryId, *info.Fid, key, filepath.Base(file.Name()))
+	//			logx.GetLogger("study").Infof("createDirIfAbsent|createDirIfAbsent|%s", objectKey)
+	//			// 调用s3上传
+	//			_, err = cfs.s3Client.PutObject(ctx, &s3.PutObjectInput{
+	//				Bucket: aws.String(cfs.bucket),
+	//				Key:    aws.String(objectKey),
+	//				Body:   file,
+	//			})
+	//			if err != nil {
+	//				logx.GetLogger("study").Errorf("createDirIfAbsent|PutObject|%v", err)
+	//				return err
+	//			}
+	//		}
+	//		return nil
+	//	})
+	//}
+
+	filepath.WalkDir(rootDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			logx.GetLogger("study").Errorf("createDirIfAbsent|WalkDir|%v", err)
+			return err
+		}
+		if !d.IsDir() {
+			file, err := os.Open(path)
+			if err != nil {
+				logx.GetLogger("study").Errorf("createDirIfAbsent|OpenFile|%v", err)
+				return err
+			}
+			defer file.Close()
+			// 构建key上传文件
+			key := strings.TrimPrefix(path, rootDir)
+			objectKey := filepath.Join(*info.DirectoryId, *info.Fid, key)
+			_, err = cfs.s3Client.PutObject(ctx, &s3.PutObjectInput{
+				Bucket: aws.String(cfs.bucket),
+				Key:    aws.String(objectKey),
+				Body:   file,
+			})
+			if err != nil {
+				logx.GetLogger("study").Errorf("createDirIfAbsent|PutObject|%v", err)
+				return err
+			}
+		}
+		return nil
+	})
+	return nil
+}
+
+func createDirIfAbsent(dir string) error {
+	logx.GetLogger("study").Infof("createDirIfAbsent|createDirIfAbsent|%s", dir)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0755)
+		if err != nil {
+			logx.GetLogger("study").Errorf("createDirIfAbsent|createDirIfAbsent|%s", err)
+			return err
+		}
+	}
+	return nil
 }
