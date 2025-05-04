@@ -16,6 +16,7 @@ func RegisterRouter(e *echo.Echo, cls *ClassService) {
 	globApiPrefix := e.Group("/v1/class")
 	teacher := globApiPrefix.Group("/tch")
 	teacher.Add("GET", "/list", cls.HandleListTeacherClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
+	teacher.Add("GET", "/list/all", cls.HandleListAllClass, mymiddleware.AuthMw(mymiddleware.UserRole.Admin))
 	teacher.Add("GET", "/list/deleted", cls.HandleQueryTeacherDeletedClassList, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
 	teacher.Add("POST", "/create", cls.HandleCreateClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))
 	teacher.Add("GET", "/copy/:cid", cls.HandleCopyClass, mymiddleware.AuthMw(mymiddleware.UserRole.Teacher))

@@ -732,3 +732,14 @@ func (cls *ClassService) HandleUpdateStudentTask(ctx echo.Context) error {
 		"msg": "UpdateStudentTask Success",
 	})
 }
+
+func (cls *ClassService) HandleListAllClass(ctx echo.Context) error {
+	list, err := cls.classServ.QueryAllClassList(ctx.Request().Context())
+	if err != nil {
+		lg.Errorf("HandleListAllClass|QueryListError|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "QueryListError",
+		})
+	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
+}

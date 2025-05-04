@@ -648,3 +648,23 @@ func (cls *ClassServer) GetTaskListNumber(ctx context.Context, taskId string) (i
 func (cls *ClassServer) UpdateStudentTask(ctx context.Context, task *SubmitTask) error {
 	return cls.taskServer.UpdateStudentTask(ctx, task)
 }
+
+func (cls *ClassServer) QueryAllClassList(ctx context.Context) ([]*Class, error) {
+	key := BuildAllClassList()
+	cids, err := cls.classDB.ZRange(ctx, key, 0, -1).Result()
+	if err != nil {
+		lg.Errorf("ClassServer|QueryAllClassList|QueryAllClassListError|%v", err)
+		return nil, err
+	}
+
+	list := make([]*Class, 0, len(cids)-1)
+	for _, cid := range cids {
+		info, err := cls.QueryClassInfo(ctx, cid)
+		if err != nil {
+			lg.Errorf("ClassServer|QueryAllClassList|QueryClassInfoError|%v", err)
+			return nil, err
+		}
+		list = append(list, info)
+	}
+	return list, nil
+}

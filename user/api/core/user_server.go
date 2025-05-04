@@ -46,6 +46,17 @@ func (us *UserServer) RegisterUser(ctx context.Context, user *UserInfo) error {
 }
 
 func (us *UserServer) UpdateUserInfo(ctx context.Context, user *UserInfo) error {
+	user.UpdateTs = time.Now().Unix()
+	if len(user.Password) > 0 {
+		// 对密码进行加密
+		password, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+		if err != nil {
+			logx.GetLogger("study").Errorf("UserServer|GenerateFromPassword Error|%v", err)
+			return err
+		}
+		user.Password = string(password)
+	}
+	logx.GetLogger("study").Infof("info:%s", common.ToStringWithoutError(user))
 	err := us.mySql.WithContext(ctx).Where("uid = ?", user.Uid).Updates(user).Error
 	if err != nil {
 		logx.GetLogger("study").Errorf("UserServer|UpdateUserInfo|Update User Info Error|%v", err)
@@ -56,7 +67,8 @@ func (us *UserServer) UpdateUserInfo(ctx context.Context, user *UserInfo) error 
 
 func (us *UserServer) QueryUserInfo(ctx context.Context, uid string) (*UserInfo, error) {
 	var user UserInfo
-	err := us.mySql.WithContext(ctx).Where("uid = ?", uid).First(&user).Error
+	err := us.mySql.WithContext(ctx).Where("uid = ?", uid).Select(
+		"uid", "name", "role", "collage", "avatar", "major", "create_ts", "update_ts").First(&user).Error
 	if err != nil {
 		logx.GetLogger("study").Errorf("UserServer|QueryUserInfo|Query User Info Error|%v", err)
 		return nil, err
@@ -203,4 +215,31 @@ func (us *UserServer) QueryStudentClassList(ctx context.Context, uid string) ([]
 		return nil, err
 	}
 	return classList, nil
+}
+
+func (us *UserServer) ListUserByRole(ctx context.Context, role string) ([]UserInfo, error) {
+	list := make([]UserInfo, 0)
+	switch role {
+	case "student":
+		err := us.mySql.Where("role = ?", UserRole.Student).Find(&list).Error
+		if err != nil {
+			logx.GetLogger("study").Errorf("ListUserByRole|Query Student List Error|%v", err)
+			return nil, err
+		}
+	case "teacher":
+		err := us.mySql.Where("role = ?", UserRole.Teacher).Find(&list).Error
+		if err != nil {
+			logx.GetLogger("study").Errorf("ListUserByRole|Query Teacher List Error|%v", err)
+			return nil, err
+		}
+	case "admin":
+		err := us.mySql.Where("role = ?", UserRole.Admin).Find(&list).Error
+		if err != nil {
+			logx.GetLogger("study").Errorf("ListUserByRole|Query Admin List Error|%v", err)
+			return nil, err
+		}
+	default:
+		return nil, errors.New("role error")
+	}
+	return list, nil
 }

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/dzjyyds666/opensource/logx"
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
 	"os"
 	"strings"
 	"time"
@@ -18,19 +17,18 @@ func RegisterRouter(e *echo.Echo, us *UserService) {
 	//e.Use(middleware.CORS())
 
 	// 输出当前路由的信息
-	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: `{"time":"${time_rfc3339_nano}","method":"${method}","uri":"${uri}","status":${status},"error":"${error}","latency":${latency},"latency_human":"${latency_human}","bytes_in":${bytes_in},"bytes_out":${bytes_out}}` + "\n",
-	}))
-
-	e.Use(middleware.Recover())
+	//e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+	//	Format: `{"time":"${time_rfc3339_nano}","method":"${method}","uri":"${uri}","status":${status},"error":"${error}","latency":${latency},"latency_human":"${latency_human}","bytes_in":${bytes_in},"bytes_out":${bytes_out}}` + "\n",
+	//}))
 
 	globApiPrefix := e.Group("/v1")
 	globApiPrefix.Add("POST", "/user/signin", us.HandlerLogin)
 	globApiPrefix.Add("POST", "/user/signup", us.HandleSignUp)
+	globApiPrefix.Add("GET", "/user/list/:role", us.HandleListUser, mymiddleware.AuthMw(mymiddleware.UserRole.Admin))
 
 	// token验证中间件
 	userGroup := globApiPrefix.Group("/user")
-	userGroup.Add("POST", "/update/:uid", us.UpdateUserInfo)
+	userGroup.Add("POST", "/update", us.UpdateUserInfo)
 	userGroup.Add("GET", "/info/:uid", us.HandlerQueryUserInfo, mymiddleware.AuthMw(core.UserRole.Student))
 
 	router := FilterRouter(e.Routes())

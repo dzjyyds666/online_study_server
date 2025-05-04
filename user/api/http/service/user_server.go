@@ -203,7 +203,7 @@ func (us *UserService) UpdateUserInfo(ctx echo.Context) error {
 }
 
 func (us *UserService) HandlerQueryUserInfo(ctx echo.Context) error {
-	uid := ctx.Get("uid").(string)
+	uid := ctx.Param("uid")
 	if len(uid) <= 0 {
 		logx.GetLogger("study").Errorf("HandlerListUsers|uid is empty")
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
@@ -236,4 +236,18 @@ func GenerateRandomString(length int) string {
 		bytes[i] = letters[b%byte(len(letters))]
 	}
 	return string(bytes)
+}
+
+func (us *UserService) HandleListUser(ctx echo.Context) error {
+	role := ctx.Param("role")
+	list, err := us.userServer.ListUserByRole(ctx.Request().Context(), role)
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleListUser|err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "Query User Info Error",
+		})
+	}
+
+	logx.GetLogger("study").Errorf("HandleListUser|Succ|%s", common.ToStringWithoutError(list))
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }

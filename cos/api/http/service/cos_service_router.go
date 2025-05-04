@@ -20,6 +20,7 @@ func RegisterRouter(e *echo.Echo, cs *CosService) {
 	cos.Add("POST", "/upload/abort/:fid", cs.HandleAbortUpload)
 	cos.Add("GET", "/file/:fid", cs.HandleGetFile)
 	cos.Add("HEAD", "/file/:fid", cs.HandleGetFile)
+	cos.Add("GET", "/fileType/:fid", cs.HandleGetFileType)
 
 	RecordRouteToFile(FilterRouter(e.Routes()))
 }

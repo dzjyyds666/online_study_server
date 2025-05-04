@@ -26,6 +26,12 @@ type Comment struct {
 	ParentId   string   `bson:"parent_id,omitempty" json:"parent_id"`
 	Replies    []string `bson:"replies,omitempty" json:"replies"`
 	AuthorName string   `json:"author_name,omitempty"`
+	Role       int64    `json:"role,omitempty"`
+}
+
+func (c *Comment) WithRole(role int64) *Comment {
+	c.Role = role
+	return c
 }
 
 func (c *Comment) WithId(id string) *Comment {

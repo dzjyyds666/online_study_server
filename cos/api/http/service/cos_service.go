@@ -280,18 +280,6 @@ func (cs *CosService) CompleteUpload(ctx echo.Context) error {
 		})
 	}
 
-	//if strings.Contains(*info.FileType, "video") {
-	//	logx.GetLogger("study").Infof("HandleSingleUpload|video")
-	//	// 把视频fid推入队列中
-	//	err = cs.cosServer.PushVideoToLambdaQueue(ctx.Request().Context(), fid)
-	//	if err != nil {
-	//		logx.GetLogger("study").Errorf("HandleSingleUpload|PushVideoToQueue err:%v", err)
-	//		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
-	//			"msg": "PushVideoToQueue Error",
-	//		})
-	//	}
-	//}
-
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, info)
 }
 
@@ -336,17 +324,39 @@ func (cs *CosService) HandleGetFile(ctx echo.Context) error {
 	}
 	logx.GetLogger("study").Infof("HandleGetFile|fid:%s", fid)
 	r, fileType, err := cs.cosServer.CheckFile(ctx.Request().Context(), fid)
-	defer r.Close()
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleGetFile|GetFile err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "GetFile Error",
 		})
 	}
+	defer r.Close()
 	if ctx.Request().Method == "HEAD" {
 		logx.GetLogger("study").Errorf("HandleGetFile|HEAD|%s", *fileType)
 		ctx.Response().Header().Set("Content-Type", *fileType)
 		return ctx.NoContent(http.StatusOK)
 	}
 	return ctx.Stream(http.StatusOK, *fileType, r)
+}
+
+func (cs *CosService) HandleGetFileType(ctx echo.Context) error {
+	ifd := ctx.Param("fid")
+	if ifd == "" {
+		return ctx.JSON(http.StatusBadRequest, map[string]interface{}{
+			"code": http.StatusBadRequest,
+			"msg":  "fid is empty",
+		})
+	}
+
+	file, err := cs.cosServer.QueryCosFile(ctx.Request().Context(), ifd)
+	if err != nil {
+		logx.GetLogger("study").Errorf("HandleGetFileType|QueryCosFile Error|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"msg": "System Error",
+		})
+	}
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"fileType": *file.FileType,
+		"fileName": *file.FileName,
+	})
 }

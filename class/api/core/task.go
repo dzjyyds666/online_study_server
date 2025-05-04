@@ -7,7 +7,7 @@ type Task struct {
 	TaskId         string   `json:"task_id" bson:"_id"`
 	TaskName       string   `json:"task_name" bson:"task_name"`
 	TaskContent    string   `json:"task_content" bson:"task_content"`
-	AttachemntList []string `json:"attachemnt_list" bson:"attachemnt_list,omitempty"` // 存储任务的图片列表
+	AttachemntList []string `json:"attachment_list" bson:"attachment_list,omitempty"` // 存储任务的图片列表
 	Cid            string   `json:"cid" bson:"cid"`
 }
 

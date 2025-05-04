@@ -96,6 +96,7 @@ func (cs *CommentServer) GetCommentList(ctx context.Context, list *ListComment) 
 		}
 
 		comment.AuthorName = info.Username
+		comment.Role = info.Role
 		list.List = append(list.List, &comment)
 	}
 

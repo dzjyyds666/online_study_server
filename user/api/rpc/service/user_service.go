@@ -100,5 +100,6 @@ func (us *UserRpcServer) GetUserInfo(ctx context.Context, in *proto.Uid) (*proto
 		Uid:      info.Uid,
 		Username: info.Name,
 		Avatar:   info.Avatar,
+		Role:     int64(info.Role),
 	}, nil
 }

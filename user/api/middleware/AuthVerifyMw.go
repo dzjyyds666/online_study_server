@@ -57,3 +57,13 @@ func AuthVerifyMw(next echo.HandlerFunc, permission int) echo.HandlerFunc {
 		}
 	}
 }
+
+var UserRole = struct {
+	Admin   int
+	Teacher int
+	Student int
+}{
+	Admin:   3,
+	Teacher: 2,
+	Student: 1,
+}
