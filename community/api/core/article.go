@@ -9,6 +9,8 @@ const (
 	RedisArticleAuditListKey = "article:audit:list"
 	RedisPlateArticleListKey = "plate:%s:article:list"
 	RedisArticleList         = "article:list"
+
+	RedisPlateSubscribeListKey = "plate:%s:subscribe:list" // 板块订阅列表
 )
 
 func buildArticleAuditListKey() string {
@@ -21,6 +23,10 @@ func buildUserArticleListKey(userId string) string {
 
 func buildPlateArticleListKey(plateId string) string {
 	return fmt.Sprintf(RedisPlateArticleListKey, plateId)
+}
+
+func buildPlateSubscribeListKey(plateId string) string {
+	return fmt.Sprintf(RedisPlateSubscribeListKey, plateId)
 }
 
 func buildArticleListKey() string {

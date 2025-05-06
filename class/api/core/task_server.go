@@ -4,7 +4,6 @@ import (
 	"common/proto"
 	"common/rpc/client"
 	"context"
-	"encoding/json"
 	"errors"
 	"github.com/dzjyyds666/opensource/common"
 	"go.mongodb.org/mongo-driver/bson"
@@ -17,21 +16,25 @@ import (
 )
 
 type TaskServer struct {
-	classDB *redis.Client
-	ctx     context.Context
-	mgCli   *mongo.Collection
+	classDB    *redis.Client
+	ctx        context.Context
+	taskMgCli  *mongo.Collection
+	subMgCli   *mongo.Collection
+	classMgCli *mongo.Collection
 }
 
 func NewTaskServer(ctx context.Context, classDB *redis.Client, mongoCLi *mongo.Client) *TaskServer {
 	return &TaskServer{
-		ctx:     ctx,
-		classDB: classDB,
-		mgCli:   mongoCLi.Database("learnX").Collection("task"),
+		ctx:        ctx,
+		classDB:    classDB,
+		taskMgCli:  mongoCLi.Database("learnX").Collection("task"),
+		subMgCli:   mongoCLi.Database("learnX").Collection("task_submit"),
+		classMgCli: mongoCLi.Database("learnX").Collection("class"),
 	}
 }
 
 func (ts *TaskServer) CreateTask(ctx context.Context, task *Task) error {
-	one, err := ts.mgCli.InsertOne(ctx, task)
+	one, err := ts.taskMgCli.InsertOne(ctx, task)
 	if err != nil {
 		lg.Errorf("ClassServer|CreateTask|CreateTaskError|%v", err)
 		return err
@@ -45,7 +48,7 @@ func (ts *TaskServer) CreateTask(ctx context.Context, task *Task) error {
 
 func (ts *TaskServer) QueryTaskInfo(ctx context.Context, taskId string) (*Task, error) {
 	var task Task
-	err := ts.mgCli.FindOne(ctx, bson.M{"_id": taskId}).Decode(&task)
+	err := ts.taskMgCli.FindOne(ctx, bson.M{"_id": taskId}).Decode(&task)
 	if err != nil {
 		lg.Errorf("ClassServer|QueryTaskInfo|QueryTaskInfoError|%v", err)
 		return nil, err
@@ -54,7 +57,7 @@ func (ts *TaskServer) QueryTaskInfo(ctx context.Context, taskId string) (*Task, 
 }
 
 func (ts *TaskServer) DeleteTask(ctx context.Context, taskId string) error {
-	one, err := ts.mgCli.DeleteOne(ctx, bson.M{"_id": taskId})
+	one, err := ts.taskMgCli.DeleteOne(ctx, bson.M{"_id": taskId})
 	if err != nil {
 		lg.Errorf("ClassServer|DeleteTask|DeleteTaskError|%v", err)
 		return err
@@ -71,7 +74,7 @@ func (ts *TaskServer) UpdateTask(ctx context.Context, task *Task) error {
 	if len(task.TaskId) <= 0 || len(task.Cid) <= 0 || len(task.TaskName) <= 0 || len(task.TaskContent) <= 0 {
 		return errors.New("params error")
 	}
-	id, err := ts.mgCli.UpdateByID(ctx, task.TaskId, bson.M{
+	id, err := ts.taskMgCli.UpdateByID(ctx, task.TaskId, bson.M{
 		"$set": task,
 	})
 	if err != nil {
@@ -110,8 +113,10 @@ func (ts *TaskServer) TaskSubmit(ctx context.Context, task *SubmitTask) error {
 		return ErrTaskHasSubmit
 	}
 
+	lg.Infof("ClassServer|TaskSubmit|TaskSubmit|%s", common.ToStringWithoutError(task))
+
 	task.WithId(NewStudentTaskId(8)).WithViewing(false)
-	one, err := ts.mgCli.InsertOne(ctx, task)
+	one, err := ts.subMgCli.InsertOne(ctx, task)
 	if err != nil {
 		lg.Errorf("ClassServer|TaskSubmit|CreateTaskError|%v", err)
 		return err
@@ -191,23 +196,24 @@ func (ts *TaskServer) ListStudentTask(ctx context.Context, list *ListStudentTask
 func (ts *TaskServer) QueryStudentTask(ctx context.Context, taskId string) (*SubmitTask, error) {
 
 	var st SubmitTask
-	err := ts.mgCli.FindOne(ctx, bson.M{"_id": taskId}).Decode(&st)
+	err := ts.subMgCli.FindOne(ctx, bson.M{"_id": taskId}).Decode(&st)
 	if err != nil {
 		return nil, err
 	}
 	// 学生的信息
+	lg.Infof("ClassServer|QueryStudentTask|QueryStudentTaskSuccess|%s", common.ToStringWithoutError(st))
 	rpcClient := client.GetUserRpcClient(ctx)
 	info, err := rpcClient.GetStudentsInfo(ctx, &proto.StudentIds{Uids: []string{st.Owner}})
 	if err != nil {
 		return nil, err
 	}
-
 	st.OwnerName = info.Infos[0].Name
 	return &st, nil
 }
 
 func (ts *TaskServer) UpdateStudentTask(ctx context.Context, task *SubmitTask) error {
-	id, err := ts.mgCli.UpdateByID(ctx, task.Id, bson.M{
+	task.WithViewing(true)
+	id, err := ts.subMgCli.UpdateByID(ctx, task.Id, bson.M{
 		"$set": task,
 	})
 	if err != nil {
@@ -234,7 +240,8 @@ func (ts *TaskServer) ListOwnerTask(ctx context.Context, uid string) ([]*ListOwn
 	for _, id := range result {
 		task, err := ts.QueryStudentTask(ctx, id)
 		if err != nil {
-			return nil, err
+			lg.Errorf("ClassServer|ListOwnerTask|QueryStudentTaskError|%v", err)
+			continue
 		}
 		var item ListOwnerTask
 		item.Submit = task
@@ -246,17 +253,13 @@ func (ts *TaskServer) ListOwnerTask(ctx context.Context, uid string) ([]*ListOwn
 		}
 		item.Task = taskInfo
 		//查询课程信息
-		result, err := ts.classDB.Get(ctx, BuildClassInfo(taskInfo.Cid)).Result()
-		if err != nil {
-			lg.Errorf("ClassServer|QueryClassInfo|GetClassInfoError|%v", err)
-			return nil, err
-		}
-
 		var class Class
-		err = json.Unmarshal([]byte(result), &class)
+		err = ts.classMgCli.FindOne(ctx, bson.M{
+			"_id": taskInfo.Cid,
+		}).Decode(&class)
 		if err != nil {
-			lg.Errorf("ClassServer|QueryClassInfo|UnmarshalClassInfoError|%v", err)
-			return nil, err
+			lg.Errorf("ClassServer|ListOwnerTask|GetClassInfoError|%v|%s", err, taskInfo.Cid)
+			continue
 		}
 		item.ClassInfo = &class
 		list = append(list, &item)

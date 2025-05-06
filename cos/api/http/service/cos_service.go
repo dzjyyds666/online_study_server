@@ -360,3 +360,18 @@ func (cs *CosService) HandleGetFileType(ctx echo.Context) error {
 		"fileName": *file.FileName,
 	})
 }
+
+func (cs *CosService) HandleDeleteFile(ctx echo.Context) error {
+	fid := ctx.Param("fid")
+	err := cs.cosServer.DeleteFile(ctx.Request().Context(), fid)
+	if err != nil {
+		logx.GetLogger("cos").Errorf("HandleDeleteFile|DeleteFileError|%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
+			"Message": "Delete File Error",
+		})
+	}
+
+	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, echo.Map{
+		"Message": "delete Success",
+	})
+}

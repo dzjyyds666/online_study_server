@@ -109,6 +109,21 @@ func (p *PlateServer) QueryPlateInfo(ctx context.Context, pid string) (*Plate, e
 		lg.Errorf("QueryPlateInfo|FindOne err:%v", err)
 		return nil, err
 	}
+
+	articleNumber, err := p.rsDb.ZCard(ctx, buildPlateArticleListKey(pid)).Result()
+	if err != nil {
+		lg.Errorf("QueryPlateInfo|GetArticleNumber|ZCard err:%v", err)
+		return nil, err
+	}
+	plate.WithArticleNumber(articleNumber)
+
+	subNumber, err := p.rsDb.ZCard(ctx, buildPlateSubscribeListKey(pid)).Result()
+	if err != nil {
+		lg.Errorf("QueryPlateInfo|GetSubscribeNumber|ZCard err:%v", err)
+		return nil, err
+	}
+	plate.WithSubscribeNumber(subNumber)
+
 	lg.Infof("QueryPlateInfo|QueryPlateInfoSuccess|%v", common.ToStringWithoutError(&plate))
 	return &plate, nil
 }

@@ -54,14 +54,14 @@ type ListTask struct {
 // 学生提交的作业信息，包括一些状态
 type SubmitTask struct {
 	Id             string   `json:"id" bson:"_id"`
-	Content        string   `json:"content" bson:"content"`
-	TaskId         string   `json:"task_id" bson:"task_id"`
+	Content        string   `json:"content" bson:"content,omitempty"`
+	TaskId         string   `json:"task_id" bson:"task_id,omitempty"`
 	AttachmentList []string `json:"attachment_list,omitempty" bson:"attachment-list,omitempty"` // 存储任务的图片列表
-	Owner          string   `json:"owner" bson:"owner"`
+	Owner          string   `json:"owner" bson:"owner,omitempty"`
 	OwnerName      string   `json:"owner_name,omitempty" bson:"owner_name,omitempty"`
-	Viewing        bool     `json:"viewing" bson:"viewing"`   // 老师是否查看
-	Annotate       string   `json:"annotate" bson:"annotate"` // 老师的批注
-	Level          string   `json:"level" bson:"level"`       // 提交任务的等级
+	Viewing        bool     `json:"viewing" bson:"viewing,omitempty"`   // 老师是否查看
+	Annotate       string   `json:"annotate" bson:"annotate,omitempty"` // 老师的批注
+	Level          string   `json:"level" bson:"level,omitempty"`       // 提交任务的等级
 }
 
 func (st *SubmitTask) WithId(id string) *SubmitTask {

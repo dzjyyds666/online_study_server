@@ -21,6 +21,7 @@ func RegisterRouter(e *echo.Echo, cs *CosService) {
 	cos.Add("GET", "/file/:fid", cs.HandleGetFile)
 	cos.Add("HEAD", "/file/:fid", cs.HandleGetFile)
 	cos.Add("GET", "/fileType/:fid", cs.HandleGetFileType)
+	cos.Add("GET", "/delete/file/:fid", cs.HandleDeleteFile)
 
 	RecordRouteToFile(FilterRouter(e.Routes()))
 }
