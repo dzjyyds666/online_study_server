@@ -76,14 +76,30 @@ func (cs *CommunityService) HandleDeletePlate(ctx echo.Context) error {
 	return nil
 }
 func (cs *CommunityService) HandleListPlate(ctx echo.Context) error {
-	list, err := cs.plateServ.ListPlate(ctx.Request().Context())
+	var list core.ListPlate
+	decoder := json.NewDecoder(ctx.Request().Body)
+	if err := decoder.Decode(&list); err != nil {
+		lg.Errorf("HandleListPlate|Decode err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+
+	if list.PageSize == 0 {
+		list.PageSize = 10
+	}
+
+	if list.PageNumber == 0 {
+		list.PageNumber = 1
+	}
+
+	err := cs.plateServ.ListPlate(ctx.Request().Context(), &list)
 	if err != nil {
 		lg.Errorf("HandleListPlate|ListPlate err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "ListPlate Error",
 		})
 	}
-
 	return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpOK, list)
 }
 

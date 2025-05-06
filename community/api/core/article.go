@@ -105,9 +105,12 @@ func (a *Article) WithPlateId(plateId string) *Article {
 }
 
 type ListArticle struct {
-	List    []*Article `json:"list"`
-	PlateId string     `json:"plate_id,omitempty"`
-	Uid     string     `json:"uid,omitempty"`
-	Audit   bool       `json:"audit,omitempty"`
-	New     bool       `json:"new,omitempty"`
+	List       []*Article `json:"list"`
+	Total      int64      `json:"total"`
+	PageSize   int64      `json:"page_size"`
+	PageNumber int64      `json:"page_number"`
+	PlateId    string     `json:"plate_id,omitempty"`
+	Uid        string     `json:"uid,omitempty"`
+	Audit      bool       `json:"audit,omitempty"`
+	New        bool       `json:"new,omitempty"`
 }

@@ -61,3 +61,10 @@ func (p *Plate) Marshal() (string, error) {
 	marshal, err := json.Marshal(p)
 	return string(marshal), err
 }
+
+type ListPlate struct {
+	List       []*Plate `json:"list,omitempty"`
+	PageSize   int64    `json:"page_size"`
+	PageNumber int64    `json:"page_number"`
+	Total      int64    `json:"total"`
+}

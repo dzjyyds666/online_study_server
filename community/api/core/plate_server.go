@@ -8,6 +8,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"math"
+	"strconv"
 	"time"
 )
 
@@ -78,28 +80,40 @@ func (p *PlateServer) UpdatePlate(ctx context.Context, plate *Plate) error {
 	return nil
 }
 
-func (p *PlateServer) ListPlate(ctx context.Context) ([]*Plate, error) {
+func (p *PlateServer) ListPlate(ctx context.Context, list *ListPlate) error {
+	zRangeBy := &redis.ZRangeBy{
+		Min:    "(0",
+		Max:    strconv.FormatInt(math.MaxInt64, 10),
+		Count:  list.PageSize,
+		Offset: (list.PageNumber - 1) * list.PageSize,
+	}
+
 	key := buildPlateListKey()
-	result, err := p.rsDb.ZRange(ctx, key, 0, -1).Result()
+	number, err := p.rsDb.ZCard(ctx, key).Result()
+	if err != nil {
+		return err
+	}
+	list.Total = number
+	result, err := p.rsDb.ZRangeByScore(ctx, key, zRangeBy).Result()
 	if err != nil {
 		lg.Errorf("ListPlate|ZRange err:%v", err)
-		return nil, err
+		return err
 	}
 	lg.Infof("ListPlate|ZRangeSuccess|%v", common.ToStringWithoutError(result))
-	plates := make([]*Plate, 0)
+	list.List = make([]*Plate, 0, len(result))
 	for _, id := range result {
 		plate := &Plate{}
 		err = p.plateMgDb.FindOne(ctx, bson.M{"_id": id}).Decode(plate)
 		if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 			lg.Errorf("ListPlate|FindOne err:%v", err)
-			return nil, err
+			return err
 		} else if errors.Is(err, mongo.ErrNoDocuments) {
 			lg.Errorf("ListPlate|No Data Match|%v", common.ToStringWithoutError(plate))
 			continue
 		}
-		plates = append(plates, plate)
+		list.List = append(list.List, plate)
 	}
-	return plates, nil
+	return nil
 }
 
 func (p *PlateServer) QueryPlateInfo(ctx context.Context, pid string) (*Plate, error) {
