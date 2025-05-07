@@ -8,6 +8,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"math"
+	"strconv"
 	"time"
 )
 
@@ -146,39 +148,71 @@ func (as *ArticleServer) DeleteArticle(ctx context.Context, articleId string) er
 }
 
 func (as *ArticleServer) ListArticle(ctx context.Context, list *ListArticle) error {
+
+	zRangeBy := &redis.ZRangeBy{
+		Min:    "(0",
+		Max:    strconv.FormatInt(math.MaxInt64, 10),
+		Count:  list.PageSize,
+		Offset: (list.PageNumber - 1) * list.PageSize,
+	}
+
 	articleIds := make([]string, 0)
 	if len(list.PlateId) > 0 {
 		// 查询板块下的文章
-		result, err := as.rsDb.ZRange(ctx, buildPlateArticleListKey(list.PlateId), 0, -1).Result()
+		result, err := as.rsDb.ZRangeByScore(ctx, buildPlateArticleListKey(list.PlateId), zRangeBy).Result()
 		if err != nil {
 			lg.Errorf("ListArticle|ZRangeByScore Error|%v", err)
 			return err
 		}
 		articleIds = result
+		i, err := as.rsDb.ZCard(ctx, buildPlateArticleListKey(list.Uid)).Result()
+		if err != nil {
+			lg.Errorf("ListArticle|ZCard Error|%v", err)
+			return err
+		}
+		list.Total = i
 	} else if len(list.Uid) > 0 {
 		// 查询用户下的文章
-		result, err := as.rsDb.ZRange(ctx, buildUserArticleListKey(list.Uid), 0, -1).Result()
+		result, err := as.rsDb.ZRangeByScore(ctx, buildUserArticleListKey(list.Uid), zRangeBy).Result()
 		if err != nil {
 			lg.Errorf("ListArticle|ZRangeByScore Error|%v", err)
 			return err
 		}
 		articleIds = result
+		i, err := as.rsDb.ZCard(ctx, buildUserArticleListKey(list.Uid)).Result()
+		if err != nil {
+			lg.Errorf("ListArticle|ZCard Error|%v", err)
+			return err
+		}
+		list.Total = i
 	} else if list.Audit == true {
 		// 查询审核中的文章
-		result, err := as.rsDb.ZRange(ctx, buildArticleAuditListKey(), 0, -1).Result()
+		result, err := as.rsDb.ZRangeByScore(ctx, buildArticleAuditListKey(), zRangeBy).Result()
 		if err != nil {
 			lg.Errorf("ListArticle|ZRangeByScore Error|%v", err)
 			return err
 		}
 		articleIds = result
+		i, err := as.rsDb.ZCard(ctx, buildArticleAuditListKey()).Result()
+		if err != nil {
+			lg.Errorf("ListArticle|ZCard Error|%v", err)
+			return err
+		}
+		list.Total = i
 	} else if list.New == true {
 		// 获取zset的最后10个内容
-		result, err := as.rsDb.ZRevRange(ctx, buildArticleListKey(), 0, 9).Result()
+		result, err := as.rsDb.ZRevRangeByScore(ctx, buildArticleListKey(), zRangeBy).Result()
 		if err != nil {
 			lg.Errorf("ListArticle|ZRevRange Error|%v", err)
 			return err
 		}
 		articleIds = result
+		i, err := as.rsDb.ZCard(ctx, buildArticleListKey()).Result()
+		if err != nil {
+			lg.Errorf("ListArticle|ZCard Error|%v", err)
+			return err
+		}
+		list.Total = i
 	}
 	list.List = make([]*Article, 0, len(articleIds))
 	for _, articleId := range articleIds {

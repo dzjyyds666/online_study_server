@@ -86,7 +86,7 @@ func (cs *CommunityService) HandleListPlate(ctx echo.Context) error {
 	}
 
 	if list.PageSize == 0 {
-		list.PageSize = 10
+		list.PageSize = 12
 	}
 
 	if list.PageNumber == 0 {
@@ -179,6 +179,13 @@ func (cs *CommunityService) HandleListArticle(ctx echo.Context) error {
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
 			"msg": "Params Invalid",
 		})
+	}
+
+	if list.PageNumber == 0 {
+		list.PageNumber = 1
+	}
+	if list.PageSize == 0 {
+		list.PageSize = 10
 	}
 
 	if err := cs.articleServ.ListArticle(ctx.Request().Context(), &list); err != nil {

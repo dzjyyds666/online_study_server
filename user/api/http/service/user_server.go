@@ -81,14 +81,22 @@ func (us *UserService) HandleSignUp(ctx echo.Context) error {
 			"msg": "Params Invalid",
 		})
 	}
+	logx.GetLogger("study").Infof("HandleSignUp|userInfo:%v", common.ToStringWithoutError(userInfo))
 	// 生成uid
-	userInfo.Role = core2.UserRole.Student
+	if len(userInfo.Password) <= 0 {
+		userInfo.Password = "123456"
+	}
+
 	password, err := bcrypt.GenerateFromPassword([]byte(userInfo.Password), bcrypt.DefaultCost)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleSignUp|GenerateFromPassword Error|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
 			"msg": "Password Error",
 		})
+	}
+
+	if userInfo.Role == 0 {
+		userInfo.Role = 1
 	}
 	if len(userInfo.Name) <= 0 {
 		// 截取uid的后四位
@@ -239,8 +247,17 @@ func GenerateRandomString(length int) string {
 }
 
 func (us *UserService) HandleListUser(ctx echo.Context) error {
+	var list core2.ListUser
+	decoder := json.NewDecoder(ctx.Request().Body)
+	if err := decoder.Decode(&list); err != nil {
+		logx.GetLogger("study").Errorf("HandlerListUsers|ctx.Bind err:%v", err)
+		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpParamsError, echo.Map{
+			"msg": "Params Invalid",
+		})
+	}
+	logx.GetLogger("study").Infof("HandleListUser|role:%s", common.ToStringWithoutError(list))
 	role := ctx.Param("role")
-	list, err := us.userServer.ListUserByRole(ctx.Request().Context(), role)
+	err := us.userServer.ListUserByRole(ctx.Request().Context(), role, &list)
 	if err != nil {
 		logx.GetLogger("study").Errorf("HandleListUser|err:%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{

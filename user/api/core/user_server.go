@@ -217,29 +217,46 @@ func (us *UserServer) QueryStudentClassList(ctx context.Context, uid string) ([]
 	return classList, nil
 }
 
-func (us *UserServer) ListUserByRole(ctx context.Context, role string) ([]UserInfo, error) {
-	list := make([]UserInfo, 0)
+func (us *UserServer) ListUserByRole(ctx context.Context, role string, list *ListUser) error {
+	list.List = make([]*UserInfo, 0)
 	switch role {
 	case "student":
-		err := us.mySql.Where("role = ?", UserRole.Student).Find(&list).Error
+		err := us.mySql.Where("role = ?", UserRole.Student).
+			Limit(int(list.PageSize)).
+			Offset(int((list.PageNumber - 1) * list.PageSize)).Find(&list.List).Error
 		if err != nil {
 			logx.GetLogger("study").Errorf("ListUserByRole|Query Student List Error|%v", err)
-			return nil, err
+			return err
+		}
+		if err := us.mySql.Model(&UserInfo{}).Where("role = ?", UserRole.Student).Count(&list.Total).Error; err != nil {
+			logx.GetLogger("study").Errorf("ListUserByRole|Query Student Total Error|%v", err)
+			return err
 		}
 	case "teacher":
-		err := us.mySql.Where("role = ?", UserRole.Teacher).Find(&list).Error
+		err := us.mySql.Where("role = ?", UserRole.Teacher).
+			Limit(int(list.PageSize)).
+			Offset(int((list.PageNumber - 1) * list.PageSize)).Find(&list.List).Error
 		if err != nil {
 			logx.GetLogger("study").Errorf("ListUserByRole|Query Teacher List Error|%v", err)
-			return nil, err
+			return err
+		}
+		if err := us.mySql.Model(&UserInfo{}).Where("role = ?", UserRole.Admin).Count(&list.Total).Error; err != nil {
+			logx.GetLogger("study").Errorf("ListUserByRole|Query Student Total Error|%v", err)
+			return err
 		}
 	case "admin":
-		err := us.mySql.Where("role = ?", UserRole.Admin).Find(&list).Error
+		err := us.mySql.Where("role = ?", UserRole.Admin).Limit(int(list.PageSize)).
+			Offset(int((list.PageNumber - 1) * list.PageSize)).Find(&list.List).Error
 		if err != nil {
 			logx.GetLogger("study").Errorf("ListUserByRole|Query Admin List Error|%v", err)
-			return nil, err
+			return err
+		}
+		if err := us.mySql.Model(&UserInfo{}).Where("role = ?", UserRole.Admin).Count(&list.Total).Error; err != nil {
+			logx.GetLogger("study").Errorf("ListUserByRole|Query Student Total Error|%v", err)
+			return err
 		}
 	default:
-		return nil, errors.New("role error")
+		return errors.New("role error")
 	}
-	return list, nil
+	return nil
 }

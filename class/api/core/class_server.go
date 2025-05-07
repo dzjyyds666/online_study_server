@@ -9,6 +9,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"io"
+	"math"
+	"strconv"
 	"time"
 
 	"github.com/dzjyyds666/opensource/common"
@@ -649,22 +651,34 @@ func (cls *ClassServer) UpdateStudentTask(ctx context.Context, task *SubmitTask)
 	return cls.taskServer.UpdateStudentTask(ctx, task)
 }
 
-func (cls *ClassServer) QueryAllClassList(ctx context.Context) ([]*Class, error) {
+func (cls *ClassServer) QueryAllClassList(ctx context.Context, list *ListClass) error {
+	zRangeBy := &redis.ZRangeBy{
+		Min:    "(0",
+		Max:    strconv.FormatInt(math.MaxInt64, 10),
+		Offset: list.PageSize * (list.PageNumber - 1),
+		Count:  list.PageSize,
+	}
 	key := BuildAllClassList()
-	cids, err := cls.classDB.ZRange(ctx, key, 0, -1).Result()
+	cids, err := cls.classDB.ZRangeByScore(ctx, key, zRangeBy).Result()
 	if err != nil {
 		lg.Errorf("ClassServer|QueryAllClassList|QueryAllClassListError|%v", err)
-		return nil, err
+		return err
 	}
+	result, err := cls.classDB.ZCard(ctx, key).Result()
+	if err != nil {
+		lg.Errorf("ClassServer|QueryAllClassList|ZCardError|%v", err)
+		return err
+	}
+	list.Total = result
 
-	list := make([]*Class, 0, len(cids)-1)
+	list.List = make([]*Class, 0, len(cids))
 	for _, cid := range cids {
 		info, err := cls.QueryClassInfo(ctx, cid)
 		if err != nil {
 			lg.Errorf("ClassServer|QueryAllClassList|QueryClassInfoError|%v", err)
-			return nil, err
+			return err
 		}
-		list = append(list, info)
+		list.List = append(list.List, info)
 	}
-	return list, nil
+	return nil
 }

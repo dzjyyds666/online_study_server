@@ -23,8 +23,8 @@ func RegisterRouter(e *echo.Echo, us *UserService) {
 
 	globApiPrefix := e.Group("/v1")
 	globApiPrefix.Add("POST", "/user/signin", us.HandlerLogin)
-	globApiPrefix.Add("POST", "/user/signup", us.HandleSignUp)
-	globApiPrefix.Add("GET", "/user/list/:role", us.HandleListUser, mymiddleware.AuthMw(mymiddleware.UserRole.Admin))
+	globApiPrefix.Add("POST", "/user/register", us.HandleSignUp, mymiddleware.AuthMw(core.UserRole.Admin))
+	globApiPrefix.Add("POST", "/user/list/:role", us.HandleListUser, mymiddleware.AuthMw(mymiddleware.UserRole.Admin))
 
 	// token验证中间件
 	userGroup := globApiPrefix.Group("/user")

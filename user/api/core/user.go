@@ -75,3 +75,10 @@ func UnmarshalToUserInfo(data []byte) (*UserInfo, error) {
 	}
 	return &user, nil
 }
+
+type ListUser struct {
+	List       []*UserInfo `json:"list"`
+	PageSize   int64       `json:"page_size"`
+	PageNumber int64       `json:"page_number"`
+	Total      int64       `json:"total"`
+}

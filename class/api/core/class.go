@@ -116,3 +116,10 @@ func UnmarshalToClass(data []byte) (*Class, error) {
 	}
 	return &ci, nil
 }
+
+type ListClass struct {
+	List       []*Class `json:"list"`
+	Total      int64    `json:"total"`
+	PageSize   int64    `json:"page_size"`
+	PageNumber int64    `json:"page_number"`
+}

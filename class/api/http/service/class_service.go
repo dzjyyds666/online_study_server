@@ -734,7 +734,8 @@ func (cls *ClassService) HandleUpdateStudentTask(ctx echo.Context) error {
 }
 
 func (cls *ClassService) HandleListAllClass(ctx echo.Context) error {
-	list, err := cls.classServ.QueryAllClassList(ctx.Request().Context())
+	var list core2.ListClass
+	err := cls.classServ.QueryAllClassList(ctx.Request().Context(), &list)
 	if err != nil {
 		lg.Errorf("HandleListAllClass|QueryListError|%v", err)
 		return httpx.JsonResponse(ctx, httpx.HttpStatusCode.HttpInternalError, echo.Map{
