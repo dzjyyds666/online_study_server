@@ -200,6 +200,12 @@ func (as *ArticleServer) ListArticle(ctx context.Context, list *ListArticle) err
 		}
 		list.Total = i
 	} else if list.New == true {
+		zRangeBy = &redis.ZRangeBy{
+			Max:    "+inf", // 最高分
+			Min:    "-inf", // 最低分
+			Offset: 0,      // 从第一个元素开始
+			Count:  10,     // 获取10个元素
+		}
 		// 获取zset的最后10个内容
 		result, err := as.rsDb.ZRevRangeByScore(ctx, buildArticleListKey(), zRangeBy).Result()
 		if err != nil {
@@ -207,6 +213,7 @@ func (as *ArticleServer) ListArticle(ctx context.Context, list *ListArticle) err
 			return err
 		}
 		articleIds = result
+		lg.Infof("ListArticle|ZRevRangeSuccess|%v", common.ToStringWithoutError(result))
 		i, err := as.rsDb.ZCard(ctx, buildArticleListKey()).Result()
 		if err != nil {
 			lg.Errorf("ListArticle|ZCard Error|%v", err)

@@ -180,6 +180,7 @@ func (cs *CommunityService) HandleListArticle(ctx echo.Context) error {
 			"msg": "Params Invalid",
 		})
 	}
+	lg.Infof("HandleListArticle|Params bind Success|%s", common.ToStringWithoutError(list))
 
 	if list.PageNumber == 0 {
 		list.PageNumber = 1
