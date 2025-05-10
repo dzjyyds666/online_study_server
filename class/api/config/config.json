@@ -10,10 +10,10 @@
     "password": "rootroot",
     "database": "learnX"
   },
-  "redis": "redis://root@127.0.0.1:6379/3",
+  "redis": "redis://root@127.0.0.1:6380/3",
   "jwt": {
     "secret_key": "aaron519",
     "expire": 259200
   },
-  "mongo": "mongodb://root:rootroot@127.0.0.1:27017/learnX?authSource=admin"
+  "mongo": "mongodb://root:rootroot@127.0.0.1:27018/learnX?authSource=admin"
 }

@@ -99,3 +99,24 @@ func RefreshEtcdConfig(path string) error {
 	//logx.GetLogger("study").Infof("RefreshEtcdConfig|SUCC|GloableConfig|%v", console.ToStringWithoutError(GloableConfig))
 	return nil
 }
+
+func GetGloableConfig(filePath string) error {
+	open, err := os.Open(filePath)
+	if err != nil {
+		logx.GetLogger("study").Errorf("GetGloableConfig|open err:%v", err)
+		return err
+	}
+	defer open.Close()
+
+	configBytes, err := io.ReadAll(open)
+	if err != nil {
+		logx.GetLogger("study").Errorf("GetGloableConfig|readAll err:%v", err)
+		return err
+	}
+	err = json.Unmarshal(configBytes, &GloableConfig)
+	if err != nil {
+		logx.GetLogger("study").Errorf("GetGloableConfig|json.Unmarshal err:%v", err)
+		return err
+	}
+	return nil
+}

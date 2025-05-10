@@ -14,14 +14,17 @@ import (
 )
 
 func main() {
-	var configPath = flag.String("c", "/Users/zhijundu/code/GolandProjects/online_study_server/class/api/config/config.json", "config.json file path")
+	var configPath = flag.String("c", "/Users/aaron/GolandProjects/online_study_server/class/api/config/config.json", "config.json file path")
 	//var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\class\\api\\config\\config.json", "config.json file path")
-	err := config.RefreshEtcdConfig(*configPath)
-	if err != nil {
-		panic(err)
-	}
-
-	err = config.LoadConfigFromEtcd()
+	//err := config.RefreshEtcdConfig(*configPath)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//err = config.LoadConfigFromEtcd()
+	//if err != nil {
+	//	panic(err)
+	//}
+	err := config.GetGloableConfig(*configPath)
 	if err != nil {
 		panic(err)
 	}

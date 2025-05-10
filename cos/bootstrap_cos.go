@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -24,16 +23,10 @@ func main() {
 
 	//var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\cos\\api\\config\\config.json", "config.json file path")
 	var configPath = flag.String("c", "/Users/zhijundu/code/GolandProjects/online_study_server/cos/api/config/config.json", "config.json file path")
-	err := config.RefreshEtcdConfig(*configPath)
-	if err != nil {
-		logx.GetLogger("study").Errorf("apiService|RefreshEtcdConfig|err:%v", err)
-		return
-	}
 
-	err = config.LoadConfigFromEtcd()
+	err := config.GetGloableConfig(*configPath)
 	if err != nil {
-		logx.GetLogger("study").Errorf("apiService|LoadConfigFromEtcd|err:%v", err)
-		return
+		panic(err)
 	}
 
 	cfg, err := S3config.LoadDefaultConfig(
@@ -47,12 +40,11 @@ func main() {
 		return
 	}
 
-	client := redis.NewClient(&redis.Options{
-		Addr:     *config.GloableConfig.Redis.Host + ":" + strconv.Itoa(*config.GloableConfig.Redis.Port),
-		Username: *config.GloableConfig.Redis.Username,
-		Password: *config.GloableConfig.Redis.Password,
-		DB:       *config.GloableConfig.Redis.DB,
-	})
+	opt, err := redis.ParseURL(*config.GloableConfig.Redis)
+	if err != nil {
+		panic(err)
+	}
+	client := redis.NewClient(opt)
 	hcli := &http.Client{
 		Timeout: 30 * time.Second,
 	}

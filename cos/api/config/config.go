@@ -20,16 +20,8 @@ type Config struct {
 	Name    *string `json:"name"`     // 服务器名称
 	TmpDir  *string `json:"tmp_dir"`
 
-	Redis *Redis `json:"redis"`
-	S3    *S3    `json:"s3"`
-}
-
-type Redis struct {
-	Host     *string `json:"host"`
-	Port     *int    `json:"port"`
-	Username *string `json:"username"`
-	Password *string `json:"password"`
-	DB       *int    `json:"db"`
+	Redis *string `json:"redis"`
+	S3    *S3     `json:"s3"`
 }
 
 type S3 struct {
@@ -99,5 +91,26 @@ func RefreshEtcdConfig(path string) error {
 		return err
 	}
 
+	return nil
+}
+
+func GetGloableConfig(filePath string) error {
+	open, err := os.Open(filePath)
+	if err != nil {
+		logx.GetLogger("study").Errorf("GetGloableConfig|open err:%v", err)
+		return err
+	}
+	defer open.Close()
+
+	configBytes, err := io.ReadAll(open)
+	if err != nil {
+		logx.GetLogger("study").Errorf("GetGloableConfig|readAll err:%v", err)
+		return err
+	}
+	err = json.Unmarshal(configBytes, &GloableConfig)
+	if err != nil {
+		logx.GetLogger("study").Errorf("GetGloableConfig|json.Unmarshal err:%v", err)
+		return err
+	}
 	return nil
 }

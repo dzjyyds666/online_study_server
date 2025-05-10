@@ -22,15 +22,12 @@ import (
 func main() {
 	var configPath = flag.String("c", "/Users/zhijundu/code/GolandProjects/online_study_server/user/api/config/config.json", "config.json file path")
 	//var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\user\\api\\config\\config.json", "config.json file path")
-	err := config.RefreshEtcdConfig(*configPath)
-	if err != nil {
-		logx.GetLogger("study").Errorf("main|RefreshEtcdConfig|err:%v", err)
-		return
-	}
-	err = config.LoadConfigFromEtcd()
+
+	err := config.GetGloableConfig(*configPath)
 	if err != nil {
 		panic(err)
 	}
+
 	logx.GetLogger("study").Infof("main|LoadConfigFromEtcd|config:%s", common.ToStringWithoutError(config.GloableConfig))
 	client := redis.NewClient(&redis.Options{
 		Addr:     *config.GloableConfig.Redis.Host + ":" + strconv.Itoa(*config.GloableConfig.Redis.Port),

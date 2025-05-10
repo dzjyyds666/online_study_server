@@ -4,15 +4,9 @@
   "rpc_port": 29002,
   "host": "127.0.0.1",
   "tmp_dir": "tmp/study",
-  "redis": {
-    "host": "127.0.0.1",
-    "port": 6379,
-    "username": "root",
-    "password": "",
-    "db": 2
-  },
+  "redis": "redis://root@127.0.0.1:6380/2",
   "s3": {
-    "endpoint": "http://127.0.0.1:9000",
+    "endpoint": "http://127.0.0.1:9005",
     "access_key": "admin",
     "secret_key": "admin@123",
     "bucket": [

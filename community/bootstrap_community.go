@@ -19,13 +19,8 @@ import (
 func main() {
 	var configPath = flag.String("c", "./api/config/config.json", "config.json file path")
 	//var configPath = flag.String("c", "E:\\code\\Go\\online_study_server\\class\\api\\config\\config.json", "config.json file path")
-	err := config.RefreshEtcdConfig(*configPath)
-	if err != nil {
-		logx.GetLogger("study").Errorf("main|RefreshEtcdConfig|err:%v", err)
-		return
-	}
 
-	err = config.LoadConfigFromEtcd()
+	err := config.GetGloableConfig(*configPath)
 	if err != nil {
 		panic(err)
 	}
